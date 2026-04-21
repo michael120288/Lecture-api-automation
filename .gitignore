@@ -7,3 +7,4 @@ html/
 reports/
 *.pdf
 .claude-flow/
+docs/*copy*.md
