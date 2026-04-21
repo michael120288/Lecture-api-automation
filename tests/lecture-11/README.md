@@ -1,0 +1,296 @@
+# Lecture 11 — CI/CD: GitHub Actions Pipeline
+
+> ⏱ **Estimated time: 75–90 min**
+> **Previous lecture:** Lecture 10 — MongoDB cross-validation.
+> 📚 **Before starting:** Open `prereqs.md` in this folder first (~10–25 min)
+>
+> **Quick Start** (run tests locally before pushing):
+> ```bash
+> npm test
+> ```
+
+---
+
+## What You Will Learn
+
+- What CI/CD is and why automated test pipelines matter
+- YAML syntax — indentation, keys, values, arrays
+- GitHub Actions workflow file structure — `name`, `on`, `jobs`, `steps`
+- Running Vitest in a GitHub Actions runner
+- Passing `.env` secrets as GitHub repository secrets
+- Matrix strategy — testing on multiple Node versions (18 and 20)
+- Uploading test results as artifacts (7-day retention)
+- Adding a status badge to your README
+- Newman — running Postman collections from the CLI in CI
+
+> **Reference Topics**
+> - GitHub Actions deep-dive reference → [`docs/topics/github-actions.md`](../../docs/topics/github-actions.md)
+
+---
+
+## Contents
+
+| # | Section |
+|---|---------|
+| 1 | What CI/CD Means |
+| 2 | YAML Basics |
+| 3 | Workflow File Structure |
+| 4 | Setting Up GitHub Secrets |
+| 5 | Full Workflow — Step by Step |
+| 6 | Matrix Strategy |
+| 7 | Artifacts |
+| 8 | Status Badge |
+| 9 | Homework |
+
+---
+
+## 1. What CI/CD Means
+
+**CI** = Continuous Integration — every push to GitHub automatically runs the test suite.
+You know within minutes whether your changes broke anything.
+
+**CD** = Continuous Delivery — after tests pass, code can be automatically deployed.
+
+For this course we focus on CI — automatic test execution on every push.
+
+---
+
+## 2. YAML Basics
+
+YAML is the format used for GitHub Actions workflow files.
+
+```yaml
+# Key-value pair
+name: Run Tests
+
+# Nested object (indentation = 2 spaces)
+on:
+  push:
+    branches:
+      - main
+
+# Array item (dash + space)
+steps:
+  - name: Checkout code
+    uses: actions/checkout@v3
+```
+
+Rules:
+- Indentation with **spaces** (never tabs)
+- Keys and values separated by `: ` (colon + space)
+- Arrays start with `- ` (dash + space)
+
+---
+
+## 3. Workflow File Structure
+
+Create `.github/workflows/tests.yml` in your project root:
+
+```yaml
+name: Chatty API Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # manual trigger
+
+jobs:
+  test:
+    name: Run Vitest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vitest
+        run: npm test
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-node-${{ matrix.node-version }}
+          path: test-results/
+          retention-days: 7
+```
+
+---
+
+## 4. Setting Up GitHub Secrets
+
+In your GitHub repository:
+1. Settings → Secrets and variables → Actions
+2. Click **New repository secret** for each:
+
+| Secret name | Value |
+|-------------|-------|
+| `BASE_URL` | `https://api.codeandtest.com/api/v1` |
+| `TEST_USERNAME` | your vitest username |
+| `TEST_PASSWORD` | your test password |
+| `DATABASE_URL` | your MongoDB Atlas URL |
+
+Secrets are encrypted and never visible in logs.
+
+---
+
+## 5. Full Workflow — Step by Step
+
+**`${{ ... }}` — GitHub Actions expression syntax:**
+Anything inside `${{ }}` is evaluated at runtime by GitHub Actions.
+- `${{ secrets.BASE_URL }}` → reads the `BASE_URL` secret from repository settings
+- `${{ matrix.node-version }}` → reads the current matrix value (18 or 20)
+- `${{ always() }}` → a function that returns `true` regardless of previous step status
+
+**`@v3` on actions** — version pinning:
+`uses: actions/checkout@v3` pins the action to version 3.
+Without pinning you would write `uses: actions/checkout` which would use `@main` (unstable).
+Always pin to a major version (`@v3`, `@v4`) to avoid breaking changes.
+
+**`cache: 'npm'`** — caches the npm dependency cache between runs.
+After the first run, subsequent pushes skip re-downloading all packages if `package-lock.json`
+hasn't changed. This can save 30–60 seconds per run on large projects.
+
+**`on:`** — when to trigger:
+- `push` → runs on every commit to main/develop
+- `pull_request` → runs when a PR is opened against main
+- `workflow_dispatch` → adds a "Run workflow" button in the GitHub Actions tab — useful for manual re-runs
+
+**`jobs:`** → one or more jobs, each runs on a separate machine
+
+**`runs-on: ubuntu-latest`** → Linux VM provided by GitHub (free)
+
+**`steps:`** → sequential commands:
+1. Checkout — download your repo code
+2. Setup Node.js — install the right version
+3. `npm ci` — clean install (faster than `npm install` in CI)
+4. `npm test` — run Vitest
+5. Upload artifacts — save the results
+
+**`env:`** — pass secrets as environment variables to the test runner.
+These are the same vars your `.env` file has locally.
+
+---
+
+## 6. Matrix Strategy
+
+```yaml
+strategy:
+  matrix:
+    node-version: [18, 20]
+```
+
+This creates TWO parallel jobs — one running Node 18, one running Node 20.
+If your tests pass on both, you know your code works across versions.
+GitHub runs them simultaneously — total time is the same as one job.
+
+---
+
+## 7. Artifacts
+
+```yaml
+- name: Upload test results
+  if: always()           # runs even if tests fail
+  uses: actions/upload-artifact@v4
+  with:
+    name: test-results-node-${{ matrix.node-version }}
+    path: test-results/
+    retention-days: 7
+```
+
+`if: always()` — upload even when tests fail. This lets you inspect the results to debug.
+
+To generate JUnit XML results (downloadable from GitHub):
+```bash
+# In vitest.config.ts, add:
+reporters: process.env.CI ? ['junit', 'verbose'] : ['verbose'],
+outputFile: { junit: 'test-results/junit.xml' },
+```
+
+---
+
+## 8. Status Badge
+
+Add to your project's README.md:
+
+```markdown
+![Tests](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/tests.yml/badge.svg)
+```
+
+Shows green ✅ when tests pass, red ❌ when they fail.
+
+---
+
+## Key Takeaways
+
+- ✅ Workflow file lives in `.github/workflows/tests.yml`
+- ✅ Secrets replace `.env` in CI — never commit `.env` to the repo
+- ✅ `npm ci` instead of `npm install` in CI — clean, fast, reproducible
+- ✅ Matrix strategy runs on Node 18 AND 20 in parallel
+- ✅ `if: always()` uploads artifacts even when tests fail — essential for debugging
+
+**What's next:** Lecture 12 — Docker. Containerise the test runner so it runs identically everywhere.
+
+---
+
+## 9. Git
+
+```bash
+# Stage the files for this lecture
+git add .github/workflows/tests.yml tests/lecture-11/
+git status                          # verify what will be committed
+
+# Commit
+git commit -m "lecture-11: GitHub Actions CI/CD pipeline"
+
+# Push the branch to GitHub
+git push -u origin lecture-11-cicd
+```
+
+### Open a Pull Request
+
+1. Go to `github.com/YOUR_USERNAME/chatty-api-tests`
+2. Click **Compare & pull request** (GitHub shows this banner after a push)
+3. Title: `lecture-11: GitHub Actions CI/CD pipeline`
+4. Click **Create pull request**
+5. If Lecture 11 (CI/CD) is set up, the pipeline runs automatically here
+6. Merge when the PR looks good
+
+### After merging — start the next lecture
+
+```bash
+git checkout main
+git pull origin main               # get the merged changes
+git checkout -b lecture-12-docker
+```
+
+
+## Homework
+
+| Task | What it practices |
+|------|------------------|
+| 1 | Create `.github/workflows/tests.yml` with the workflow from section 5 |
+| 2 | Add all 4 GitHub Secrets to your repository |
+| 3 | Push a commit and verify the Actions tab shows the workflow running |
+| 4 | Add `reporters` to `vitest.config.ts` for JUnit output |
+| 5 | Add the status badge to your project README |
+
+No automated Vitest tests for this lecture — the homework is infrastructure setup.

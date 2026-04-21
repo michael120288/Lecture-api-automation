@@ -1,0 +1,9 @@
+node_modules/
+.env
+.DS_Store
+coverage/
+test-results/
+html/
+reports/
+*.pdf
+.claude-flow/
