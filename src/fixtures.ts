@@ -42,3 +42,4 @@ export const TEST_PASSWORD = 'Vitest@123456';
  * No env var needed — the value is fixed in both codebases.
  */
 export const TEST_CLEANUP_SECRET = 'chatty-test-cleanup-2026';
+

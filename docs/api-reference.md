@@ -993,7 +993,30 @@ interface MessageReactionBody {
 
 ---
 
-## Test Cleanup (course only)
+## Test Endpoints (course only)
+
+All test endpoints require `x-test-secret: chatty-test-cleanup-2026` and only work for usernames starting with `vitest`.
+
+**Rate limit bypass:** The nginx rate limiter checks for the `x-test-secret` header. When present with the correct value, the 5 req/min limit on `/signin` and `/signup` is skipped automatically — use the **same URLs**, just add the header.
+
+**TypeScript pattern:**
+```ts
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+// Sign in without rate limiting — same URL, add header
+const res = await axios.post(`${config.BASE_URL}/signin`,
+  { username: config.TEST_USERNAME, password: config.TEST_PASSWORD },
+  { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true }
+);
+
+// Sign up without rate limiting — same URL, add header
+const res = await axios.post(`${config.BASE_URL}/signup`,
+  { username, email, password, avatarColor, avatarImage },
+  { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true }
+);
+```
+
+> ⚠️ The backend validates the header — returns 403 if secret is wrong or username does not start with `vitest`.
 
 ---
 
