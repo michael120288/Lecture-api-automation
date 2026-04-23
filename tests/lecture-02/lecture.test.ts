@@ -21,6 +21,7 @@
 import axios, { type AxiosResponse } from 'axios';
 import { config } from '../../src/config';
 import { expectRejected } from '../../src/test-utils';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
 
 const signinUrl = `${config.BASE_URL}/signin`;
 const currentUserUrl = `${config.BASE_URL}/currentuser`;
@@ -42,6 +43,7 @@ let sessionCookie: string = '';
 
 beforeAll(async () => {
   signInResponse = await axios.post(signinUrl, credentials, {
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
     validateStatus: () => true,
   });
 
@@ -49,7 +51,16 @@ beforeAll(async () => {
   // set-cookie is an array — one string per cookie the server sets.
   // Chatty only sets one cookie (session), so we take index [0].
   const raw = signInResponse.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  // cookie-session sets TWO cookies: session + session.sig (signature).
+  // Both must be sent together — without session.sig the server cannot
+  // verify the session and returns "Token is not valid."
+  // Trim each cookie to name=value only (drop Path=/, HttpOnly, etc.)
+  const cookies = (() => {
+    if (Array.isArray(raw)) return raw;
+    if (raw) return [raw];
+    return [];
+  })();
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 });
 
 afterAll(async () => {
@@ -157,9 +168,12 @@ describe('3. Session cookie', () => {
     expect(sessionCookie).toContain('session=');
   });
 
-  it('cookie contains HttpOnly directive', () => {
-    // HttpOnly means JavaScript cannot read this cookie — XSS protection
-    expect(sessionCookie.toLowerCase()).toContain('httponly');
+  it('set-cookie header contains HttpOnly directive', () => {
+    // HttpOnly means JavaScript cannot read this cookie — XSS protection.
+    // Check the raw set-cookie header (not sessionCookie which is trimmed).
+    const raw = signInResponse.headers['set-cookie'] ?? [];
+    const rawStr = Array.isArray(raw) ? raw.join(' ') : raw;
+    expect(rawStr.toLowerCase()).toContain('httponly');
   });
 
 });
@@ -231,7 +245,6 @@ describe('5. Authenticated request', () => {
       headers: { Cookie: sessionCookie },
       validateStatus: () => true,
     });
-
     expect(response.status).toBe(200);
   });
 
@@ -249,7 +262,6 @@ describe('5. Authenticated request', () => {
       headers: { Cookie: sessionCookie },
       validateStatus: () => true,
     });
-
     const currentUsername = response.data.user.username.toLowerCase();
     const signedInUsername = signInResponse.data.user.username.toLowerCase();
     expect(currentUsername).toBe(signedInUsername);
