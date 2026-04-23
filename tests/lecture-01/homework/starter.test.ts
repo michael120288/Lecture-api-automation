@@ -129,11 +129,16 @@ it('message matches non-empty string regex — toMatch', () => {
 // Using `response` from beforeAll (no new request needed).
 //
 // Write TWO assertions in this test:
-//   1. Use toBeTypeOf('number') to assert that response.data.statusCode is a number.
+//   1. Use toBeTypeOf('number') on response.data.statusCode.
+//      Pass a custom error message as the second argument to expect() so that
+//      when the assertion fails you can see what the response actually contained:
+//
+//      expect(response.data.statusCode, `Got: ${JSON.stringify(response.data)} and status: ${JSON.stringify(response.status)}`).toBeTypeOf('number');
+//
 //   2. Use toBeTruthy() to assert that response.data.message is truthy.
 //
-// Hint: toBeTypeOf is Vitest-specific — do not use `typeof x === 'number'` here
-// Hint: any non-empty string is truthy
+// Hint: the second argument to expect() appears in the error output when the assertion fails
+// Hint: this is especially useful when a 429 rate-limit response omits the statusCode field
 it('statusCode is type number and message is truthy', () => {
   // write your code here
 

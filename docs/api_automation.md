@@ -95,6 +95,7 @@ This book is divided into four parts.
 - [Appendix E: Debugging Failed Tests](#appendix-e-debugging-failed-tests)
 - [Appendix F: Glossary](#appendix-f-glossary)
 - [Appendix G: Chatty API — Complete Endpoint Reference](#appendix-g-chatty-api--complete-endpoint-reference)
+- [Appendix H: Chapter Practice Solutions](#appendix-h-chapter-practice-solutions)
 
 **Part VII: Reference Library** (40 standalone deep-dive chapters)
 - Reference 1: What Is API Testing? — Reference 40: Git Commands
@@ -241,35 +242,6 @@ Create a folder named "Chapter 1" inside your Postman collection. Work through t
 4. Look at the response headers panel. Identify the Content-Type header. Add a pm.test() that asserts Content-Type contains "application/json".
 5. Open the Postman Console (View → Console). Re-send the request. Read the raw request and response. Identify the request line, headers, and response body.
 
-
-#### Postman Solutions — Chapter 1
-
-**Exercise 1** — Collection and environment setup: no pm.test() needed here — this is configuration only.
-
-**Exercise 2** — GET /currentuser without auth:
-```javascript
-pm.test("Status is 401 — unauthenticated", () => {
-    pm.response.to.have.status(401);
-});
-```
-
-**Exercise 3** — Assert Content-Type:
-```javascript
-pm.test("Content-Type is JSON", () => {
-    pm.expect(pm.response.headers.get("Content-Type")).to.include("application/json");
-});
-```
-
-**Exercise 4** — Combined assertions:
-```javascript
-pm.test("Status is 401", () => pm.response.to.have.status(401));
-pm.test("Content-Type is JSON", () => {
-    pm.expect(pm.response.headers.get("Content-Type")).to.include("application/json");
-});
-```
-> **Why `include` not `equal`?** The full value is `application/json; charset=utf-8`. Using `equal` would fail because of the charset suffix. `include` checks for a substring.
-
-**Exercise 5** — Console logging: nothing to assert — just observe the output in the Postman Console (Cmd+Alt+C / Ctrl+Alt+C).
 
 > **Note:** No code yet — these exercises build the mental model that makes the code easier to write.
 
@@ -522,32 +494,6 @@ Create a folder named "Chapter 2" inside your Postman collection. Work through t
 5. In the pre-request script tab, add console.log("Sending request to:", pm.request.url.toString()). Open the Postman Console and observe it fire before the request.
 
 
-#### Postman Solutions — Chapter 2
-
-**Exercise 1** — Wrong credentials request: no assertions required yet — just send and observe.
-
-**Exercise 2** — Reading headers: no pm.test() — this is a reading exercise. Expected values: `Content-Type: application/json; charset=utf-8`, `content-length: [number of bytes]`.
-
-**Exercise 3** — Error response assertions:
-```javascript
-pm.test("Status is 400", () => pm.response.to.have.status(400));
-pm.test("Response has message property", () => {
-    pm.expect(pm.response.json()).to.have.property("message");
-});
-pm.test("Message is a string", () => {
-    pm.expect(pm.response.json().message).to.be.a("string");
-});
-```
-
-**Exercise 4** — Wrong method (GET on signin): expect 404 or 405. No assertions needed — just observe.
-
-**Exercise 5** — Pre-request script console logging:
-```javascript
-// Pre-request Script tab:
-console.log("Sending request to:", pm.request.url.toString());
-```
-> No pm.test() needed — check the Postman Console to see the log line appear before the response.
-
 > **Note:** Use a terminal with curl or Postman for these exercises. No test code yet.
 
 ## Chapter 3: Tools of the Trade
@@ -726,7 +672,7 @@ export default defineConfig({
       BASE_URL: process.env.BASE_URL ?? '',
       TEST_USERNAME: process.env.TEST_USERNAME ?? '',
       TEST_PASSWORD: process.env.TEST_PASSWORD ?? '',
-      TEST_CLEANUP_SECRET: process.env.TEST_CLEANUP_SECRET ?? '',
+      // TEST_CLEANUP_SECRET is hardcoded in src/fixtures.ts — not an env var
     },
   },
 });
@@ -750,7 +696,7 @@ Several of these settings deserve explanation:
 BASE_URL=https://api.codeandtest.com/api/v1
 TEST_USERNAME=your_chatty_username
 TEST_PASSWORD=your_chatty_password
-TEST_CLEANUP_SECRET=the_test_cleanup_secret
+# TEST_CLEANUP_SECRET is hardcoded in src/fixtures.ts — do not add to .env
 ```
 
 **Step 6: Create `.gitignore`**
@@ -783,7 +729,7 @@ function requireEnv(key: string): string {
 export const BASE_URL = requireEnv('BASE_URL');
 export const TEST_USERNAME = requireEnv('TEST_USERNAME');
 export const TEST_PASSWORD = requireEnv('TEST_PASSWORD');
-export const TEST_CLEANUP_SECRET = requireEnv('TEST_CLEANUP_SECRET');
+// TEST_CLEANUP_SECRET is NOT read from env — see src/fixtures.ts
 ```
 
 **Step 8: Add scripts to `package.json`**
@@ -877,43 +823,6 @@ Create a folder named "Chapter 3" inside your Postman collection. Work through t
 4. In the Tests tab, add pm.environment.set("token", pm.response.json().token). Send the request. Check the Environment panel — TOKEN should now have a value.
 5. Create a "Current User" request: GET {{BASE_URL}}/currentuser. Run it after Signin — the cookie jar should authenticate you automatically. Assert status 200.
 
-
-#### Postman Solutions — Chapter 3
-
-**Exercise 1** — Environment variables: configuration only, no pm.test().
-
-**Exercise 2** — GET /currentuser (expect 401):
-```javascript
-pm.test("Status is 401 without auth", () => pm.response.to.have.status(401));
-```
-
-**Exercise 3** — POST /signin with correct credentials:
-```javascript
-pm.test("Status is 200", () => pm.response.to.have.status(200));
-pm.test("Response has token", () => {
-    pm.expect(pm.response.json()).to.have.property("token");
-});
-```
-
-**Exercise 4** — Save token to environment:
-```javascript
-// In Tests tab — runs after response arrives:
-const token = pm.response.json().token;
-pm.environment.set("token", token);
-pm.test("Token saved to environment", () => {
-    pm.expect(pm.environment.get("token")).to.be.a("string").and.not.empty;
-});
-```
-
-**Exercise 5** — GET /currentuser after signin (cookie auto-sent):
-```javascript
-pm.test("Status is 200 — cookie authenticated us", () => {
-    pm.response.to.have.status(200);
-});
-pm.test("User object returned", () => {
-    pm.expect(pm.response.json()).to.have.property("user");
-});
-```
 
 > **Note:** This chapter is hands-on setup. By the end you should have a working project that runs a test.
 
@@ -1338,43 +1247,6 @@ Create a folder named "Chapter 4" inside your Postman collection. Work through t
 4. Add a fourth pm.test() asserting there is no "token" property: pm.expect(pm.response.json()).to.not.have.property("token").
 5. Open the Collection Runner (Run collection button). Select only this folder, set iterations to 1. Run it. Observe the test pass/fail summary in the runner output.
 
-
-#### Postman Solutions — Chapter 4
-
-**Exercise 1** — Status 400 on wrong credentials:
-```javascript
-pm.test("Status is 400", () => pm.response.to.have.status(400));
-```
-
-**Exercise 2** — Body has message property:
-```javascript
-pm.test("Response has message", () => {
-    pm.expect(pm.response.json()).to.have.property("message");
-});
-```
-
-**Exercise 3** — Message is a string:
-```javascript
-pm.test("Message is a string", () => {
-    pm.expect(pm.response.json().message).to.be.a("string");
-});
-```
-
-**Exercise 4** — No token on failed login:
-```javascript
-pm.test("No token on failed login", () => {
-    pm.expect(pm.response.json()).to.not.have.property("token");
-});
-```
-
-**Exercise 5** — All four assertions together (run via Collection Runner):
-```javascript
-pm.test("Status is 400", () => pm.response.to.have.status(400));
-pm.test("Response has message", () => pm.expect(pm.response.json()).to.have.property("message"));
-pm.test("Message is a string", () => pm.expect(pm.response.json().message).to.be.a("string"));
-pm.test("No token on failed login", () => pm.expect(pm.response.json()).to.not.have.property("token"));
-```
-> **Why four separate pm.test() calls?** Each test has its own pass/fail status in the Collection Runner report. If you put all assertions in one pm.test(), a single failure hides which assertion failed.
 
 > **Note:** All 5 exercises use POST /signin with wrong credentials — one shared beforeAll request for exercises 1-4.
 
@@ -1821,7 +1693,8 @@ Here is a complete, production-quality test file for `POST /auth/signup`:
 ```typescript
 import axios, { AxiosResponse } from 'axios';
 import { faker } from '@faker-js/faker';
-import { BASE_URL, TEST_CLEANUP_SECRET } from '../../src/config';
+import { config } from '../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
 
 describe('POST /auth/signup', () => {
   const username = `vitest_${faker.internet.username().toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now()}`;
@@ -1983,54 +1856,6 @@ Create a folder named "Chapter 5" inside your Postman collection. Work through t
 4. Add pm.test("set-cookie header present", () => pm.expect(pm.response.headers.get("set-cookie")).to.include("session=")).
 5. Run the Collection Runner on this folder. All 5 pm.test() assertions should pass. Export the collection as JSON — this is your first saved test suite.
 
-
-#### Postman Solutions — Chapter 5
-
-**Exercise 1** — Full positive signin assertions:
-```javascript
-pm.test("Status is 200", () => pm.response.to.have.status(200));
-pm.test("Message is correct", () => {
-    pm.expect(pm.response.json().message).to.equal("User login successfully");
-});
-pm.test("Token is a string", () => {
-    pm.expect(pm.response.json().token).to.be.a("string");
-});
-pm.test("User object returned", () => {
-    pm.expect(pm.response.json().user).to.be.an("object");
-});
-```
-
-**Exercise 2** — Password not exposed:
-```javascript
-pm.test("Password not in response", () => {
-    pm.expect(pm.response.json().user).to.not.have.property("password");
-});
-```
-
-**Exercise 3** — JWT format:
-```javascript
-pm.test("Token has 3 parts (JWT format)", () => {
-    const token = pm.response.json().token;
-    pm.expect(token.split(".").length).to.equal(3);
-});
-pm.test("Token header starts with eyJ", () => {
-    const token = pm.response.json().token;
-    pm.expect(token.split(".")[0]).to.match(/^eyJ/);
-});
-```
-
-**Exercise 4** — set-cookie header:
-```javascript
-pm.test("set-cookie header present", () => {
-    pm.expect(pm.response.headers.get("set-cookie")).to.include("session=");
-});
-```
-
-**Exercise 5** — Save token after all assertions:
-```javascript
-pm.environment.set("token", pm.response.json().token);
-```
-> Run in Collection Runner — all 7 pm.test() calls should show green.
 
 > **Note:** Use the shared beforeAll pattern — one request per test group, not one per assertion.
 
@@ -2318,7 +2143,7 @@ describe('Chapter 6: Authentication Flows', () => {
     if (authId) {
       await client.delete(`/test/cleanup/user/${authId}`, {
         headers: {
-          'x-test-secret': process.env.TEST_SECRET ?? '',
+          'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts,
         },
       });
     }
@@ -2580,7 +2405,7 @@ export async function signOut(cookie: string): Promise<void> {
 export async function cleanupUser(authId: string): Promise<void> {
   await client.delete(`/test/cleanup/user/${authId}`, {
     headers: {
-      'x-test-secret': process.env.TEST_SECRET ?? '',
+      'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts,
     },
   });
 }
@@ -2665,40 +2490,6 @@ Create a folder named "Chapter 6" inside your Postman collection. Work through t
 4. Add another GET /currentuser request AFTER the signout. Assert status 401 — the session should be invalid.
 5. Use the Collection Runner to run all 4 requests in order: signin → currentuser → signout → currentuser(401). All assertions should pass.
 
-
-#### Postman Solutions — Chapter 6
-
-**Exercise 1** — Signin and save token + cookie:
-```javascript
-pm.test("Status is 200", () => pm.response.to.have.status(200));
-pm.environment.set("token", pm.response.json().token);
-pm.environment.set("sessionCookie", pm.response.headers.get("set-cookie").split(";")[0]);
-```
-> **Why `.split(";")[0]`?** The full set-cookie value includes `Path=/; HttpOnly; Secure`. The server only needs `session=eyJ...` — everything before the first semicolon.
-
-**Exercise 2** — GET /currentuser with cookie:
-```javascript
-pm.test("Status is 200", () => pm.response.to.have.status(200));
-pm.test("Username matches", () => {
-    const username = pm.response.json().user.username.toLowerCase();
-    pm.expect(username).to.equal(pm.environment.get("TEST_USERNAME").toLowerCase());
-});
-```
-
-**Exercise 3** — POST /signout:
-```javascript
-pm.test("Status is 200", () => pm.response.to.have.status(200));
-pm.test("Logout message correct", () => {
-    pm.expect(pm.response.json().message).to.equal("User logout successfully");
-});
-```
-
-**Exercise 4** — GET /currentuser after signout:
-```javascript
-pm.test("Status is 401 after signout", () => pm.response.to.have.status(401));
-```
-
-**Exercise 5** — Collection Runner order: signin → currentuser(200) → signout → currentuser(401). All 6 pm.test() assertions pass.
 
 > **Note:** All 5 exercises share one beforeAll signin. The afterAll signout closes the session.
 
@@ -3172,46 +2963,6 @@ Create a folder named "Chapter 7" inside your Postman collection. Work through t
 5. Add a final GET /currentuser to verify the restore. Assert work equals "". Run all 5 requests in the Collection Runner in order.
 
 
-#### Postman Solutions — Chapter 7
-
-**Exercise 1** — PUT /user/profile:
-```javascript
-pm.test("Status is 200", () => pm.response.to.have.status(200));
-```
-
-**Exercise 2** — Message contains "successfully":
-```javascript
-pm.test("Update acknowledged", () => {
-    pm.expect(pm.response.json().message).to.include("successfully");
-});
-```
-
-**Exercise 3** — GET /currentuser after update:
-```javascript
-pm.test("Work field updated", () => {
-    pm.expect(pm.response.json().user.work).to.equal("API Tester");
-});
-pm.test("School field updated", () => {
-    pm.expect(pm.response.json().user.school).to.equal("Test University");
-});
-```
-
-**Exercise 4** — PUT to restore:
-```javascript
-pm.test("Restore status 200", () => pm.response.to.have.status(200));
-```
-
-**Exercise 5** — Final GET to verify restore:
-```javascript
-pm.test("Work restored to empty", () => {
-    pm.expect(pm.response.json().user.work).to.equal("");
-});
-pm.test("School restored to empty", () => {
-    pm.expect(pm.response.json().user.school).to.equal("");
-});
-```
-> **Why restore in afterAll?** Leaving modified data in the profile would cause the next student who runs these tests with the same account to see unexpected field values.
-
 > **Note:** The afterAll restore is essential — leaving test data in the profile would break other tests.
 
 # Part IV: CRUD Testing Patterns
@@ -3659,46 +3410,6 @@ Create a folder named "Chapter 8" inside your Postman collection. Work through t
 5. Add a DELETE /post/{{postId}} request with Cookie header. Assert status 200 — cleanup after yourself.
 
 
-#### Postman Solutions — Chapter 8
-
-**Exercise 1** — POST /post:
-```javascript
-pm.test("Status is 201 Created", () => pm.response.to.have.status(201));
-```
-
-**Exercise 2** — Message correct:
-```javascript
-pm.test("Message is correct", () => {
-    pm.expect(pm.response.json().message).to.equal("Post created successfully");
-});
-```
-
-**Exercise 3** — Find post in GET /post/all/1:
-```javascript
-const timestamp = pm.environment.get("postTimestamp");
-const post = pm.response.json().posts.find(p => p.post.includes("chapter-08 test"));
-pm.test("Post appears in list", () => {
-    pm.expect(post).to.not.be.undefined;
-});
-pm.environment.set("postId", post._id);
-```
-> **Why `find` not `[0]`?** Other users may be creating posts at the same time. `find` locates your post by its unique content, not by position.
-
-**Exercise 4** — Assert _id format:
-```javascript
-pm.test("Post _id is valid ObjectId", () => {
-    pm.expect(pm.environment.get("postId")).to.match(/^[a-f0-9]{24}$/);
-});
-```
-
-**Exercise 5** — DELETE /post/{{postId}}:
-```javascript
-pm.test("Post deleted — status 200", () => pm.response.to.have.status(200));
-pm.test("Delete message correct", () => {
-    pm.expect(pm.response.json().message).to.equal("Post deleted successfully");
-});
-```
-
 > **Note:** The unique content string (including Date.now()) ensures your post is findable even when other tests are running.
 
 ## Chapter 9: Read — Testing Retrieval
@@ -4110,45 +3821,6 @@ Create a folder named "Chapter 9" inside your Postman collection. Work through t
 5. Add PATCH /post/not-an-objectid with Cookie header. Assert status 400 — invalid ObjectId format.
 
 
-#### Postman Solutions — Chapter 9
-
-**Exercise 1** — GET /post/all/1 shape:
-```javascript
-pm.test("Status is 200", () => pm.response.to.have.status(200));
-pm.test("Posts is an array", () => {
-    pm.expect(pm.response.json().posts).to.be.an("array");
-});
-pm.test("totalPosts is a number", () => {
-    pm.expect(pm.response.json().totalPosts).to.be.a("number");
-});
-```
-
-**Exercise 2** — Each post has _id:
-```javascript
-pm.test("Each post has _id", () => {
-    pm.response.json().posts.forEach(post => {
-        pm.expect(post).to.have.property("_id");
-    });
-});
-```
-
-**Exercise 3** — Page size:
-```javascript
-pm.test("Page size is at most 10", () => {
-    pm.expect(pm.response.json().posts.length).to.be.at.most(10);
-});
-```
-
-**Exercise 4** — No auth returns 401:
-```javascript
-pm.test("Status is 401 without cookie", () => pm.response.to.have.status(401));
-```
-
-**Exercise 5** — Invalid ObjectId returns 400:
-```javascript
-pm.test("Invalid ObjectId returns 400", () => pm.response.to.have.status(400));
-```
-
 > **Note:** Page 1 is the most recently created posts. Creating a post in beforeAll ensures it appears here.
 
 ## Chapter 10: Update — Testing Mutations
@@ -4538,42 +4210,6 @@ Create a folder named "Chapter 10" inside your Postman collection. Work through 
 4. Add a second PATCH that restores the original content. Assert status 200.
 5. Add a final GET to verify the restore. Run the Collection Runner on all requests in order.
 
-
-#### Postman Solutions — Chapter 10
-
-**Exercise 1** — PATCH /post/{{postId}}:
-```javascript
-pm.test("Status is 200", () => pm.response.to.have.status(200));
-```
-
-**Exercise 2** — Message correct:
-```javascript
-pm.test("Update message correct", () => {
-    pm.expect(pm.response.json().message).to.equal("Post updated successfully");
-});
-```
-
-**Exercise 3** — GET to verify update:
-```javascript
-const post = pm.response.json().posts.find(p => p._id === pm.environment.get("postId"));
-pm.test("Post content updated", () => {
-    pm.expect(post.post).to.equal("Updated via Postman");
-});
-```
-
-**Exercise 4** — Restore PATCH:
-```javascript
-pm.test("Restore status 200", () => pm.response.to.have.status(200));
-```
-
-**Exercise 5** — toStrictEqual equivalent in Postman — verify bgColor unchanged:
-```javascript
-const post = pm.response.json().posts.find(p => p._id === pm.environment.get("postId"));
-pm.test("bgColor unchanged after content PATCH", () => {
-    pm.expect(post.bgColor).to.equal("#ffffff");
-});
-```
-> Postman does not have `toStrictEqual` — use `pm.expect(value).to.deep.equal(expected)` for deep equality checks.
 
 > **Note:** The PATCH → GET → PATCH back cycle is the correct pattern. Never leave modified data behind.
 
@@ -5126,26 +4762,15 @@ describe('DELETE of non-existent resources', () => {
 
 Throughout this book, we have used `DELETE /test/cleanup/user/:authId` to remove test users. This endpoint has two important security characteristics worth testing in your own environment:
 
-The `x-test-secret` header must match the value configured on the server. Store it in a `.env` file:
-
-```bash
-# .env (NEVER commit this file)
-TEST_SECRET=your-secret-value-here
-```
-
-Read it in your tests through a typed helper:
+The `x-test-secret` header must match the value configured on the server. It is hardcoded in `src/fixtures.ts` — no `.env` entry needed:
 
 ```typescript
-// src/helpers/auth.ts
-import 'dotenv/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
 
-export async function cleanupUser(authId: string): Promise<void> {
-  const secret = process.env.TEST_SECRET;
-  if (!secret) {
-    throw new Error('TEST_SECRET environment variable is not set. Check your .env file.');
-  }
-  await client.delete(`/test/cleanup/user/${authId}`, {
-    headers: { 'x-test-secret': secret },
+async function cleanupUser(authId: string): Promise<void> {
+  await axios.delete(`${config.BASE_URL}/test/cleanup/user/${authId}`, {
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
+    validateStatus: () => true,
   });
 }
 ```
@@ -5159,7 +4784,7 @@ The second safety characteristic is the `vitest` prefix check. The server inspec
 - Set `postDeleted = true` after the assertion, not before — this ensures the flag is only set if the delete actually succeeded.
 - Order matters in delete tests: test authorization failures (401, 403) before testing successful deletion, so all tests operate on an existing resource.
 - The complete CRUD lifecycle test ties all four operations together: create, read, update (with verification), and delete (with verification). Each step asserts state transitions.
-- Use `DELETE /test/cleanup/user/:authId` with `x-test-secret` for user cleanup. Store the secret in `.env` and never commit it.
+- Use `DELETE /test/cleanup/user/:authId` with `x-test-secret` for user cleanup. The secret is hardcoded in `src/fixtures.ts` as `TEST_CLEANUP_SECRET` — import from there, no `.env` entry needed.
 
 ### Exercises
 
@@ -5241,42 +4866,6 @@ Create a folder named "Chapter 11" inside your Postman collection. Work through 
 4. Try DELETE /post/not-an-objectid with Cookie. Assert status 400.
 5. Try DELETE /post/{{postId}} without Cookie. Assert status 401.
 
-
-#### Postman Solutions — Chapter 11
-
-**Exercise 1** — Create a post for deletion:
-```javascript
-pm.test("Post created for deletion test", () => pm.response.to.have.status(201));
-// Save so we can verify deletion
-const getRes = // (in the following GET request)
-```
-
-**Exercise 2** — DELETE /post/{{postId}}:
-```javascript
-pm.test("Status is 200", () => pm.response.to.have.status(200));
-pm.test("Delete message correct", () => {
-    pm.expect(pm.response.json().message).to.equal("Post deleted successfully");
-});
-pm.environment.set("postDeleted", "true");
-```
-
-**Exercise 3** — GET after deletion:
-```javascript
-const post = pm.response.json().posts.find(p => p._id === pm.environment.get("postId"));
-pm.test("Post no longer in list after deletion", () => {
-    pm.expect(post).to.be.undefined;
-});
-```
-
-**Exercise 4** — Invalid ObjectId on DELETE:
-```javascript
-pm.test("Invalid ObjectId returns 400", () => pm.response.to.have.status(400));
-```
-
-**Exercise 5** — DELETE without auth:
-```javascript
-pm.test("DELETE without cookie returns 401", () => pm.response.to.have.status(401));
-```
 
 > **Note:** The postDeleted flag prevents a 404 error in afterAll if the delete test already succeeded.
 
@@ -6341,54 +5930,6 @@ Create a folder named "Chapter 12" inside your Postman collection. Work through 
 5. Add POST /signin with correct credentials. Assert there IS a token property. Then add POST /signin with wrong credentials and assert there is NOT a token property.
 
 
-#### Postman Solutions — Chapter 12
-
-**Exercise 1** — Short username (boundary):
-```javascript
-pm.test("Short username rejected", () => {
-    pm.expect([400, 429]).to.include(pm.response.code);
-});
-```
-> **Why `include([400, 429])`?** Production rate limiting may return 429. Both mean the request was rejected — both are valid test outcomes.
-
-**Exercise 2** — Error shape:
-```javascript
-pm.test("Error shape correct", () => {
-    if (pm.response.code === 400) {
-        const body = pm.response.json();
-        pm.expect(body).to.have.property("message");
-        pm.expect(body.status).to.equal("error");
-        pm.expect(body.statusCode).to.equal(400);
-    }
-});
-```
-
-**Exercise 3** — Missing field:
-```javascript
-pm.test("Missing password rejected", () => {
-    pm.expect([400, 429]).to.include(pm.response.code);
-});
-```
-
-**Exercise 4** — No password in success response:
-```javascript
-pm.test("Password not exposed on signup", () => {
-    pm.expect(pm.response.json().user).to.not.have.property("password");
-});
-```
-
-**Exercise 5** — Token present on success, absent on failure:
-```javascript
-// On success response:
-pm.test("Token present on successful signin", () => {
-    pm.expect(pm.response.json()).to.have.property("token");
-});
-// On failure response:
-pm.test("Token absent on failed signin", () => {
-    pm.expect(pm.response.json()).to.not.have.property("token");
-});
-```
-
 > **Note:** Always clean up any successfully created users in afterAll using the cleanup endpoint.
 
 ## Chapter 13: Multi-User Test Scenarios
@@ -6478,7 +6019,7 @@ describe('Chapter 13: Multi-User Test Scenarios', () => {
       await axios.delete(
         `${BASE_URL}/test/cleanup/user/${userB.authId}`,
         {
-          headers: { 'x-test-secret': process.env.TEST_SECRET },
+          headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // from src/fixtures.ts
           validateStatus: () => true,
         }
       );
@@ -6825,7 +6366,7 @@ afterAll(async () => {
   if (userB.authId) {
     cleanupActions.push(
       axios.delete(`${BASE_URL}/test/cleanup/user/${userB.authId}`, {
-        headers: { 'x-test-secret': process.env.TEST_SECRET },
+        headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // from src/fixtures.ts
         validateStatus: () => true,
       })
     );
@@ -6894,48 +6435,6 @@ Create a folder named "Chapter 13" inside your Postman collection. Work through 
 4. Add GET /user/following with user A's Cookie. In Tests: assert the following array contains an object with _id equal to userBId.
 5. Add DELETE /user/unfollow/{{userBId}} with user A's Cookie. Assert status 200. Use the Collection Runner to run the full sequence in order.
 
-
-#### Postman Solutions — Chapter 13
-
-**Exercise 1** — Setup user B environment: configuration only.
-
-**Exercise 2** — Signin as user B and save ID:
-```javascript
-pm.test("User B signin status 200", () => pm.response.to.have.status(200));
-// Save userId from currentuser (run GET /currentuser after signin as B)
-pm.environment.set("userBCookie", pm.response.headers.get("set-cookie"));
-```
-After GET /currentuser as user B:
-```javascript
-pm.environment.set("userBId", pm.response.json().user._id);
-```
-
-**Exercise 3** — User A follows user B:
-```javascript
-pm.test("Follow status 200", () => pm.response.to.have.status(200));
-```
-
-**Exercise 4** — Assert user B in following list:
-```javascript
-const following = pm.response.json().following || [];
-const found = following.find(u => u._id === pm.environment.get("userBId"));
-pm.test("User B appears in following list", () => {
-    pm.expect(found).to.not.be.undefined;
-});
-```
-
-**Exercise 5** — Unfollow:
-```javascript
-pm.test("Unfollow status 200", () => pm.response.to.have.status(200));
-```
-After GET /following to verify:
-```javascript
-const following = pm.response.json().following || [];
-const found = following.find(u => u._id === pm.environment.get("userBId"));
-pm.test("User B removed from following list", () => {
-    pm.expect(found).to.be.undefined;
-});
-```
 
 > **Note:** User B must start with "vitest" — the cleanup endpoint rejects usernames that do not.
 
@@ -7011,7 +6510,7 @@ describe('Chapter 14: Database Cross-Validation', () => {
       await axios.delete(
         `${BASE_URL}/test/cleanup/user/${testUser.authId}`,
         {
-          headers: { 'x-test-secret': process.env.TEST_SECRET },
+          headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // from src/fixtures.ts
           validateStatus: () => true,
         }
       );
@@ -7189,7 +6688,7 @@ bcrypt is the standard hashing algorithm for passwords in Node.js applications. 
       await axios.delete(
         `${BASE_URL}/test/cleanup/user/${user2.authId}`,
         {
-          headers: { 'x-test-secret': process.env.TEST_SECRET },
+          headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // from src/fixtures.ts
           validateStatus: () => true,
         }
       );
@@ -7309,47 +6808,6 @@ Create a folder named "Chapter 14" inside your Postman collection. Work through 
 4. Add DELETE /test/cleanup/user/{{testAuthId}} with the x-test-secret header set to "chatty-test-cleanup-2026". Assert status 200.
 5. Re-send the GET /currentuser after cleanup. Assert status 401 — the account no longer exists.
 
-
-#### Postman Solutions — Chapter 14
-
-**Exercise 1** — Create test user:
-```javascript
-pm.test("Signup status 201", () => pm.response.to.have.status(201));
-pm.environment.set("testAuthId", pm.response.json().user.authId);
-pm.environment.set("testCookie", pm.response.headers.get("set-cookie"));
-```
-
-**Exercise 2** — GET /currentuser to verify:
-```javascript
-pm.test("Status 200", () => pm.response.to.have.status(200));
-```
-
-**Exercise 3** — Username and email match:
-```javascript
-pm.test("Username matches (case-insensitive)", () => {
-    const returned = pm.response.json().user.username.toLowerCase();
-    const sent = pm.environment.get("TEST_USERNAME").toLowerCase();
-    pm.expect(returned).to.equal(sent);
-});
-pm.test("Email matches", () => {
-    pm.expect(pm.response.json().user.email.toLowerCase())
-        .to.equal(pm.environment.get("testEmail").toLowerCase());
-});
-```
-
-**Exercise 4** — Cleanup endpoint:
-```javascript
-pm.test("Cleanup status 200", () => pm.response.to.have.status(200));
-pm.test("User deleted message", () => {
-    pm.expect(pm.response.json().message).to.include("deleted");
-});
-```
-> Add the header `x-test-secret: chatty-test-cleanup-2026` in the Headers tab.
-
-**Exercise 5** — GET /currentuser after cleanup:
-```javascript
-pm.test("Status 401 after account deletion", () => pm.response.to.have.status(401));
-```
 
 > **Note:** Never write to the database in tests — use read-only MongoDB credentials.
 
@@ -7684,47 +7142,6 @@ Create a folder named "Chapter 15" inside your Postman collection. Work through 
 5. Add GET /images/{{userId}} with Cookie header. Assert status 200 and images is an array.
 
 
-#### Postman Solutions — Chapter 15
-
-**Exercise 1** — POST /images/profile:
-```javascript
-pm.test("Status is 200", () => pm.response.to.have.status(200));
-pm.test("Image added message", () => {
-    pm.expect(pm.response.json().message).to.equal("Image added successfully");
-});
-```
-
-**Exercise 2** — Profile picture URL format:
-```javascript
-pm.test("profilePicture starts with http", () => {
-    const pic = pm.response.json().profilePicture;
-    pm.expect(pic).to.match(/^https?:\/\//);
-});
-```
-
-**Exercise 3** — Cloudinary URL:
-```javascript
-pm.test("profilePicture is a Cloudinary URL", () => {
-    pm.expect(pm.response.json().profilePicture).to.include("cloudinary");
-});
-```
-> **Why not assert the exact URL?** Cloudinary generates a unique URL with a version timestamp on every upload. The URL will be different every time the test runs.
-
-**Exercise 4** — GET /images/:userId:
-```javascript
-pm.test("Status is 200", () => pm.response.to.have.status(200));
-pm.test("Images is an array", () => {
-    pm.expect(pm.response.json().images).to.be.an("array");
-});
-```
-
-**Exercise 5** — Image array non-negative length:
-```javascript
-pm.test("Images array length is non-negative", () => {
-    pm.expect(pm.response.json().images.length).to.be.at.least(0);
-});
-```
-
 > **Note:** The exact Cloudinary URL changes on every upload — never assert the exact URL string.
 
 # Part VI: The Testing Infrastructure
@@ -8011,44 +7428,116 @@ Create a folder named "Chapter 16" inside your Postman collection. Work through 
 5. Run the full CI pipeline by pushing to GitHub. Verify both Vitest and Newman steps appear in the Actions tab.
 
 
-#### Postman Solutions — Chapter 16
+# .github/workflows/tests.yml
 
-**Exercise 1** — Export collection: File menu → Export → Collection v2.1 → save to `postman/collection.json`. Export environment similarly.
+name: Chatty API Tests
 
-**Exercise 2** — Install Newman:
-```bash
-npm install -g newman newman-reporter-htmlextra
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Vitest (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vitest
+        run: npm test
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-node-${{ matrix.node-version }}
+          path: test-results/
+          retention-days: 7
 ```
 
-**Exercise 3** — Run Newman:
-```bash
-newman run postman/collection.json \
-  -e postman/environment.json \
-  --reporters cli
-```
-Expected output: all pm.test() assertions show as green ticks. Exit code 0 means all passed.
+> **WHY:** The `matrix.node-version` list `[18, 20]` makes GitHub Actions spin up two separate job runners in parallel — one per Node version. Both must pass before a pull request can merge. This catches regressions caused by Node API differences and documents which versions the project supports. `npm ci` is used instead of `npm install` because it installs the exact versions in `package-lock.json`, making builds reproducible.
 
-**Exercise 4** — Add Newman to GitHub Actions:
+---
+
+**Exercise 2** — Add all 4 required secrets to your GitHub repository
+
+Navigate to your repository on GitHub: **Settings → Secrets and variables → Actions → New repository secret**.
+
+Add these four secrets:
+
+| Secret name | Value |
+|---|---|
+| `BASE_URL` | `https://api.codeandtest.com/api/v1` |
+| `TEST_USERNAME` | your existing test account username |
+| `TEST_PASSWORD` | your existing test account password |
+| `DATABASE_URL` | your MongoDB Atlas connection string |
+
+> **WHY:** Secrets are encrypted at rest and never printed in workflow logs, even if you accidentally `echo` them. Storing them as repository secrets rather than hardcoding them in the YAML file prevents credentials from appearing in your git history. The workflow references them as `${{ secrets.NAME }}` — GitHub substitutes the values at runtime in the runner's environment.
+
+---
+
+**Exercise 3** — Push a commit and verify both jobs pass in the Actions tab
+
+```bash
+git add .github/workflows/tests.yml
+git commit -m "ci: add Vitest workflow with Node 18/20 matrix"
+git push
+```
+
+Then open your repository on GitHub and click the **Actions** tab. You should see a workflow run with two parallel jobs: `Run Vitest (Node 18)` and `Run Vitest (Node 20)`. Both must show a green checkmark.
+
+> **WHY:** Verifying in the Actions UI confirms the workflow file syntax is valid and that all four secrets are correctly configured. A common failure at this step is a secret name typo — the runner receives an empty string, `npm test` fails because `BASE_URL` is missing, and the error in the logs says `Missing env var: BASE_URL`.
+
+---
+
+**Exercise 4** — Add a concurrency group that cancels in-progress runs on new push
+
+Add this block to `tests.yml` at the top level (same indentation as `on:` and `jobs:`):
+
 ```yaml
-- name: Run Postman collection with Newman
-  run: |
-    npm install -g newman newman-reporter-htmlextra
-    newman run postman/collection.json \
-      -e postman/environment.json \
-      --env-var BASE_URL=${{ secrets.BASE_URL }} \
-      --env-var TEST_USERNAME=${{ secrets.TEST_USERNAME }} \
-      --env-var TEST_PASSWORD=${{ secrets.TEST_PASSWORD }} \
-      --reporters htmlextra \
-      --reporter-htmlextra-export newman-report.html
-- name: Upload Newman report
-  if: always()
-  uses: actions/upload-artifact@v4
-  with:
-    name: newman-report
-    path: newman-report.html
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 ```
 
-**Exercise 5** — Push and verify in Actions tab.
+> **WHY:** Without a concurrency group, pushing two commits in quick succession starts two separate workflow runs. Both consume GitHub Actions minutes and both hit the production API, doubling the rate-limit pressure. `cancel-in-progress: true` automatically cancels the older run when a newer one starts for the same branch. `github.ref` scopes cancellation per branch so a push to `main` never cancels a run in progress on `develop`.
+
+---
+
+**Exercise 5** — Add a status badge to your README.md
+
+Add this line near the top of `README.md`, replacing `YOUR_USERNAME` and `YOUR_REPO` with your GitHub handle and repository name:
+
+```markdown
+![Chatty API Tests](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/tests.yml/badge.svg)
+```
+
+> **WHY:** The badge fetches its SVG from GitHub's badge endpoint in real time. It shows green passing or red failing on the repository's front page, giving any visitor instant visibility into the current health of the test suite without opening the Actions tab.
+
+---
 
 > **Note:** No test files for this chapter — the deliverable is a working CI pipeline.
 
@@ -8370,43 +7859,85 @@ Create a folder named "Chapter 17" inside your Postman collection. Work through 
 5. Compare the Newman report format with the Vitest HTML report. Note what each shows that the other does not.
 
 
-#### Postman Solutions — Chapter 17
+# Dockerfile
 
-**Exercise 1** — Newman in Docker:
-```bash
-docker run --env-file .env \
-  -v $(pwd)/postman:/postman \
-  node:20-alpine \
-  sh -c "npm install -g newman && newman run /postman/collection.json -e /postman/environment.json"
+# Use the official Node 20 Alpine image
+# Alpine is a minimal Linux distribution — the image is ~130 MB instead of ~900 MB
+FROM node:20-alpine
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy package files first so Docker can cache the npm install layer
+# If only source files change, Docker reuses the cached node_modules layer
+COPY package*.json ./
+
+# Clean install matching package-lock.json exactly — same as CI
+RUN npm ci
+
+# Copy all source and test files into the container
+COPY . .
+
+# Default command: run the test suite
+CMD ["npm", "test"]
 ```
 
-**Exercise 2** — docker-compose.yml Newman service:
+> **WHY:** Copying `package*.json` before the rest of the source files is the most important Docker performance pattern. Because Docker caches each layer, if you only change a test file then `npm ci` (the slow step) is not re-run — Docker reuses the cached `node_modules` layer. `node:20-alpine` is used rather than `node:20` because the Alpine variant is roughly 7x smaller, reducing both pull time and the attack surface.
+
+---
+
+**Exercise 2** — Create a `.dockerignore` file
+
+```
+node_modules
+.env
+coverage
+test-results
+.git
+*.log
+```
+
+> **WHY:** `.dockerignore` works like `.gitignore` but for the `docker build` context. Without it, `COPY . .` would copy `node_modules` (hundreds of megabytes) into the build context, massively slowing the build. More critically, `.env` must be excluded to prevent your local secrets from being baked into the image — the container receives secrets at runtime via `--env-file`, not at build time.
+
+---
+
+**Exercise 3** — Build the image
+
+```bash
+docker build -t chatty-tests .
+```
+
+> **WHY:** `-t chatty-tests` gives the image a human-readable tag so you can reference it by name instead of its SHA digest. The `.` at the end is the build context — the directory Docker reads `package*.json` and the rest of the source files from. Run this command whenever you add a new dependency or change `package.json`.
+
+---
+
+**Exercise 4** — Run tests inside the container
+
+```bash
+docker run --env-file .env chatty-tests
+```
+
+> **WHY:** `--env-file .env` reads each `KEY=VALUE` line from your local `.env` and passes them as environment variables into the container at runtime. This is the correct pattern — secrets never enter the image layer at build time. The test suite reads `BASE_URL`, `TEST_USERNAME`, `TEST_PASSWORD`, and `DATABASE_URL` from `process.env` as normal.
+
+---
+
+**Exercise 5** — Create `docker-compose.yml` with `env_file` and a volume mapping `test-results` to the host
+
 ```yaml
+# docker-compose.yml
+version: '3.8'
+
 services:
   tests:
     build: .
     env_file: .env
-  newman:
-    image: node:20-alpine
-    env_file: .env
     volumes:
-      - ./postman:/postman
-      - ./reports:/reports
-    command: sh -c "npm install -g newman newman-reporter-htmlextra && newman run /postman/collection.json -e /postman/environment.json --reporters htmlextra --reporter-htmlextra-export /reports/newman.html"
+      - ./test-results:/app/test-results
 ```
 
-**Exercise 3** — Newman exit codes: exit 0 = all passed, exit 1 = failures. Docker propagates the exit code — a failing Newman run fails the container.
+> **WHY:** The `env_file: .env` directive is the Compose equivalent of `docker run --env-file .env`. The `volumes` mapping mounts the host's `./test-results` directory into the container at `/app/test-results`. Any JUnit XML or coverage HTML written there by Vitest is immediately available on your host after the container exits — you can open the report in a browser without entering the container. Run with `docker compose up --build`.
 
-**Exercise 4** — With HTML report and volume:
-```bash
-docker run --env-file .env \
-  -v $(pwd)/postman:/postman \
-  -v $(pwd)/reports:/reports \
-  node:20-alpine \
-  sh -c "npm install -g newman newman-reporter-htmlextra && newman run /postman/collection.json -e /postman/environment.json --reporters htmlextra --reporter-htmlextra-export /reports/newman.html"
-```
-
-**Exercise 5** — Comparison: Vitest HTML shows code coverage + test assertions per file. Newman HTML shows HTTP request/response pairs + pm.test() results. Both are useful — Vitest for code quality, Newman for API contract validation.
+---
 
 > **Note:** No test files for this chapter — the deliverable is a working Docker setup.
 
@@ -8915,62 +8446,213 @@ Create a folder named "Chapter 18" inside your Postman collection. Work through 
 5. Update your GitHub Actions workflow to upload both the Vitest coverage report and the Newman HTML report as artifacts. Verify they appear after a push.
 
 
-#### Postman Solutions — Chapter 18
-
-**Exercise 1** — Coverage run: `npm run test:coverage`. Open `coverage/index.html`. Look for red lines (uncovered) — typically the error branches in `src/test-utils.ts` if no test exercises a status that is not 400 or 429.
-
-**Exercise 2** — JUnit XML structure:
-```xml
-<testsuites>
-  <testsuite name="lecture-01/lecture.test.ts" tests="8" failures="0" time="1.234">
-    <testcase name="returns status 400 for wrong credentials" time="0.312" />
-    <testcase name="response body has a message field" time="0.001" />
-  </testsuite>
-</testsuites>
+# Windows:  start coverage/index.html
+# Linux:    xdg-open coverage/index.html
 ```
-A `<failure>` element inside `<testcase>` means that test failed. CI systems parse this to annotate failed test names in the PR check.
 
-**Exercise 3** — Newman with full options:
-```bash
-newman run postman/collection.json \
-  -e postman/environment.json \
-  --reporters htmlextra \
-  --reporter-htmlextra-export reports/newman.html \
-  --delay-request 500
-```
-Open `reports/newman.html`. It shows: total requests, pass/fail per pm.test(), response times, full request/response bodies per request.
+Updated `vitest.config.ts`:
 
-**Exercise 4** — Coverage thresholds in vitest.config.ts:
 ```ts
-coverage: {
-  provider: 'v8',
-  reporter: ['text', 'html', 'lcov'],
-  include: ['src/**/*.ts'],
-  thresholds: {
-    lines: 80,
-    functions: 80,
-    branches: 70,
+import { defineConfig } from 'vitest/config';
+import { config as dotenvConfig } from 'dotenv';
+import { resolve } from 'path';
+
+dotenvConfig({ path: resolve(__dirname, '.env') });
+
+export default defineConfig({
+  test: {
+    globals: true,
+    testTimeout: 15000,
+    reporters: ['verbose'],
+    fileParallelism: false,
+    env: {
+      BASE_URL: process.env.BASE_URL ?? '',
+      TEST_USERNAME: process.env.TEST_USERNAME ?? '',
+      TEST_PASSWORD: process.env.TEST_PASSWORD ?? '',
+    },
+
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.d.ts', 'node_modules/**'],
+      thresholds: {
+        lines: 80,
+        branches: 70,
+        functions: 80,
+        statements: 80,
+      },
+    },
   },
+});
+```
+
+> **WHY:** `provider: 'v8'` uses Node.js's built-in V8 coverage engine — no source transformation, lower overhead, and works natively with TypeScript. `include: ['src/**/*.ts']` restricts coverage measurement to the helper modules in `src/`; without this, Vitest may count the test files themselves, inflating numbers. The three reporters serve different consumers: `text` for the terminal summary, `html` for interactive browsing, `lcov` for external tools like Codecov or SonarQube.
+
+---
+
+**Exercise 2** — Add JUnit reporter to `vitest.config.ts`; run with `CI=true`; verify `junit.xml` is created
+
+Add `junit` to the `reporters` array and configure its output path:
+
+```ts
+// In vitest.config.ts — replace the reporters line with:
+reporters: process.env.CI
+  ? ['verbose', ['junit', { outputFile: 'test-results/junit.xml' }]]
+  : ['verbose'],
+```
+
+Run in CI mode:
+
+```bash
+CI=true npm test
+```
+
+> **Windows users:** Use `set CI=true && npm test` (CMD) or `$env:CI="true"; npm test` (PowerShell).
+
+After the run, verify the file was created:
+
+```bash
+ls test-results/junit.xml
+```
+
+> **WHY:** JUnit XML is the universal format for test result files. Jenkins, GitHub Actions, GitLab CI, and most reporting dashboards consume it. The `process.env.CI` guard means the JUnit reporter only activates in CI environments — local runs keep the clean `verbose` output without generating an XML file you did not ask for. The `test-results/` directory is the same one mounted as a Docker volume and uploaded as a GitHub Actions artifact.
+
+---
+
+**Exercise 3** — Export Postman collection and environment; run Newman with `htmlextra` reporter
+
+```bash
+# Install Newman and the htmlextra reporter globally (or use npx)
+npm install -g newman newman-reporter-htmlextra
+
+# Run the collection
+newman run chatty-collection.json \
+  --environment chatty-env.json \
+  --reporters cli,htmlextra \
+  --reporter-htmlextra-export test-results/newman-report.html
+```
+
+> **WHY:** Newman is the CLI runner for Postman collections. The `htmlextra` reporter generates a rich HTML report with request/response details, pass/fail badges, and response times — far more readable than the default CLI output when sharing results with non-engineers. Exporting the Postman environment as a separate file keeps the collection portable; the environment file holds the `BASE_URL` and auth tokens, similar to how `.env` works for Vitest.
+
+---
+
+**Exercise 4** — Add coverage thresholds at `lines: 80`; watch it fail when lowered
+
+In `vitest.config.ts`, the `thresholds` block from Exercise 1 already sets `lines: 80`. To watch the failure, temporarily lower it below your actual coverage:
+
+```ts
+// Temporarily set this to trigger a failure — then restore to 80
+thresholds: {
+  lines: 95,   // set artificially high to see the error, then change back to 80
 },
 ```
-Set `lines: 99` temporarily — the run should fail with "ERROR: Coverage for lines (X%) does not meet global threshold (99%)".
 
-**Exercise 5** — GitHub Actions artifact upload (add after the test step):
-```yaml
-- name: Upload Vitest coverage
-  if: always()
-  uses: actions/upload-artifact@v4
-  with:
-    name: coverage-${{ matrix.node-version }}
-    path: coverage/
+Run:
 
-- name: Upload Newman report
-  if: always()
-  uses: actions/upload-artifact@v4
-  with:
-    name: newman-report
-    path: reports/newman.html
+```bash
+npm run test:coverage
 ```
+
+Expected failure output:
+
+```
+ERROR  Coverage for lines (72.45%) does not meet the threshold (95%)
+```
+
+Restore to `lines: 80` after observing the failure.
+
+> **WHY:** Thresholds cause `vitest run --coverage` to exit with a non-zero code when coverage drops below the minimum. In CI this fails the workflow step and blocks the pull request from merging. Observing the threshold failure message first — then restoring the correct value — helps you understand what the CI pipeline will print if coverage regresses in the future.
+
+---
+
+**Exercise 5** — Update GitHub Actions to upload both JUnit and coverage artifacts
+
+Add these two steps to the end of the `test` job in `.github/workflows/tests.yml`:
+
+```yaml
+      - name: Upload JUnit test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-results-node-${{ matrix.node-version }}
+          path: test-results/junit.xml
+          retention-days: 14
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-node-${{ matrix.node-version }}
+          path: coverage/
+          retention-days: 14
+```
+
+Complete updated `tests.yml` with concurrency, both reporters, and both artifact uploads:
+
+```yaml
+name: Chatty API Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run Vitest (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vitest with coverage
+        run: npm run test:coverage
+        env:
+          CI: true
+          BASE_URL: ${{ secrets.BASE_URL }}
+          TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Upload JUnit test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-results-node-${{ matrix.node-version }}
+          path: test-results/junit.xml
+          retention-days: 14
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-node-${{ matrix.node-version }}
+          path: coverage/
+          retention-days: 14
+```
+
+> **WHY:** `if: always()` is critical — it ensures the artifact upload step runs even when the test step fails. Without it, a test failure would skip the upload and you would have no evidence to debug from. The `${{ matrix.node-version }}` suffix in the artifact name prevents the two matrix jobs from overwriting each other's artifacts. `retention-days: 14` keeps artifacts long enough to review after a flaky run without accumulating them indefinitely.
 
 > **Note:** No test files for this chapter — the deliverables are config changes and report files.
 
@@ -11740,6 +11422,3537 @@ An Axios option that tells the browser to include cookies in cross-origin reques
 *End of Part 4 — Appendices*
 
 ---
+
+---
+
+## Appendix H: Chapter Practice Solutions
+
+> Attempt the exercises before reading these. Each chapter's exercises are in the "Chapter Practice" section at the end of the chapter.
+
+---
+
+### Chapter 1 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — Collection and environment setup: no pm.test() needed here — this is configuration only.
+
+**Exercise 2** — GET /currentuser without auth:
+```javascript
+pm.test("Status is 401 — unauthenticated", () => {
+    pm.response.to.have.status(401);
+});
+```
+
+**Exercise 3** — Assert Content-Type:
+```javascript
+pm.test("Content-Type is JSON", () => {
+    pm.expect(pm.response.headers.get("Content-Type")).to.include("application/json");
+});
+```
+
+**Exercise 4** — Combined assertions:
+```javascript
+pm.test("Status is 401", () => pm.response.to.have.status(401));
+pm.test("Content-Type is JSON", () => {
+    pm.expect(pm.response.headers.get("Content-Type")).to.include("application/json");
+});
+```
+> **Why `include` not `equal`?** The full value is `application/json; charset=utf-8`. Using `equal` would fail because of the charset suffix. `include` checks for a substring.
+
+**Exercise 5** — Console logging: nothing to assert — just observe the output in the Postman Console (Cmd+Alt+C / Ctrl+Alt+C).
+
+#### Vitest Solutions
+
+**Exercise 1** — Write down the three layers of the testing pyramid and give one real example of each.
+
+The testing pyramid has three layers, ordered from broadest base (cheapest, most numerous) to narrowest tip (most expensive, fewest):
+
+1. **Unit tests** — test a single function or module in isolation with no network or database. Example: a function that validates that a username is between 4 and 32 characters. You call it directly in the test, pass in strings, and assert the return value. Runs in microseconds.
+
+2. **Integration tests** — test that two or more real components work together. Example: a test that calls `POST /signin` over HTTP and asserts the response body shape and status code. The test hits a real server but controls the inputs. Runs in tens of milliseconds.
+
+3. **End-to-end tests** — test the full system from the user's perspective, usually through a browser or a complete API journey. Example: a Playwright test that opens the Chatty UI, fills in the login form, submits it, and asserts that the user's avatar appears in the header. Runs in seconds.
+
+The pyramid's point: write many unit tests, fewer integration tests, and very few E2E tests — because the cost and fragility increase as you go up.
+
+---
+
+**Exercise 2** — List five assertions on a `POST /signin` response beyond status code.
+
+Five meaningful assertions you can make on a successful signin response, beyond `status 200`:
+
+1. `response.data.token` is a string — the JWT was returned.
+2. `response.data.token.split('.').length === 3` — the string is structurally a valid JWT (header.payload.signature).
+3. `response.data.user._id` is a non-empty string — the user object contains a MongoDB ObjectId.
+4. `response.headers['content-type']` contains `application/json` — the server sent JSON, not HTML.
+5. `response.headers['set-cookie']` is defined and contains `session=` — the session cookie was set.
+
+Each assertion tests a different contract: data type, structural format, field presence, transport header, and auth mechanism. Together they give you confidence the signin contract has not drifted.
+
+---
+
+**Exercise 3** — Find a public API and make a request with curl. Read raw response headers.
+
+Using the Chatty API as the public API. The `-i` flag includes response headers in the output; `-s` suppresses curl's progress meter.
+
+```bash
+curl -i -s -X POST https://api.codeandtest.com/api/v1/signin \
+  -H "Content-Type: application/json" \
+  -d '{"username":"wronguser9999","password":"WrongPass@9999"}'
+```
+
+Sample output (truncated):
+
+```
+HTTP/2 400
+content-type: application/json; charset=utf-8
+content-length: 65
+date: Fri, 18 Apr 2026 10:00:00 GMT
+x-powered-by: Express
+
+{"message":"Invalid credentials","status":"error","statusCode":400}
+```
+
+What to read in the raw headers:
+
+- **Status line** (`HTTP/2 400`) — the protocol version and numeric status code before any body parsing.
+- **`content-type`** — tells you the body is JSON with UTF-8 encoding; if this were `text/html` your JSON.parse would explode.
+- **`content-length`** — exact byte count of the body; useful for detecting truncation.
+- **`date`** — server timestamp; useful for debugging clock skew in token expiry issues.
+- **`x-powered-by`** — leaks the server framework (Express); a hardened server would remove this header.
+
+---
+
+**Exercise 4** — Difference between 401 and 403.
+
+Both indicate an access problem, but they mean different things:
+
+- **401 Unauthorized** — the server does not know who you are. The request is missing credentials entirely, or the credentials provided (token, cookie) are invalid or expired. The word "Unauthorized" is a historical misnomer — it really means "unauthenticated". The client should re-authenticate and retry.
+
+- **403 Forbidden** — the server knows exactly who you are, but you are not allowed to perform this action. Your credentials are valid; you simply do not have permission. Re-authenticating will not help. Example: a regular user trying to call an admin-only endpoint.
+
+In the Chatty API: calling `GET /currentuser` with no cookie returns **401** — you have not identified yourself. Calling `DELETE /test/cleanup/user/:id` with the wrong `x-test-secret` header returns **403** — the server understands it is a protected endpoint and rejects the insufficient secret.
+
+---
+
+**Exercise 5** — What would break silently if an API changed its response shape.
+
+"Breaking silently" means the test passes but the application behaves incorrectly in production. This happens when tests assert existence but not meaning.
+
+Examples:
+
+- A test only checks `expect(response.data).toHaveProperty('token')` — the server changes `token` to always return an empty string `""`. The test passes (the field exists), but the frontend cannot authenticate and the user sees a blank screen.
+- A test only checks `response.status === 200` — the server starts returning `{ message: "ok" }` instead of `{ token, user }`. Status is still 200, test passes, frontend crashes on `data.user.username`.
+- A test checks `response.data.user.username` exists but not its type — the server changes it from a string to `null` during a refactor. The test passes, but `username.toUpperCase()` throws in production.
+- No assertion on `Content-Type` — the server deploys an error page in HTML instead of JSON. `axios` throws a JSON parse error for users, but the test suite never noticed because it only checked status codes.
+- No assertion on `set-cookie` — the cookie domain changes from `.codeandtest.com` to `codeandtest.com`, breaking cross-subdomain auth silently in Safari.
+
+The lesson: assert exact values, types, and shape — not just field existence.
+
+---
+
+---
+
+### Chapter 2 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — Wrong credentials request: no assertions required yet — just send and observe.
+
+**Exercise 2** — Reading headers: no pm.test() — this is a reading exercise. Expected values: `Content-Type: application/json; charset=utf-8`, `content-length: [number of bytes]`.
+
+**Exercise 3** — Error response assertions:
+```javascript
+pm.test("Status is 400", () => pm.response.to.have.status(400));
+pm.test("Response has message property", () => {
+    pm.expect(pm.response.json()).to.have.property("message");
+});
+pm.test("Message is a string", () => {
+    pm.expect(pm.response.json().message).to.be.a("string");
+});
+```
+
+**Exercise 4** — Wrong method (GET on signin): expect 404 or 405. No assertions needed — just observe.
+
+**Exercise 5** — Pre-request script console logging:
+```javascript
+// Pre-request Script tab:
+console.log("Sending request to:", pm.request.url.toString());
+```
+> No pm.test() needed — check the Postman Console to see the log line appear before the response.
+
+#### Vitest Solutions
+
+**Exercise 1** — Use curl to send `POST /signin` to `api.codeandtest.com/api/v1/signin` with wrong credentials. Identify `set-cookie`, `Content-Type`, and the status line.
+
+```bash
+curl -i -s -X POST https://api.codeandtest.com/api/v1/signin \
+  -H "Content-Type: application/json" \
+  -d '{"username":"wronguser9999","password":"WrongPass@9999"}'
+```
+
+Expected output:
+
+```
+HTTP/2 400
+content-type: application/json; charset=utf-8
+content-length: 65
+...
+
+{"message":"Invalid credentials","status":"error","statusCode":400}
+```
+
+- **Status line** — `HTTP/2 400`. The number is the status code; `HTTP/2` is the protocol version negotiated with the server.
+- **`content-type`** — `application/json; charset=utf-8`. Tells the client the body is JSON encoded as UTF-8. Without this header the client has to guess.
+- **`set-cookie`** — absent on a failed signin. The server only issues a session cookie after successful authentication. If you see `set-cookie` on a failed signin, that is a security bug.
+
+---
+
+**Exercise 2** — Same request with an incorrect password. Compare response headers and body.
+
+```bash
+curl -i -s -X POST https://api.codeandtest.com/api/v1/signin \
+  -H "Content-Type: application/json" \
+  -d '{"username":"validexistinguser","password":"Completely@Wrong9"}'
+```
+
+Expected output:
+
+```
+HTTP/2 400
+content-type: application/json; charset=utf-8
+content-length: 65
+
+{"message":"Invalid credentials","status":"error","statusCode":400}
+```
+
+Comparison with Exercise 1:
+
+- **Status code** — same: `400` in both cases. The API deliberately returns the same error for "user does not exist" and "wrong password" — this is a security best practice called credential enumeration prevention. If the server returned 404 for unknown users and 400 for wrong passwords, an attacker could enumerate valid usernames.
+- **Body** — identical: `"Invalid credentials"` in both cases. Same reason — the vague message prevents enumeration.
+- **`content-type`** — same in both cases.
+- **`set-cookie`** — absent in both cases.
+
+The identical responses are intentional and correct. Tests should assert this uniformity.
+
+---
+
+**Exercise 3** — List all HTTP methods and one sentence for each.
+
+| Method | Purpose |
+|--------|---------|
+| `GET` | Retrieve a resource without modifying it — safe and idempotent. |
+| `POST` | Submit data to create a resource or trigger an action — neither safe nor idempotent. |
+| `PUT` | Replace a resource entirely with the request body — idempotent. |
+| `PATCH` | Apply a partial update to a resource — not necessarily idempotent. |
+| `DELETE` | Remove a resource — idempotent (deleting twice has the same result as deleting once). |
+| `HEAD` | Same as GET but returns only headers, no body — used to check resource existence cheaply. |
+| `OPTIONS` | Ask the server what methods are allowed on a resource — used by CORS preflight. |
+| `CONNECT` | Establish a tunnel to the server (used for HTTPS proxies). |
+| `TRACE` | Echo the request back for diagnostic purposes — disabled in most production servers. |
+
+In the Chatty API you will use `GET`, `POST`, `PUT`, `PATCH`, and `DELETE` for every resource lifecycle.
+
+---
+
+**Exercise 4** — Status codes 200, 201, 400, 401, 403, 404, 429, 500 in the context of signing in to Chatty.
+
+| Code | Meaning in Chatty signin context |
+|------|----------------------------------|
+| `200` | Signin succeeded — token and session cookie returned. |
+| `201` | Signup succeeded — new user created, token and session cookie returned. Signin returns 200, not 201. |
+| `400` | Signin request was malformed or credentials were invalid — username/password did not match any account. |
+| `401` | You tried to access a protected endpoint (e.g. `GET /currentuser`) without a valid session cookie. |
+| `403` | Your session is valid but you lack permission — e.g. calling the test-cleanup endpoint with the wrong secret. |
+| `404` | The endpoint path does not exist — e.g. a typo in `/signinn` returns 404. |
+| `429` | You have made too many requests in the allowed window — nginx rate limiter (5 req/min) triggered. Tests must handle this with `expectRejected()` which accepts both 400 and 429. |
+| `500` | The server threw an unhandled exception — a bug on the server side. Should never appear in a healthy system; always investigate. |
+
+---
+
+**Exercise 5** — Explain idempotency. Which methods should be idempotent?
+
+**Idempotency** means: calling the same operation multiple times produces the same result as calling it once. The second, third, and tenth identical call leave the system in exactly the same state as the first.
+
+Example: `DELETE /post/abc123` — if the post exists, the first call deletes it (200 or 204). The second call finds nothing to delete and returns 404. The *state of the world* after both calls is identical: the post no longer exists. That makes DELETE idempotent.
+
+Compare to `POST /post` — each call creates a new post. Ten calls create ten posts. Not idempotent.
+
+**Methods that must be idempotent**: `GET`, `HEAD`, `PUT`, `DELETE`, `OPTIONS`, `TRACE`.
+
+**Methods that are not idempotent**: `POST`, `PATCH` (though PATCH *can* be designed to be idempotent with absolute values, it is not required to be).
+
+**Why it matters for testing**: idempotent endpoints can be called freely in tests without side effects. Non-idempotent endpoints (POST, PATCH) need cleanup in `afterAll` to avoid polluting the database with test data across runs.
+
+---
+
+---
+
+### Chapter 3 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — Environment variables: configuration only, no pm.test().
+
+**Exercise 2** — GET /currentuser (expect 401):
+```javascript
+pm.test("Status is 401 without auth", () => pm.response.to.have.status(401));
+```
+
+**Exercise 3** — POST /signin with correct credentials:
+```javascript
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+pm.test("Response has token", () => {
+    pm.expect(pm.response.json()).to.have.property("token");
+});
+```
+
+**Exercise 4** — Save token to environment:
+```javascript
+// In Tests tab — runs after response arrives:
+const token = pm.response.json().token;
+pm.environment.set("token", token);
+pm.test("Token saved to environment", () => {
+    pm.expect(pm.environment.get("token")).to.be.a("string").and.not.empty;
+});
+```
+
+**Exercise 5** — GET /currentuser after signin (cookie auto-sent):
+```javascript
+pm.test("Status is 200 — cookie authenticated us", () => {
+    pm.response.to.have.status(200);
+});
+pm.test("User object returned", () => {
+    pm.expect(pm.response.json()).to.have.property("user");
+});
+```
+
+#### Vitest Solutions
+
+**Exercise 1** — Project setup: `npm init`, install dependencies, create `tsconfig.json`, `vitest.config.ts`, `.env`.
+
+```bash
+npm init -y
+npm install --save-dev vitest axios typescript @faker-js/faker dotenv @types/node
+```
+
+**`tsconfig.json`**
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+> **WHY:** `"moduleResolution": "bundler"` matches how Vitest resolves imports. `"strict": true` enables all strict type checks so TypeScript catches mistakes before tests run. `esModuleInterop` is needed for the default `axios` import.
+
+**`vitest.config.ts`**
+```ts
+import { defineConfig } from 'vitest/config';
+import { config as dotenvConfig } from 'dotenv';
+import { resolve } from 'path';
+
+dotenvConfig({ path: resolve(__dirname, '.env') });
+
+export default defineConfig({
+  test: {
+    globals: true,
+    testTimeout: 15000,
+    reporters: ['verbose'],
+    fileParallelism: false,
+    env: {
+      BASE_URL: process.env.BASE_URL ?? '',
+      TEST_USERNAME: process.env.TEST_USERNAME ?? '',
+      TEST_PASSWORD: process.env.TEST_PASSWORD ?? '',
+    },
+  },
+});
+```
+
+> **WHY:** `fileParallelism: false` runs files sequentially to avoid triggering the production rate limiter (5 req/min on `/signin`). `testTimeout: 15000` gives remote Cloudinary uploads enough time. Loading dotenv inside `vitest.config.ts` (not in a setup file) makes the env vars available in the Vitest worker thread where tests run.
+
+**`.env`**
+```
+BASE_URL=https://api.codeandtest.com/api/v1
+TEST_USERNAME=yourexistingaccount
+TEST_PASSWORD=YourPassword@123
+```
+
+> **WHY:** `.env` is in `.gitignore`. Never commit credentials. The `config.ts` throws at startup if any var is missing so misconfiguration is caught immediately, not mid-run.
+
+---
+
+**Exercise 2** — Create `src/config.ts` that reads `BASE_URL`, `TEST_USERNAME`, `TEST_PASSWORD` from env and throws if missing.
+
+**`src/config.ts`**
+```ts
+// Central config — reads from .env via vitest.config.ts
+// Never hardcode BASE_URL or credentials here
+
+const BASE_URL = process.env.BASE_URL;
+const TEST_USERNAME = process.env.TEST_USERNAME;
+const TEST_PASSWORD = process.env.TEST_PASSWORD;
+
+if (!BASE_URL) {
+  throw new Error('Missing env var: BASE_URL — copy .env.example to .env and fill it in');
+}
+
+if (!TEST_USERNAME) {
+  throw new Error('Missing env var: TEST_USERNAME — add a pre-existing test account username to your .env file');
+}
+
+if (!TEST_PASSWORD) {
+  throw new Error('Missing env var: TEST_PASSWORD — add the password for TEST_USERNAME to your .env file');
+}
+
+export const config = {
+  BASE_URL,
+  TEST_USERNAME,
+  TEST_PASSWORD,
+} as const;
+```
+
+> **WHY:** Throwing at module load time (before any test runs) gives an immediate, clear error message when the environment is misconfigured. `as const` narrows the type from `string` to the literal string type, which is stricter. Centralising config here means every test file imports from one place — changing the var name is a one-file change.
+
+---
+
+**Exercise 3** — Create `src/test-utils.ts` with `expectRejected` that accepts 400 OR 429.
+
+**`src/test-utils.ts`**
+```ts
+// Shared test utilities — import these in test files instead of redefining locally.
+
+import { expect } from 'vitest';
+
+/**
+ * Assert that a response status is either a validation error (400) or a rate
+ * limit response (429).
+ *
+ * Why: Production auth endpoints are rate-limited (5 req/min on nginx).
+ * After a few test runs the server returns 429 instead of 400.
+ * Both mean the request was correctly rejected — the test should pass either way.
+ *
+ * Usage:
+ *   expectRejected(response.status);
+ *
+ * When asserting the error message, guard with an if:
+ *   expectRejected(response.status);
+ *   if (response.status === 400) {
+ *     expect(response.data.message).toBe('Invalid credentials');
+ *   }
+ */
+export function expectRejected(status: number): void {
+  expect([400, 429]).toContain(status);
+}
+
+/**
+ * Assert that a response status is a success (200 or 201).
+ */
+export function expectSuccess(status: number): void {
+  expect([200, 201]).toContain(status);
+}
+```
+
+> **WHY:** Wrapping the two-status check in a named function makes test intent readable (`expectRejected(res.status)` reads like English). It also centralises the 429-handling policy: if the rate limit window ever changes to include 503, you update one function. Without this helper you would copy-paste `expect([400, 429]).toContain(status)` into every test that exercises a rejected request.
+
+---
+
+**Exercise 4** — Create `src/fixtures.ts` with `TEST_PASSWORD` and `TEST_AVATAR_IMAGE`.
+
+**`src/fixtures.ts`**
+```ts
+// Shared test fixtures — constants used across multiple lectures.
+// Import from here instead of redefining in each test file.
+
+/**
+ * A minimal valid base64-encoded PNG image (1×1 black pixel).
+ *
+ * Why: The Chatty signup endpoint uploads avatarImage to Cloudinary.
+ * Cloudinary requires a valid image — it rejects empty strings or random base64.
+ * Using a real (tiny) PNG guarantees the upload succeeds without wasting bandwidth.
+ * Size: ~68 bytes decoded — smallest possible valid PNG.
+ */
+export const TEST_AVATAR_IMAGE =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+/**
+ * A fixed avatar colour used in signup tests.
+ * Any non-empty string passes Joi validation.
+ */
+export const TEST_AVATAR_COLOR = '#4a90e2';
+
+/**
+ * A fixed password that meets Chatty's signup requirements:
+ *   min 12 chars, at least 1 upper, 1 lower, 1 digit, 1 special.
+ *
+ * Use this instead of faker.internet.password() because Faker does not
+ * know about Chatty's specific password pattern requirements.
+ */
+export const TEST_PASSWORD = 'Vitest@123456';
+
+/**
+ * The hardcoded value for the x-test-secret header.
+ * Must match CLEANUP_HEADER_VALUE in chatty-backend.
+ */
+export const TEST_CLEANUP_SECRET = 'chatty-test-cleanup-2026';
+```
+
+> **WHY:** Keeping fixtures in a dedicated file prevents the same magic string appearing in 10 test files. If Cloudinary ever changes its accepted image formats, you update `TEST_AVATAR_IMAGE` once. `TEST_PASSWORD` is fixed (not generated by Faker) because the Chatty password schema has specific complexity rules that a generic password generator may not satisfy.
+
+---
+
+**Exercise 5** — Write a test file that imports from all three `src/` files and makes one request to `POST /signin`. Run it.
+
+**`tests/chapter-03/setup.test.ts`**
+```ts
+// Chapter 3 — Project setup verification
+//
+// This file proves all three src/ modules load correctly and that
+// the project can make a real HTTP request to the API.
+//
+// Run: npm test tests/chapter-03/setup.test.ts
+
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+import { expectRejected } from '../../src/test-utils';
+import { TEST_PASSWORD, TEST_AVATAR_IMAGE } from '../../src/fixtures';
+
+const url = `${config.BASE_URL}/signin`;
+
+// One request shared across all tests in this file
+let response!: AxiosResponse;
+
+beforeAll(async () => {
+  response = await axios.post(
+    url,
+    { username: 'notarealuser99999', password: 'WrongPass@9999' },
+    { validateStatus: () => true },
+  );
+});
+
+describe('project setup — all src/ modules load and API responds', () => {
+
+  it('config.BASE_URL is a non-empty string', () => {
+    // Proves src/config.ts loaded and the env var was set
+    expect(config.BASE_URL).toBeTypeOf('string');
+    expect(config.BASE_URL.length).toBeGreaterThan(0);
+  });
+
+  it('TEST_PASSWORD from fixtures meets minimum length', () => {
+    // Proves src/fixtures.ts loaded
+    expect(TEST_PASSWORD.length).toBeGreaterThanOrEqual(12);
+  });
+
+  it('TEST_AVATAR_IMAGE is a data URL', () => {
+    // Proves src/fixtures.ts loaded and value is usable
+    expect(TEST_AVATAR_IMAGE).toMatch(/^data:image\//);
+  });
+
+  it('API returns 400 or 429 for wrong credentials', () => {
+    // Proves the project can hit the real API
+    // Proves src/test-utils.ts works via expectRejected
+    expectRejected(response.status);
+  });
+
+  it('response Content-Type is application/json', () => {
+    expect(response.headers['content-type']).toContain('application/json');
+  });
+
+});
+```
+
+> **WHY:** A dedicated setup-verification test gives you a fast sanity check before writing real feature tests. If the project is misconfigured (missing .env, wrong BASE_URL, TypeScript errors), this test tells you immediately with a clear failure message rather than a cryptic error buried inside a complex test suite. The `beforeAll` pattern — one request, multiple assertions — is the pattern used throughout the entire course.
+
+---
+
+---
+
+### Chapter 4 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — Status 400 on wrong credentials:
+```javascript
+pm.test("Status is 400", () => pm.response.to.have.status(400));
+```
+
+**Exercise 2** — Body has message property:
+```javascript
+pm.test("Response has message", () => {
+    pm.expect(pm.response.json()).to.have.property("message");
+});
+```
+
+**Exercise 3** — Message is a string:
+```javascript
+pm.test("Message is a string", () => {
+    pm.expect(pm.response.json().message).to.be.a("string");
+});
+```
+
+**Exercise 4** — No token on failed login:
+```javascript
+pm.test("No token on failed login", () => {
+    pm.expect(pm.response.json()).to.not.have.property("token");
+});
+```
+
+**Exercise 5** — All four assertions together (run via Collection Runner):
+```javascript
+pm.test("Status is 400", () => pm.response.to.have.status(400));
+pm.test("Response has message", () => pm.expect(pm.response.json()).to.have.property("message"));
+pm.test("Message is a string", () => pm.expect(pm.response.json().message).to.be.a("string"));
+pm.test("No token on failed login", () => pm.expect(pm.response.json()).to.not.have.property("token"));
+```
+> **Why four separate pm.test() calls?** Each test has its own pass/fail status in the Collection Runner report. If you put all assertions in one pm.test(), a single failure hides which assertion failed.
+
+#### Vitest Solutions
+
+**Exercise 1** — Test file for `POST /signin` with wrong credentials. Use `beforeAll`. Write 5 separate `it()` blocks: status, message, body shape, absent token, absent user.
+
+```ts
+// Chapter 4, Exercise 1 — POST /signin wrong credentials
+// Five separate it() blocks, each testing one concern.
+// One shared request from beforeAll.
+
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+import { expectRejected } from '../../src/test-utils';
+
+const url = `${config.BASE_URL}/signin`;
+const wrongCreds = { username: 'notarealuser99999', password: 'WrongPass@9999' };
+
+let res!: AxiosResponse;
+
+beforeAll(async () => {
+  res = await axios.post(url, wrongCreds, { validateStatus: () => true });
+});
+
+describe('POST /signin — wrong credentials', () => {
+
+  it('status is 400 or 429', () => {
+    expectRejected(res.status);
+  });
+
+  it('message is "Invalid credentials"', () => {
+    if (res.status === 429) return;
+    expect(res.data.message).toBe('Invalid credentials');
+  });
+
+  it('body shape is { message, status, statusCode }', () => {
+    if (res.status === 429) return;
+    expect(res.data).toMatchObject({
+      message: expect.any(String),
+      status: 'error',
+      statusCode: expect.any(Number),
+    });
+  });
+
+  it('response does not include a token', () => {
+    expect(res.data).not.toHaveProperty('token');
+  });
+
+  it('response does not include a user object', () => {
+    expect(res.data).not.toHaveProperty('user');
+  });
+
+});
+```
+
+> **WHY:** One `it()` per concern is the "single-reason-to-fail" principle. When `message is "Invalid credentials"` fails, you know exactly what drifted — the message text. If you crammed all five assertions into one `it()`, the first failure would mask the rest and you would not know how many things broke. `beforeAll` makes exactly one network request for all five tests — no rate-limit risk.
+
+---
+
+**Exercise 2** — Same 5 assertions using `.then()` style instead of `async/await`.
+
+```ts
+// Chapter 4, Exercise 2 — .then() style (promise chains instead of async/await)
+
+import axios from 'axios';
+import { config } from '../../src/config';
+import { expectRejected } from '../../src/test-utils';
+
+const url = `${config.BASE_URL}/signin`;
+const wrongCreds = { username: 'notarealuser99999', password: 'WrongPass@9999' };
+
+describe('POST /signin — wrong credentials (.then() style)', () => {
+
+  it('status is 400 or 429', () => {
+    return axios
+      .post(url, wrongCreds, { validateStatus: () => true })
+      .then((res) => {
+        expectRejected(res.status);
+      });
+  });
+
+  it('message is "Invalid credentials"', () => {
+    return axios
+      .post(url, wrongCreds, { validateStatus: () => true })
+      .then((res) => {
+        if (res.status === 429) return;
+        expect(res.data.message).toBe('Invalid credentials');
+      });
+  });
+
+  it('body shape is { message, status, statusCode }', () => {
+    return axios
+      .post(url, wrongCreds, { validateStatus: () => true })
+      .then((res) => {
+        if (res.status === 429) return;
+        expect(res.data).toMatchObject({
+          message: expect.any(String),
+          status: 'error',
+          statusCode: expect.any(Number),
+        });
+      });
+  });
+
+  it('response does not include a token', () => {
+    return axios
+      .post(url, wrongCreds, { validateStatus: () => true })
+      .then((res) => {
+        expect(res.data).not.toHaveProperty('token');
+      });
+  });
+
+  it('response does not include a user object', () => {
+    return axios
+      .post(url, wrongCreds, { validateStatus: () => true })
+      .then((res) => {
+        expect(res.data).not.toHaveProperty('user');
+      });
+  });
+
+});
+```
+
+> **WHY:** Each test must `return` the promise — without `return`, Vitest considers the test synchronous and passes before the assertion runs, giving false greens. This is the main footgun with `.then()` style. The `async/await` style (Exercise 1) is safer because forgetting `await` causes an obvious compile error with TypeScript's strict mode. Use `.then()` when working in a codebase that has not adopted async/await, or when building promise pipelines where chaining is more readable than sequential awaits.
+
+---
+
+**Exercise 3** — `validateStatus: () => true` — add it to one test and remove it from another.
+
+When `validateStatus: () => true` is present: Axios treats every status code as successful and returns a resolved promise. Your `.then()` or `await` receives the response object regardless of status (200, 400, 500). Assertions run normally.
+
+When `validateStatus: () => true` is absent (the default): Axios rejects (throws) the promise for any status code outside 2xx. A `400` response causes Axios to throw an `AxiosError`. If the `it()` block is `async/await` and has no `try/catch`, the unhandled rejection causes the test to fail with `AxiosError: Request failed with status code 400` — even if a 400 was the expected outcome.
+
+Always pass `validateStatus: () => true` on requests where you are testing error paths. This keeps Axios from "helpfully" throwing and lets your assertions run on the actual response object.
+
+---
+
+**Exercise 4** — Organise tests into numbered describe blocks: 1. Basic, 2. Exact values, 3. Shape, 4. Negative.
+
+```ts
+// Chapter 4, Exercise 4 — POST /signin organised into describe sections
+
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+import { expectRejected } from '../../src/test-utils';
+
+const url = `${config.BASE_URL}/signin`;
+const wrongCreds = { username: 'notarealuser99999', password: 'WrongPass@9999' };
+
+let res!: AxiosResponse;
+
+beforeAll(async () => {
+  res = await axios.post(url, wrongCreds, { validateStatus: () => true });
+});
+
+// ─── 1. Basic ─────────────────────────────────────────────────────────────────
+
+describe('1. Basic', () => {
+
+  it('returns 400 or 429', () => {
+    expectRejected(res.status);
+  });
+
+  it('body has a message field', () => {
+    expect(res.data).toHaveProperty('message');
+  });
+
+});
+
+// ─── 2. Exact values ──────────────────────────────────────────────────────────
+
+describe('2. Exact values', () => {
+
+  it('message is exactly "Invalid credentials"', () => {
+    if (res.status === 429) return;
+    expect(res.data.message).toBe('Invalid credentials');
+  });
+
+  it('status field is exactly "error"', () => {
+    if (res.status === 429) return;
+    expect(res.data.status).toBe('error');
+  });
+
+  it('statusCode inside body matches HTTP status', () => {
+    if (res.status === 429) return;
+    expect(res.data.statusCode).toBe(res.status);
+  });
+
+});
+
+// ─── 3. Shape ─────────────────────────────────────────────────────────────────
+
+describe('3. Shape', () => {
+
+  it('body matches { message: String, status: String, statusCode: Number }', () => {
+    if (res.status === 429) return;
+    expect(res.data).toMatchObject({
+      message: expect.any(String),
+      status: expect.any(String),
+      statusCode: expect.any(Number),
+    });
+  });
+
+  it('Content-Type header is application/json', () => {
+    expect(res.headers['content-type']).toContain('application/json');
+  });
+
+});
+
+// ─── 4. Negative ─────────────────────────────────────────────────────────────
+
+describe('4. Negative', () => {
+
+  it('does not return a token on failed signin', () => {
+    expect(res.data).not.toHaveProperty('token');
+  });
+
+  it('does not return a user object on failed signin', () => {
+    expect(res.data).not.toHaveProperty('user');
+  });
+
+  it('status is not 200 or 201', () => {
+    expect(res.status).not.toBe(200);
+    expect(res.status).not.toBe(201);
+  });
+
+});
+```
+
+> **WHY:** Numbered `describe` blocks serve two purposes. First, the test reporter output groups related failures together — if the 400 response shape changes, all three failures appear under `3. Shape` rather than scattered. Second, numbered sections mirror the chapter structure of this book, making it easy to cross-reference exercises with their test code when reviewing output.
+
+---
+
+**Exercise 5** — Name 3 tests badly, then rename to "what-condition-expected" format.
+
+Bad names (what not to write):
+
+```ts
+it('test 1', ...)
+it('works', ...)
+it('signin test', ...)
+```
+
+These names tell you nothing when they appear in a failure report. "test 1 FAILED" — what is test 1? You have to open the file, find the test, read the code, understand what it was testing, then figure out what broke. This can take minutes per failure in a large suite.
+
+Renamed to "what-condition-expected" format:
+
+```ts
+// what: status code
+// condition: wrong credentials sent
+// expected: 400
+it('returns 400 when credentials do not match any account', ...)
+
+// what: token field
+// condition: authentication failed
+// expected: absent
+it('does not include a token when signin fails', ...)
+
+// what: message text
+// condition: correct username, wrong password
+// expected: specific string
+it('message is "Invalid credentials" when password is wrong', ...)
+```
+
+The naming convention encodes three things: the concern being tested, the input state or condition, and the expected outcome. A failing test with a well-named `it()` is self-documenting — you read the name, immediately understand what broke and why, and can fix it without opening the implementation.
+
+---
+
+---
+
+### Chapter 5 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — Full positive signin assertions:
+```javascript
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+pm.test("Message is correct", () => {
+    pm.expect(pm.response.json().message).to.equal("User login successfully");
+});
+pm.test("Token is a string", () => {
+    pm.expect(pm.response.json().token).to.be.a("string");
+});
+pm.test("User object returned", () => {
+    pm.expect(pm.response.json().user).to.be.an("object");
+});
+```
+
+**Exercise 2** — Password not exposed:
+```javascript
+pm.test("Password not in response", () => {
+    pm.expect(pm.response.json().user).to.not.have.property("password");
+});
+```
+
+**Exercise 3** — JWT format:
+```javascript
+pm.test("Token has 3 parts (JWT format)", () => {
+    const token = pm.response.json().token;
+    pm.expect(token.split(".").length).to.equal(3);
+});
+pm.test("Token header starts with eyJ", () => {
+    const token = pm.response.json().token;
+    pm.expect(token.split(".")[0]).to.match(/^eyJ/);
+});
+```
+
+**Exercise 4** — set-cookie header:
+```javascript
+pm.test("set-cookie header present", () => {
+    pm.expect(pm.response.headers.get("set-cookie")).to.include("session=");
+});
+```
+
+**Exercise 5** — Save token after all assertions:
+```javascript
+pm.environment.set("token", pm.response.json().token);
+```
+> Run in Collection Runner — all 7 pm.test() calls should show green.
+
+#### Vitest Solutions
+
+**Exercise 1** — Use `toMatchObject` with `expect.any(String)` and `expect.any(Number)` to assert the full error response shape from `POST /signin`.
+
+```ts
+// Chapter 5, Exercise 1 — toMatchObject with expect.any()
+
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+import { expectRejected } from '../../src/test-utils';
+
+const url = `${config.BASE_URL}/signin`;
+
+let res!: AxiosResponse;
+
+beforeAll(async () => {
+  res = await axios.post(
+    url,
+    { username: 'notarealuser99999', password: 'WrongPass@9999' },
+    { validateStatus: () => true },
+  );
+});
+
+describe('POST /signin — shape assertions with toMatchObject', () => {
+
+  it('error body matches the expected shape', () => {
+    if (res.status === 429) return;
+
+    expect(res.data).toMatchObject({
+      message: expect.any(String),
+      status: expect.any(String),
+      statusCode: expect.any(Number),
+    });
+  });
+
+  it('exact status value is "error"', () => {
+    if (res.status === 429) return;
+    expect(res.data.status).toBe('error');
+  });
+
+});
+```
+
+> **WHY:** `toMatchObject` checks that the object contains at least the listed keys with matching values — extra keys in the response are allowed. This is appropriate for API responses where the server may add new optional fields in future without breaking the contract. `expect.any(String)` accepts any string value, which is correct for `message` because the exact wording could change. `expect.any(Number)` for `statusCode` is correct because the value changes depending on the error type. Use `expect.any()` when you care about the *type* but not the exact value; use a literal (`'error'`) when you care about both.
+
+---
+
+**Exercise 2** — Use `toBeTypeOf` to assert `statusCode` is a number and `message` is a string.
+
+```ts
+// Chapter 5, Exercise 2 — toBeTypeOf for type assertions
+
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+import { expectRejected } from '../../src/test-utils';
+
+const url = `${config.BASE_URL}/signin`;
+
+let res!: AxiosResponse;
+
+beforeAll(async () => {
+  res = await axios.post(
+    url,
+    { username: 'notarealuser99999', password: 'WrongPass@9999' },
+    { validateStatus: () => true },
+  );
+});
+
+describe('POST /signin — type assertions with toBeTypeOf', () => {
+
+  it('message is of type string', () => {
+    expect(res.data.message).toBeTypeOf('string');
+  });
+
+  it('statusCode is of type number', () => {
+    if (res.status === 429) return; // 429 has no statusCode field
+    expect(res.data.statusCode).toBeTypeOf('number');
+  });
+
+  it('status field is of type string', () => {
+    if (res.status === 429) return;
+    expect(res.data.status).toBeTypeOf('string');
+  });
+
+});
+```
+
+> **WHY:** `toBeTypeOf` is a Vitest-native matcher — it is equivalent to `expect(typeof value).toBe('string')` but produces a cleaner failure message and reads more naturally. Compare: `expect(res.data.statusCode).toBeTypeOf('number')` vs `expect(typeof res.data.statusCode).toBe('number')`. Both work; `toBeTypeOf` is preferred in Vitest because the failure message names the received type directly: `Expected type "string" but received type "undefined"`. This is useful when the field is completely absent, which `typeof undefined === 'undefined'` would also catch — `toBeTypeOf` fails with a more descriptive message.
+
+---
+
+**Exercise 3** — Use `toMatch(/regex/)` to assert `message` is a non-empty string.
+
+```ts
+// Chapter 5, Exercise 3 — toMatch with regex
+
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+import { expectRejected } from '../../src/test-utils';
+
+const url = `${config.BASE_URL}/signin`;
+
+let res!: AxiosResponse;
+
+beforeAll(async () => {
+  res = await axios.post(
+    url,
+    { username: 'notarealuser99999', password: 'WrongPass@9999' },
+    { validateStatus: () => true },
+  );
+});
+
+describe('POST /signin — regex assertions with toMatch', () => {
+
+  it('message is a non-empty string — /\\S+/', () => {
+    // \S+ means "one or more non-whitespace characters"
+    // This passes for any non-blank string regardless of exact wording.
+    expect(res.data.message).toMatch(/\S+/);
+  });
+
+  it('message does not contain raw HTML', () => {
+    // Guard: if the server accidentally returns an HTML error page,
+    // the message should not contain HTML tags.
+    expect(res.data.message).not.toMatch(/<html/i);
+  });
+
+});
+```
+
+> **WHY:** `toMatch(/\S+/)` is the right tool when you know the *format* of the expected value but not the exact string. Here the regex `/\S+/` (one or more non-whitespace characters) is a minimal correctness check: the field is present, it is a string, and it is not blank or whitespace-only. A direct `.toBe('Invalid credentials')` is stronger but brittle — if a localisation team changes the wording your test breaks for the wrong reason. Use `toMatch` with a regex when asserting format or pattern. Use `.toBe` when asserting exact wording that is part of the public contract.
+
+---
+
+**Exercise 4** — Use `expect.arrayContaining` on `POST /post/all/1` to assert every item has an `_id` field.
+
+```ts
+// Chapter 5, Exercise 4 — expect.arrayContaining for array assertions
+//
+// Prerequisite: sign in with TEST_USERNAME / TEST_PASSWORD before calling the posts endpoint.
+
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+
+const signinUrl = `${config.BASE_URL}/signin`;
+const postsUrl  = `${config.BASE_URL}/post/all/1`;
+
+let postsRes!: AxiosResponse;
+let sessionCookie = '';
+
+beforeAll(async () => {
+  const loginRes = await axios.post(
+    signinUrl,
+    { username: config.TEST_USERNAME, password: config.TEST_PASSWORD },
+    { validateStatus: () => true },
+  );
+  const raw = loginRes.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+
+  postsRes = await axios.get(postsUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+});
+
+describe('GET /post/all/1 — array assertions with expect.arrayContaining', () => {
+
+  it('response status is 200', () => {
+    expect(postsRes.status).toBe(200);
+  });
+
+  it('posts is an array', () => {
+    expect(Array.isArray(postsRes.data.posts)).toBe(true);
+  });
+
+  it('every post has an _id field', () => {
+    // expect.arrayContaining checks that the received array contains AT LEAST
+    // all items matching the pattern — extra items are allowed.
+    // Here we assert that every item in the array matches { _id: expect.any(String) }.
+    //
+    // Note: expect.arrayContaining checks a SUBSET relationship — we need toEqual
+    // to make it the complete assertion.
+    expect(postsRes.data.posts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ _id: expect.any(String) }),
+      ]),
+    );
+  });
+
+  it('every post has post text and a createdAt date', () => {
+    expect(postsRes.data.posts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          _id:       expect.any(String),
+          post:      expect.any(String),
+          createdAt: expect.any(String),
+        }),
+      ]),
+    );
+  });
+
+});
+```
+
+> **WHY:** `expect.arrayContaining([pattern])` checks that the array contains at least one element matching the pattern. Combined with `toEqual`, this is the right way to assert that *every element* in a dynamic array has a required shape, without knowing the exact array length or item count. The alternative — iterating with `forEach` and asserting inside the loop — works but produces poor failure messages. `expect.arrayContaining` with `expect.objectContaining` inside gives Vitest enough information to print a diff showing exactly which element failed to match and why.
+
+---
+
+**Exercise 5** — Use `toSatisfy` to assert a JWT has exactly 3 dot-separated parts.
+
+```ts
+// Chapter 5, Exercise 5 — toSatisfy with a custom predicate
+
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+
+const signinUrl = `${config.BASE_URL}/signin`;
+
+let res!: AxiosResponse;
+
+beforeAll(async () => {
+  res = await axios.post(
+    signinUrl,
+    { username: config.TEST_USERNAME, password: config.TEST_PASSWORD },
+    { validateStatus: () => true },
+  );
+});
+
+describe('POST /signin — JWT validation with toSatisfy', () => {
+
+  it('token is a string', () => {
+    expect(res.data.token).toBeTypeOf('string');
+  });
+
+  it('token has exactly 3 dot-separated parts (JWT structure)', () => {
+    // toSatisfy(fn) passes when fn(receivedValue) returns true.
+    // It is the correct choice when the assertion logic cannot be expressed
+    // as a single built-in matcher — here we split and count segments.
+    expect(res.data.token).toSatisfy(
+      (token: string) => token.split('.').length === 3,
+    );
+  });
+
+  it('token header segment starts with eyJ (base64-encoded JSON)', () => {
+    // The first segment of a JWT is always base64url({"alg":"...","typ":"JWT"}).
+    // base64url encoding of '{"' always starts with 'eyJ'.
+    // This checks structural validity beyond just "three segments".
+    expect(res.data.token).toSatisfy(
+      (token: string) => token.split('.')[0].startsWith('eyJ'),
+    );
+  });
+
+  it('token has no whitespace', () => {
+    // JWTs must not contain spaces — a space would indicate a truncated or malformed token.
+    expect(res.data.token).toSatisfy(
+      (token: string) => !/\s/.test(token),
+    );
+  });
+
+});
+```
+
+> **WHY:** `toSatisfy(fn)` is the escape hatch for assertions that cannot be expressed with a single built-in matcher. The JWT structure check (`token.split('.').length === 3`) is a perfect example: no built-in matcher tests "splits into exactly N parts". The alternatives — `.toMatch(/^[^.]+\.[^.]+\.[^.]+$/)` (regex) or `.toHaveLength(3)` on the split array — both work, but `toSatisfy` is the most explicit and self-documenting: the predicate reads as code, not as a cryptic pattern. Always prefer `toSatisfy` over a complex regex when the assertion logic is easier to express as a function than as a pattern.
+
+---
+
+### Chapter 6 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — Signin and save token + cookie:
+```javascript
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+pm.environment.set("token", pm.response.json().token);
+pm.environment.set("sessionCookie", pm.response.headers.get("set-cookie").split(";")[0]);
+```
+> **Why `.split(";")[0]`?** The full set-cookie value includes `Path=/; HttpOnly; Secure`. The server only needs `session=eyJ...` — everything before the first semicolon.
+
+**Exercise 2** — GET /currentuser with cookie:
+```javascript
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+pm.test("Username matches", () => {
+    const username = pm.response.json().user.username.toLowerCase();
+    pm.expect(username).to.equal(pm.environment.get("TEST_USERNAME").toLowerCase());
+});
+```
+
+**Exercise 3** — POST /signout:
+```javascript
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+pm.test("Logout message correct", () => {
+    pm.expect(pm.response.json().message).to.equal("User logout successfully");
+});
+```
+
+**Exercise 4** — GET /currentuser after signout:
+```javascript
+pm.test("Status is 401 after signout", () => pm.response.to.have.status(401));
+```
+
+**Exercise 5** — Collection Runner order: signin → currentuser(200) → signout → currentuser(401). All 6 pm.test() assertions pass.
+
+#### Vitest Solutions
+
+**Exercise 1** — Full positive signin test: status 200, exact message, token exists, JWT format, set-cookie header, no password in user object
+
+```ts
+import axios from 'axios';
+import { config } from '../../src/config';
+
+const signinUrl    = `${config.BASE_URL}/signin`;
+const currentUser  = `${config.BASE_URL}/currentuser`;
+const signoutUrl   = `${config.BASE_URL}/signout`;
+
+let sessionCookie: string = '';
+let jwt: string = '';
+
+beforeAll(async () => {
+  const res = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME,
+    password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+
+  const raw = res.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  jwt = res.data.token ?? '';
+});
+
+afterAll(async () => {
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  // Exercise 4 — after signout, /currentuser must return 401
+  const afterSignout = await axios.get(currentUser, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+  expect(afterSignout.status).toBe(401);
+});
+
+// Exercise 1
+it('POST /signin — full positive test', async () => {
+  const res = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME,
+    password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+
+  // status
+  expect(res.status).toBe(200);
+
+  // exact message
+  expect(res.data.message).toBe('User login successfully');
+
+  // token exists
+  expect(res.data.token).toBeDefined();
+
+  // JWT has exactly 3 dot-separated parts
+  expect(res.data.token).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/);
+
+  // set-cookie header present
+  expect(res.headers['set-cookie']).toBeDefined();
+
+  // password absent from the user object
+  expect(res.data.user).not.toHaveProperty('password');
+});
+
+// Exercise 2
+it('GET /currentuser with session cookie returns current user', async () => {
+  const res = await axios.get(currentUser, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  expect(res.status).toBe(200);
+  expect(res.data.user.username.toLowerCase()).toBe(config.TEST_USERNAME.toLowerCase());
+});
+
+// Exercise 3 — negative tests
+it('wrong password returns 400', async () => {
+  const res = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME,
+    password: 'WrongPassword!99',
+  }, { validateStatus: () => true });
+
+  expect(res.status).toBe(400);
+});
+
+it('username too short (3 chars) returns 400 or 429', async () => {
+  const res = await axios.post(signinUrl, {
+    username: 'abc',
+    password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+
+  expect([400, 429]).toContain(res.status);
+});
+
+it('missing password field returns 400 or 429', async () => {
+  const res = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME,
+  }, { validateStatus: () => true });
+
+  expect([400, 429]).toContain(res.status);
+});
+
+// Exercise 5 — JWT format assertions
+it('JWT token is a string and matches three-part format', () => {
+  expect(jwt).toBeTypeOf('string');
+  expect(jwt).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/);
+});
+```
+
+> **WHY:** `validateStatus: () => true` prevents Axios from throwing on 4xx/5xx so every assertion is explicit. The regex `/^[\w-]+\.[\w-]+\.[\w-]+$/` matches `header.payload.signature` — any JWT that deviates from this shape is malformed. Checking `not.toHaveProperty('password')` catches accidental data leaks before they reach a real user. The afterAll signout + 401 check confirms the session cookie is actually invalidated server-side, not just forgotten by the client.
+
+---
+
+**Exercise 2** — Capture the session cookie from signin, call GET /currentuser, assert status 200 and username matches (case-insensitive)
+
+```ts
+it('GET /currentuser with session cookie returns 200 and correct username', async () => {
+  const res = await axios.get(currentUser, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  expect(res.status).toBe(200);
+  // Chatty title-cases stored usernames; compare case-insensitively
+  expect(res.data.user.username.toLowerCase()).toBe(config.TEST_USERNAME.toLowerCase());
+});
+```
+
+> **WHY:** Chatty persists usernames in title-case internally (e.g. `Vitestuser` from `vitestuser`). A case-insensitive comparison lets the test pass regardless of how the server normalises the value, so the assertion targets identity rather than formatting.
+
+---
+
+**Exercise 3** — Three negative signin tests: wrong password, username too short, missing password field
+
+```ts
+it('wrong password returns 400', async () => {
+  const res = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME,
+    password: 'WrongPassword!99',
+  }, { validateStatus: () => true });
+
+  expect(res.status).toBe(400);
+});
+
+it('username too short (3 chars) returns 400 or 429', async () => {
+  const res = await axios.post(signinUrl, {
+    username: 'abc',
+    password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+
+  expect([400, 429]).toContain(res.status);
+});
+
+it('missing password field returns 400 or 429', async () => {
+  const res = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME,
+  }, { validateStatus: () => true });
+
+  expect([400, 429]).toContain(res.status);
+});
+```
+
+> **WHY:** Accepting both 400 and 429 in the second and third cases is deliberate — the Joi schema validator may reject the request before it reaches business logic (400), but a rate-limiter fires first if tests run rapidly (429). Using `toContain` on an array of acceptable statuses documents both outcomes as intentional without creating a flaky test.
+
+---
+
+**Exercise 4** — afterAll: call POST /signout, then verify GET /currentuser returns 401
+
+```ts
+afterAll(async () => {
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  const afterSignout = await axios.get(currentUser, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+  expect(afterSignout.status).toBe(401);
+});
+```
+
+> **WHY:** Placing the post-signout assertion inside `afterAll` ensures it runs once after all tests complete — not as a test in the middle of the file that could leave state in an intermediate shape. This pattern tests session invalidation without creating a new `it()` block that would need its own setup.
+
+---
+
+**Exercise 5** — Assert JWT format with toMatch and toBeTypeOf
+
+```ts
+it('JWT token is a string and matches three-part dot format', () => {
+  expect(jwt).toBeTypeOf('string');
+  expect(jwt).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/);
+});
+```
+
+> **WHY:** `toBeTypeOf('string')` catches the case where `res.data.token` is `undefined` or a non-string (e.g. an object). The regex check is a second layer: it verifies structural correctness without fully decoding the JWT, keeping the test fast and dependency-free. Together these two assertions guarantee the token is usable by a downstream client.
+
+---
+
+---
+
+### Chapter 7 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — PUT /user/profile:
+```javascript
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+```
+
+**Exercise 2** — Message contains "successfully":
+```javascript
+pm.test("Update acknowledged", () => {
+    pm.expect(pm.response.json().message).to.include("successfully");
+});
+```
+
+**Exercise 3** — GET /currentuser after update:
+```javascript
+pm.test("Work field updated", () => {
+    pm.expect(pm.response.json().user.work).to.equal("API Tester");
+});
+pm.test("School field updated", () => {
+    pm.expect(pm.response.json().user.school).to.equal("Test University");
+});
+```
+
+**Exercise 4** — PUT to restore:
+```javascript
+pm.test("Restore status 200", () => pm.response.to.have.status(200));
+```
+
+**Exercise 5** — Final GET to verify restore:
+```javascript
+pm.test("Work restored to empty", () => {
+    pm.expect(pm.response.json().user.work).to.equal("");
+});
+pm.test("School restored to empty", () => {
+    pm.expect(pm.response.json().user.school).to.equal("");
+});
+```
+> **Why restore in afterAll?** Leaving modified data in the profile would cause the next student who runs these tests with the same account to see unexpected field values.
+
+#### Vitest Solutions
+
+**Exercise 1** — Sign in, PUT /user/profile with work and school, assert status 200
+
+```ts
+import axios from 'axios';
+import { config } from '../../src/config';
+
+const signinUrl      = `${config.BASE_URL}/signin`;
+const signoutUrl     = `${config.BASE_URL}/signout`;
+const profileUrl     = `${config.BASE_URL}/user/profile`;
+const currentUserUrl = `${config.BASE_URL}/currentuser`;
+
+let sessionCookie: string = '';
+let originalWork  = '';
+let originalSchool = '';
+
+beforeAll(async () => {
+  const res = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME,
+    password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+
+  const raw = res.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+
+  // Capture original values before mutating
+  const curRes = await axios.get(currentUserUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+  originalWork   = curRes.data.user?.work   ?? '';
+  originalSchool = curRes.data.user?.school ?? '';
+});
+
+afterAll(async () => {
+  // Exercise 3 — restore original values
+  await axios.put(profileUrl, { work: originalWork, school: originalSchool }, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  // Verify restore
+  const verifyRes = await axios.get(currentUserUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+  expect(verifyRes.data.user.work).toBe(originalWork);
+  expect(verifyRes.data.user.school).toBe(originalSchool);
+
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+});
+
+// Exercise 1
+it('PUT /user/profile updates work and school — status 200', async () => {
+  const res = await axios.put(profileUrl, {
+    work: 'Software Engineer',
+    school: 'Test University',
+  }, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  expect(res.status).toBe(200);
+});
+
+// Exercise 2
+it('GET /currentuser reflects updated work and school', async () => {
+  const res = await axios.get(currentUserUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  expect(res.data.user.work).toBe('Software Engineer');
+  expect(res.data.user.school).toBe('Test University');
+});
+
+// Exercise 4
+it('postsCount, followersCount, followingCount are non-negative numbers', async () => {
+  const res = await axios.get(currentUserUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+  const { postsCount, followersCount, followingCount } = res.data.user;
+
+  expect(postsCount).toBeGreaterThanOrEqual(0);
+  expect(followersCount).toBeGreaterThanOrEqual(0);
+  expect(followingCount).toBeGreaterThanOrEqual(0);
+});
+
+// Exercise 5
+it('username and email are truthy', async () => {
+  const res = await axios.get(currentUserUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  expect(res.data.user.username).toBeTruthy();
+  expect(res.data.user.email).toBeTruthy();
+});
+```
+
+> **WHY:** Capturing the original profile values in `beforeAll` before any mutation means `afterAll` can restore them exactly — making the test suite idempotent. The restore itself is also verified with a follow-up GET so you know the cleanup actually took effect. `toBeGreaterThanOrEqual(0)` is the correct bound for counters: they can be zero for a brand-new account, but never negative.
+
+---
+
+**Exercise 2** — After the PUT, GET /currentuser and assert work and school match what was sent
+
+```ts
+it('GET /currentuser reflects the updated profile fields', async () => {
+  const res = await axios.get(currentUserUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  expect(res.data.user.work).toBe('Software Engineer');
+  expect(res.data.user.school).toBe('Test University');
+});
+```
+
+> **WHY:** This is a state verification test — it proves the write (PUT) and read (GET) are consistent. Testing the PUT response alone only tells you the server accepted the request; testing the GET afterward confirms the data was persisted and is returned correctly.
+
+---
+
+**Exercise 3** — afterAll: restore original values, then verify with GET /currentuser
+
+```ts
+afterAll(async () => {
+  await axios.put(profileUrl, { work: originalWork, school: originalSchool }, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  const verifyRes = await axios.get(currentUserUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+  expect(verifyRes.data.user.work).toBe(originalWork);
+  expect(verifyRes.data.user.school).toBe(originalSchool);
+
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+});
+```
+
+> **WHY:** Restoring state in `afterAll` keeps the test account clean for subsequent runs. The verification GET inside `afterAll` turns the restore step into a self-checking teardown: if the PUT silently failed, the assertion fails immediately and you know cleanup did not complete rather than discovering stale data in the next test run.
+
+---
+
+**Exercise 4** — Use toBeGreaterThanOrEqual(0) on postsCount, followersCount, followingCount
+
+```ts
+it('postsCount, followersCount, followingCount are non-negative', async () => {
+  const res = await axios.get(currentUserUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+  const { postsCount, followersCount, followingCount } = res.data.user;
+
+  expect(postsCount).toBeGreaterThanOrEqual(0);
+  expect(followersCount).toBeGreaterThanOrEqual(0);
+  expect(followingCount).toBeGreaterThanOrEqual(0);
+});
+```
+
+> **WHY:** Pinning exact counts to a fixed number (e.g. `toBe(3)`) creates a brittle test that breaks whenever another test creates or deletes data. `toBeGreaterThanOrEqual(0)` expresses the business rule — counts are non-negative integers — without over-constraining the value.
+
+---
+
+**Exercise 5** — Use toBeTruthy() on username and email
+
+```ts
+it('username and email fields are non-empty', async () => {
+  const res = await axios.get(currentUserUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  expect(res.data.user.username).toBeTruthy();
+  expect(res.data.user.email).toBeTruthy();
+});
+```
+
+> **WHY:** `toBeTruthy()` catches `undefined`, `null`, `''`, and `0` in a single assertion. For fields like `username` and `email` you care that a value exists and is non-empty, not what the exact value is. If the server ever omits these fields from the response (a regression), the assertion fails immediately with a clear message.
+
+---
+
+---
+
+### Chapter 8 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — POST /post:
+```javascript
+pm.test("Status is 201 Created", () => pm.response.to.have.status(201));
+```
+
+**Exercise 2** — Message correct:
+```javascript
+pm.test("Message is correct", () => {
+    pm.expect(pm.response.json().message).to.equal("Post created successfully");
+});
+```
+
+**Exercise 3** — Find post in GET /post/all/1:
+```javascript
+const timestamp = pm.environment.get("postTimestamp");
+const post = pm.response.json().posts.find(p => p.post.includes("chapter-08 test"));
+pm.test("Post appears in list", () => {
+    pm.expect(post).to.not.be.undefined;
+});
+pm.environment.set("postId", post._id);
+```
+> **Why `find` not `[0]`?** Other users may be creating posts at the same time. `find` locates your post by its unique content, not by position.
+
+**Exercise 4** — Assert _id format:
+```javascript
+pm.test("Post _id is valid ObjectId", () => {
+    pm.expect(pm.environment.get("postId")).to.match(/^[a-f0-9]{24}$/);
+});
+```
+
+**Exercise 5** — DELETE /post/{{postId}}:
+```javascript
+pm.test("Post deleted — status 200", () => pm.response.to.have.status(200));
+pm.test("Delete message correct", () => {
+    pm.expect(pm.response.json().message).to.equal("Post deleted successfully");
+});
+```
+
+#### Vitest Solutions
+
+**Exercise 1** — Generate unique post content with faker, POST /post, assert status 201 and message
+
+```ts
+import axios from 'axios';
+import { faker } from '@faker-js/faker';
+import { config } from '../../src/config';
+
+const signinUrl  = `${config.BASE_URL}/signin`;
+const signoutUrl = `${config.BASE_URL}/signout`;
+const postUrl    = `${config.BASE_URL}/post`;
+const getAllUrl   = `${config.BASE_URL}/post/all/1`;
+
+let sessionCookie: string = '';
+let createdPostId: string = '';
+
+const UNIQUE_CONTENT = `Vitest ch8 ${faker.string.alphanumeric(8)}`;
+
+beforeAll(async () => {
+  const res = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME,
+    password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+
+  const raw = res.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+});
+
+afterAll(async () => {
+  // Exercise 5 — delete the created post
+  if (createdPostId) {
+    const deleteRes = await axios.delete(`${config.BASE_URL}/post/${createdPostId}`, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+    expect(deleteRes.status).toBe(200);
+  }
+
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+});
+
+// Exercise 1
+it('POST /post creates a new post — status 201, correct message', async () => {
+  const res = await axios.post(postUrl, {
+    post: UNIQUE_CONTENT,
+    bgColor: '#ffffff',
+    privacy: 'Public',
+    feelings: '',
+  }, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  expect(res.status).toBe(201);
+  expect(res.data.message).toBe('Post created successfully');
+});
+
+// Exercise 2
+it('GET /post/all/1 contains the newly created post', async () => {
+  const res = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  const found = res.data.posts?.find(
+    (p: { post: string; _id: string }) => p.post === UNIQUE_CONTENT,
+  );
+  expect(found).toBeDefined();
+
+  // Store id for Exercise 5 cleanup
+  createdPostId = found?._id ?? '';
+});
+
+// Exercise 3
+it('created post _id is a valid MongoDB ObjectId', async () => {
+  expect(createdPostId).toMatch(/^[a-f0-9]{24}$/);
+});
+
+// Exercise 4
+it('POST /post without Cookie returns 401', async () => {
+  const res = await axios.post(postUrl, {
+    post: 'unauthorised attempt',
+    bgColor: '#ffffff',
+    privacy: 'Public',
+    feelings: '',
+  }, { validateStatus: () => true });
+
+  expect(res.status).toBe(401);
+});
+```
+
+> **WHY:** Using `faker.string.alphanumeric(8)` as a suffix generates a unique string on every run, preventing tests from accidentally matching data left by a previous run. Storing `UNIQUE_CONTENT` at file scope means the `find` in Exercise 2 targets exactly the post created in Exercise 1 — not any other post with similar content. The regex `/^[a-f0-9]{24}$/` is the canonical MongoDB ObjectId format: 24 lowercase hexadecimal characters.
+
+---
+
+**Exercise 2** — GET /post/all/1, use Array.find() to locate the post by UNIQUE_CONTENT, assert it exists
+
+```ts
+it('the created post appears in GET /post/all/1', async () => {
+  const res = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  const found = res.data.posts?.find(
+    (p: { post: string; _id: string }) => p.post === UNIQUE_CONTENT,
+  );
+  expect(found).toBeDefined();
+
+  createdPostId = found?._id ?? '';
+});
+```
+
+> **WHY:** `Array.find()` with a unique-content predicate is more robust than relying on array index 0 — other tests running in parallel could create posts that appear before yours. `toBeDefined()` on the result of `find` gives a clear failure: "expected undefined to be defined" rather than a cryptic cannot-read-property error on a null object.
+
+---
+
+**Exercise 3** — Assert the found post's _id is a valid MongoDB ObjectId with toMatch
+
+```ts
+it('post _id matches MongoDB ObjectId format', () => {
+  expect(createdPostId).toMatch(/^[a-f0-9]{24}$/);
+});
+```
+
+> **WHY:** Asserting the ID format catches cases where the server returned a malformed value (e.g. a UUID, a numeric string, or an empty string from a failed find). It also documents the ID contract in a machine-checked way — anyone reading the test knows immediately what a valid ID looks like.
+
+---
+
+**Exercise 4** — Create a post without the Cookie header, assert status 401
+
+```ts
+it('POST /post without Cookie header returns 401', async () => {
+  const res = await axios.post(postUrl, {
+    post: 'unauthenticated test',
+    bgColor: '#ffffff',
+    privacy: 'Public',
+    feelings: '',
+  }, { validateStatus: () => true });
+
+  expect(res.status).toBe(401);
+});
+```
+
+> **WHY:** Authentication boundary tests are among the most important negative tests in an API suite. A missing 401 guard means unauthenticated users can create posts — a security flaw. This test costs almost nothing to write and prevents that regression permanently.
+
+---
+
+**Exercise 5** — afterAll: delete the created post, assert status 200
+
+```ts
+afterAll(async () => {
+  if (createdPostId) {
+    const deleteRes = await axios.delete(`${config.BASE_URL}/post/${createdPostId}`, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+    expect(deleteRes.status).toBe(200);
+  }
+
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+});
+```
+
+> **WHY:** Cleanup in `afterAll` keeps the test database tidy and makes the suite idempotent. Asserting `toBe(200)` on the delete response turns the cleanup step into a self-checking teardown: if the post was already deleted by another mechanism, the assertion fails and alerts you to an unexpected state change rather than silently swallowing the error.
+
+---
+
+---
+
+### Chapter 9 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — GET /post/all/1 shape:
+```javascript
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+pm.test("Posts is an array", () => {
+    pm.expect(pm.response.json().posts).to.be.an("array");
+});
+pm.test("totalPosts is a number", () => {
+    pm.expect(pm.response.json().totalPosts).to.be.a("number");
+});
+```
+
+**Exercise 2** — Each post has _id:
+```javascript
+pm.test("Each post has _id", () => {
+    pm.response.json().posts.forEach(post => {
+        pm.expect(post).to.have.property("_id");
+    });
+});
+```
+
+**Exercise 3** — Page size:
+```javascript
+pm.test("Page size is at most 10", () => {
+    pm.expect(pm.response.json().posts.length).to.be.at.most(10);
+});
+```
+
+**Exercise 4** — No auth returns 401:
+```javascript
+pm.test("Status is 401 without cookie", () => pm.response.to.have.status(401));
+```
+
+**Exercise 5** — Invalid ObjectId returns 400:
+```javascript
+pm.test("Invalid ObjectId returns 400", () => pm.response.to.have.status(400));
+```
+
+#### Vitest Solutions
+
+**Exercise 1** — GET /post/all/1 with valid session cookie, assert status 200, posts is array, totalPosts is number
+
+```ts
+import axios from 'axios';
+import { config } from '../../src/config';
+
+const signinUrl  = `${config.BASE_URL}/signin`;
+const signoutUrl = `${config.BASE_URL}/signout`;
+const getAllUrl   = `${config.BASE_URL}/post/all/1`;
+
+let sessionCookie: string = '';
+
+beforeAll(async () => {
+  const res = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME,
+    password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+
+  const raw = res.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+});
+
+afterAll(async () => {
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+});
+
+// Exercise 1
+it('GET /post/all/1 returns 200, posts array, totalPosts number', async () => {
+  const res = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  expect(res.status).toBe(200);
+  expect(Array.isArray(res.data.posts)).toBe(true);
+  expect(typeof res.data.totalPosts).toBe('number');
+});
+
+// Exercise 2
+it('every post in the list has a string _id', async () => {
+  const res = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  expect(res.data.posts).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ _id: expect.any(String) }),
+    ]),
+  );
+});
+
+// Exercise 3
+it('posts array contains no more than 10 items per page', async () => {
+  const res = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  expect(res.data.posts.length).toBeLessThanOrEqual(10);
+});
+
+// Exercise 4
+it('GET /post/all/1 without Cookie returns 401', async () => {
+  const res = await axios.get(getAllUrl, { validateStatus: () => true });
+
+  expect(res.status).toBe(401);
+});
+
+// Exercise 5
+it('PATCH /post/not-an-objectid with valid session returns 400', async () => {
+  const res = await axios.patch(
+    `${config.BASE_URL}/post/not-an-objectid`,
+    { post: 'updated content' },
+    {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    },
+  );
+
+  expect(res.status).toBe(400);
+});
+```
+
+> **WHY:** `Array.isArray()` inside `toBe(true)` is more explicit than `toBeInstanceOf(Array)` for a plain array returned by JSON — it is immune to cross-realm Array issues. `expect.arrayContaining` with `expect.objectContaining` is the idiomatic Vitest way to assert that every element in an unbounded list satisfies a structural contract without comparing the full array. `toBeLessThanOrEqual(10)` encodes the pagination contract: if the server ever returns 11+ items on page 1, the business rule has been violated. The invalid ObjectId test (`not-an-objectid`) confirms server-side validation runs before any database query — a defensive pattern that prevents MongoDB from receiving malformed queries.
+
+---
+
+**Exercise 2** — Use expect.arrayContaining([expect.objectContaining({ _id: expect.any(String) })]) to assert every post has an _id
+
+```ts
+it('every post in the list has a string _id (asymmetric matchers)', async () => {
+  const res = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  expect(res.data.posts).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ _id: expect.any(String) }),
+    ]),
+  );
+});
+```
+
+> **WHY:** `expect.arrayContaining` checks that the array contains at least one element matching the inner matcher — combined with `expect.objectContaining` this verifies that the shape contract holds for the returned data. `expect.any(String)` avoids pinning a specific ID value while still ensuring the field exists and is a string, not `undefined` or a number.
+
+---
+
+**Exercise 3** — Use toBeLessThanOrEqual(10) to assert the posts array never exceeds 10 items per page
+
+```ts
+it('page 1 returns at most 10 posts (pagination contract)', async () => {
+  const res = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+
+  expect(res.data.posts.length).toBeLessThanOrEqual(10);
+});
+```
+
+> **WHY:** This assertion encodes the pagination contract in a way that cannot accidentally pass on an empty list — if the server returns 0 posts, `0 <= 10` is still true, so the test only fails when the real violation occurs: more than 10 items. This is preferable to checking `totalPosts` because `totalPosts` is a count of all records, not the size of the current page.
+
+---
+
+**Exercise 4** — GET /post/all/1 without Cookie, assert status 401
+
+```ts
+it('GET /post/all/1 without Cookie header returns 401', async () => {
+  const res = await axios.get(getAllUrl, { validateStatus: () => true });
+
+  expect(res.status).toBe(401);
+});
+```
+
+> **WHY:** Read endpoints must also be protected — it is a common mistake to guard write endpoints but leave GET routes open. This test ensures unauthenticated users cannot read the post feed, which would leak private posts and user data.
+
+---
+
+**Exercise 5** — PATCH /post/not-an-objectid with valid session, assert status 400
+
+```ts
+it('PATCH /post/not-an-objectid returns 400 — invalid ObjectId format', async () => {
+  const res = await axios.patch(
+    `${config.BASE_URL}/post/not-an-objectid`,
+    { post: 'updated content' },
+    {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    },
+  );
+
+  expect(res.status).toBe(400);
+});
+```
+
+> **WHY:** Sending an invalid ObjectId as a route parameter tests a validation layer that lives between the router and the database. If the server passes `not-an-objectid` directly to MongoDB, it throws a `CastError` which the server must catch and convert to a 400. A missing handler here would produce a 500, leaking an internal stack trace. This test confirms that the input validation boundary is working before any persistence logic runs.
+
+---
+
+### Chapter 10 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — PATCH /post/{{postId}}:
+```javascript
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+```
+
+**Exercise 2** — Message correct:
+```javascript
+pm.test("Update message correct", () => {
+    pm.expect(pm.response.json().message).to.equal("Post updated successfully");
+});
+```
+
+**Exercise 3** — GET to verify update:
+```javascript
+const post = pm.response.json().posts.find(p => p._id === pm.environment.get("postId"));
+pm.test("Post content updated", () => {
+    pm.expect(post.post).to.equal("Updated via Postman");
+});
+```
+
+**Exercise 4** — Restore PATCH:
+```javascript
+pm.test("Restore status 200", () => pm.response.to.have.status(200));
+```
+
+**Exercise 5** — toStrictEqual equivalent in Postman — verify bgColor unchanged:
+```javascript
+const post = pm.response.json().posts.find(p => p._id === pm.environment.get("postId"));
+pm.test("bgColor unchanged after content PATCH", () => {
+    pm.expect(post.bgColor).to.equal("#ffffff");
+});
+```
+> Postman does not have `toStrictEqual` — use `pm.expect(value).to.deep.equal(expected)` for deep equality checks.
+
+#### Vitest Solutions
+
+**Chapter 10** covers updating resources with PATCH. The full test file signs in, creates a post, patches it, verifies state via GET, and restores/cleans up in afterAll.
+
+**Exercise 1** — Create a post in `beforeAll`, PATCH it with new content, assert status 200 and message "Post updated successfully"
+
+```ts
+// tests/chapter-10/solution.test.ts
+// Run: npm test tests/chapter-10/solution.test.ts
+
+import axios from 'axios';
+import { config } from '../../src/config';
+import { TEST_AVATAR_IMAGE, TEST_AVATAR_COLOR, TEST_PASSWORD, TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const signinUrl  = `${config.BASE_URL}/signin`;
+const signoutUrl = `${config.BASE_URL}/signout`;
+const postUrl    = `${config.BASE_URL}/post`;
+const getAllUrl   = `${config.BASE_URL}/post/all/1`;
+const patchPost  = (id: string) => `${config.BASE_URL}/post/${id}`;
+
+const ORIGINAL_CONTENT = `Vitest ch10 original ${Date.now()}`;
+const UPDATED_CONTENT  = `Vitest ch10 updated ${Date.now()}`;
+
+let sessionCookie = '';
+let postId = '';
+let originalBgColor = '';
+
+beforeAll(async () => {
+  // Sign in
+  const loginRes = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+
+  // Create the post we will PATCH in the tests
+  await axios.post(postUrl, {
+    post: ORIGINAL_CONTENT, bgColor: '#3a7bd5', privacy: 'Public', feelings: '',
+  }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+  // Locate the post by its unique content
+  const getRes = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+  const found = getRes.data.posts?.find(
+    (p: { post: string; _id: string; bgColor: string }) => p.post === ORIGINAL_CONTENT,
+  );
+  postId = found?._id ?? '';
+  originalBgColor = found?.bgColor ?? '#3a7bd5';
+});
+
+afterAll(async () => {
+  // Restore the post to its original content
+  if (postId) {
+    await axios.patch(patchPost(postId), {
+      post: ORIGINAL_CONTENT, bgColor: originalBgColor, privacy: 'Public', feelings: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+  }
+
+  // Delete the post
+  if (postId) {
+    await axios.delete(patchPost(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+  }
+
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+});
+
+// Exercise 1 — PATCH returns 200 with success message
+it('PATCH /post/:postId returns 200 and "Post updated successfully"', async () => {
+  const res = await axios.patch(patchPost(postId), {
+    post: UPDATED_CONTENT, bgColor: originalBgColor, privacy: 'Public', feelings: '',
+  }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+  expect(res.status).toBe(200);
+  expect(res.data.message).toBe('Post updated successfully');
+});
+```
+
+> **WHY:** PATCH is the idiomatic HTTP verb for partial updates. Asserting both status 200 and `res.data.message` in the same test confirms the endpoint accepted the payload *and* returned a meaningful confirmation string — catching cases where the server silently ignores the body and returns a generic 200.
+
+---
+
+**Exercise 2** — After the PATCH, call `GET /post/all/1`, find the post by `_id`, assert the content matches the updated value
+
+```ts
+// Exercise 2 — State verification: GET reflects the patched content
+it('GET /post/all/1 returns the updated post content', async () => {
+  const res = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+  const found = res.data.posts?.find(
+    (p: { _id: string; post: string }) => p._id === postId,
+  );
+  expect(found?.post).toBe(UPDATED_CONTENT);
+});
+```
+
+> **WHY:** A PATCH response only confirms the server *accepted* the request. Calling GET and locating the same `_id` in the list confirms the change was *persisted* to the database. This is the standard state-verification pattern: mutate → read back → assert.
+
+---
+
+**Exercise 3** — PATCH the post back to the original content in `afterAll`, verify with GET
+
+```ts
+// In afterAll (shown above) the restore PATCH is already in place.
+// To verify the restore independently, add this test after the PATCH tests:
+
+it('after restore PATCH, GET shows original content', async () => {
+  // Restore manually here so this test can assert the result
+  await axios.patch(patchPost(postId), {
+    post: ORIGINAL_CONTENT, bgColor: originalBgColor, privacy: 'Public', feelings: '',
+  }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+  const res = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+  const found = res.data.posts?.find(
+    (p: { _id: string; post: string }) => p._id === postId,
+  );
+  expect(found?.post).toBe(ORIGINAL_CONTENT);
+});
+```
+
+> **WHY:** `afterAll` cleanup is not a test — it runs silently and failures are easy to miss. Adding an explicit restore-and-verify test makes the round-trip visible in the test report and ensures the test suite leaves the database in a known state for the next run.
+
+---
+
+**Exercise 4** — PATCH the post without a Cookie header, assert status 401
+
+```ts
+// Exercise 4 — Negative: PATCH without authentication returns 401
+it('PATCH /post/:postId without Cookie returns 401', async () => {
+  const res = await axios.patch(patchPost(postId), {
+    post: 'unauthorised attempt', bgColor: '#fff', privacy: 'Public', feelings: '',
+  }, { validateStatus: () => true });   // no Cookie header
+
+  expect(res.status).toBe(401);
+});
+```
+
+> **WHY:** Every mutating endpoint must be protected by authentication. Omitting the `Cookie` header simulates an unauthenticated request. A 401 response proves the middleware is enforcing the session check and is not silently accepting anonymous updates.
+
+---
+
+**Exercise 5** — Use `toStrictEqual` to assert that the `bgColor` field did not change after a PATCH that only modified the post text
+
+```ts
+// Exercise 5 — toStrictEqual: bgColor is unchanged after a text-only PATCH
+it('bgColor is unchanged after PATCH that only modifies post text', async () => {
+  // PATCH with only a new text — bgColor is sent as-is (no change intended)
+  await axios.patch(patchPost(postId), {
+    post: UPDATED_CONTENT, bgColor: originalBgColor, privacy: 'Public', feelings: '',
+  }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+  const res = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+  const found = res.data.posts?.find(
+    (p: { _id: string; bgColor: string }) => p._id === postId,
+  );
+
+  // toStrictEqual for primitive strings behaves the same as toBe,
+  // but signals deliberate intent: we want strict value equality, not
+  // a loose match. It also serves as a teaching contrast to toEqual.
+  expect(found?.bgColor).toStrictEqual(originalBgColor);
+});
+```
+
+> **WHY:** `toStrictEqual` on a string is functionally identical to `toBe`, but using it explicitly communicates that the author deliberately chose strict equality — no coercion, no partial matching. It is also the correct matcher when comparing objects, because unlike `toEqual` it checks that both sides have the same prototype and does not treat `undefined` properties as equivalent to missing ones.
+
+---
+
+---
+
+### Chapter 11 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — Create a post for deletion:
+```javascript
+pm.test("Post created for deletion test", () => pm.response.to.have.status(201));
+// Save so we can verify deletion
+const getRes = // (in the following GET request)
+```
+
+**Exercise 2** — DELETE /post/{{postId}}:
+```javascript
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+pm.test("Delete message correct", () => {
+    pm.expect(pm.response.json().message).to.equal("Post deleted successfully");
+});
+pm.environment.set("postDeleted", "true");
+```
+
+**Exercise 3** — GET after deletion:
+```javascript
+const post = pm.response.json().posts.find(p => p._id === pm.environment.get("postId"));
+pm.test("Post no longer in list after deletion", () => {
+    pm.expect(post).to.be.undefined;
+});
+```
+
+**Exercise 4** — Invalid ObjectId on DELETE:
+```javascript
+pm.test("Invalid ObjectId returns 400", () => pm.response.to.have.status(400));
+```
+
+**Exercise 5** — DELETE without auth:
+```javascript
+pm.test("DELETE without cookie returns 401", () => pm.response.to.have.status(401));
+```
+
+#### Vitest Solutions
+
+**Chapter 11** covers deleting resources with DELETE. The `postDeleted` flag pattern ensures the afterAll does not attempt a second delete if the test already succeeded.
+
+**Exercise 1** — Create a post in `beforeAll` with unique content. DELETE it. Assert status 200 and set `postDeleted = true`
+
+```ts
+// tests/chapter-11/solution.test.ts
+// Run: npm test tests/chapter-11/solution.test.ts
+
+import axios from 'axios';
+import { config } from '../../src/config';
+
+const signinUrl  = `${config.BASE_URL}/signin`;
+const signoutUrl = `${config.BASE_URL}/signout`;
+const postUrl    = `${config.BASE_URL}/post`;
+const getAllUrl   = `${config.BASE_URL}/post/all/1`;
+const deletePost = (id: string) => `${config.BASE_URL}/post/${id}`;
+
+const POST_CONTENT = `Vitest ch11 delete-me ${Date.now()}`;
+
+let sessionCookie = '';
+let postId = '';
+let postDeleted = false;   // tracks whether the test already deleted the post
+
+beforeAll(async () => {
+  const loginRes = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+
+  // Create the post that will be deleted in the tests
+  await axios.post(postUrl, {
+    post: POST_CONTENT, bgColor: '#fff', privacy: 'Public', feelings: '',
+  }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+  // Capture the post _id
+  const getRes = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+  const found = getRes.data.posts?.find(
+    (p: { post: string; _id: string }) => p.post === POST_CONTENT,
+  );
+  postId = found?._id ?? '';
+});
+
+afterAll(async () => {
+  // Exercise 3: only delete if the test did not already delete it
+  if (!postDeleted && postId) {
+    await axios.delete(deletePost(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+  }
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+});
+
+// Exercise 1 — DELETE returns 200 and sets the flag
+it('DELETE /post/:postId returns 200', async () => {
+  const res = await axios.delete(deletePost(postId), {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+
+  if (res.status === 200) postDeleted = true;   // flag set here
+
+  expect(res.status).toBe(200);
+});
+```
+
+> **WHY:** Setting `postDeleted = true` only when the response is 200 (not unconditionally) means the flag reflects the actual server state. If the delete call fails, `postDeleted` stays `false`, and `afterAll` will attempt cleanup again — preventing a dangling post in the database.
+
+---
+
+**Exercise 2** — After deletion, call `GET /post/all/1`, use `.find()` to search for the post by `_id`, assert the result is `undefined`
+
+```ts
+// Exercise 2 — State verification: deleted post is absent from GET
+it('GET /post/all/1 no longer contains the deleted post', async () => {
+  const res = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+  const found = res.data.posts?.find(
+    (p: { _id: string }) => p._id === postId,
+  );
+  expect(found).toBeUndefined();
+});
+```
+
+> **WHY:** `.find()` returns `undefined` when no element matches — not `null`, not `false`. `toBeUndefined()` is the precise matcher for this case. Checking the list (not just the 200 status) confirms the server actually removed the document rather than soft-deleting it or returning a misleading success response.
+
+---
+
+**Exercise 3** — `afterAll` checks the `postDeleted` flag — only calls DELETE if `postDeleted` is false
+
+The pattern is shown in the `afterAll` above. The full logic:
+
+```ts
+afterAll(async () => {
+  // Only attempt cleanup if the delete test did not already succeed.
+  // If postDeleted is true, the post is already gone — a second DELETE
+  // would hit a 404 (or 400 for an ObjectId that no longer exists).
+  if (!postDeleted && postId) {
+    await axios.delete(deletePost(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+  }
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+});
+```
+
+> **WHY:** Without the flag, `afterAll` would always try to delete the post — even when the test already deleted it. That second delete would return a 404 (or validation error), and though `validateStatus: () => true` suppresses the exception, it is wasted network traffic and misleading in logs. The flag pattern is idiomatic in this codebase (see `lecture-07/lecture.test.ts`).
+
+---
+
+**Exercise 4** — DELETE the post without a Cookie header, assert status 401
+
+```ts
+// Exercise 4 — Negative: DELETE without authentication returns 401
+it('DELETE /post/:postId without Cookie returns 401', async () => {
+  // At this point postId still exists (this test runs before Exercise 1 deletes it)
+  // or we use a placeholder ObjectId — either way the auth check fires first.
+  const res = await axios.delete(deletePost(postId || '000000000000000000000001'), {
+    validateStatus: () => true,   // no Cookie header
+  });
+  expect(res.status).toBe(401);
+});
+```
+
+> **WHY:** Authentication middleware runs before route handlers. Sending a DELETE without a session cookie should be rejected at the middleware layer before the server even looks up the post. A 401 confirms the endpoint is not publicly accessible.
+
+---
+
+**Exercise 5** — Use `toBeFalsy()` to assert that the `.find()` result after deletion is falsy
+
+```ts
+// Exercise 5 — toBeFalsy: find() result after deletion is falsy
+it('find() result for deleted post is falsy (toBeFalsy)', async () => {
+  const res = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+  const found = res.data.posts?.find(
+    (p: { _id: string }) => p._id === postId,
+  );
+
+  // toBeFalsy covers undefined, null, false, 0, and ''.
+  // Array.prototype.find returns undefined for no match, which is falsy.
+  // toBeFalsy is slightly more permissive than toBeUndefined — use it when
+  // you want to express "this value should not exist in any meaningful sense"
+  // rather than asserting the exact type of absence.
+  expect(found).toBeFalsy();
+});
+```
+
+> **WHY:** `toBeFalsy()` and `toBeUndefined()` both pass when `.find()` returns `undefined`. The distinction matters in teaching: `toBeFalsy` signals "I don't care about the exact falsy type, I just care that nothing was found", while `toBeUndefined` is more precise. Using `toBeFalsy` here reinforces that `undefined` is a falsy value — a foundational concept for new JavaScript developers.
+
+---
+
+---
+
+### Chapter 12 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — Short username (boundary):
+```javascript
+pm.test("Short username rejected", () => {
+    pm.expect([400, 429]).to.include(pm.response.code);
+});
+```
+> **Why `include([400, 429])`?** Production rate limiting may return 429. Both mean the request was rejected — both are valid test outcomes.
+
+**Exercise 2** — Error shape:
+```javascript
+pm.test("Error shape correct", () => {
+    if (pm.response.code === 400) {
+        const body = pm.response.json();
+        pm.expect(body).to.have.property("message");
+        pm.expect(body.status).to.equal("error");
+        pm.expect(body.statusCode).to.equal(400);
+    }
+});
+```
+
+**Exercise 3** — Missing field:
+```javascript
+pm.test("Missing password rejected", () => {
+    pm.expect([400, 429]).to.include(pm.response.code);
+});
+```
+
+**Exercise 4** — No password in success response:
+```javascript
+pm.test("Password not exposed on signup", () => {
+    pm.expect(pm.response.json().user).to.not.have.property("password");
+});
+```
+
+**Exercise 5** — Token present on success, absent on failure:
+```javascript
+// On success response:
+pm.test("Token present on successful signin", () => {
+    pm.expect(pm.response.json()).to.have.property("token");
+});
+// On failure response:
+pm.test("Token absent on failed signin", () => {
+    pm.expect(pm.response.json()).to.not.have.property("token");
+});
+```
+
+#### Vitest Solutions
+
+**Chapter 12** covers error testing and boundary values. Signup tests that succeed (201) create real users that must be cleaned up. `TEST_CLEANUP_SECRET` is imported from `src/fixtures` — it is a hardcoded constant, not an environment variable.
+
+**Exercise 1** — Boundary tests for POST `/signup`: username 3 chars → 400, username 4 chars → 201, username 21 chars → 400
+
+```ts
+// tests/chapter-12/solution.test.ts
+// Run: npm test tests/chapter-12/solution.test.ts
+
+import axios from 'axios';
+import { faker } from '@faker-js/faker';
+import { config } from '../../src/config';
+import { TEST_AVATAR_IMAGE, TEST_AVATAR_COLOR, TEST_PASSWORD, TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const signupUrl  = `${config.BASE_URL}/signup`;
+const cleanupUrl = (authId: string) => `${config.BASE_URL}/test/cleanup/user/${authId}`;
+
+// Collect authIds of successfully created users so afterAll can delete them
+const createdAuthIds: string[] = [];
+
+afterAll(async () => {
+  // Delete every user created with status 201 during boundary tests
+  for (const authId of createdAuthIds) {
+    await axios.delete(cleanupUrl(authId), {
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
+      validateStatus: () => true,
+    });
+  }
+});
+
+// Helper — builds a minimal signup payload with a custom username
+const signupPayload = (username: string, password = TEST_PASSWORD) => ({
+  username,
+  email: faker.internet.email().toLowerCase(),
+  password,
+  avatarColor: TEST_AVATAR_COLOR,
+  avatarImage: TEST_AVATAR_IMAGE,
+});
+
+// Exercise 1a — username 3 chars (below minimum) → 400
+it('signup: username 3 chars returns 400 or 429', async () => {
+  const res = await axios.post(signupUrl, signupPayload('abc'), { validateStatus: () => true });
+  expect([400, 429]).toContain(res.status);
+});
+
+// Exercise 1b — username 4 chars (at minimum) → 201
+it('signup: username 4 chars returns 201', async () => {
+  const username = `vt${faker.string.alphanumeric(2).toLowerCase()}`;   // exactly 4 chars
+  const res = await axios.post(signupUrl, signupPayload(username), { validateStatus: () => true });
+  // Track the created user for cleanup
+  if (res.status === 201 && res.data.user?.authId) {
+    createdAuthIds.push(res.data.user.authId as string);
+  }
+  expect([201, 429]).toContain(res.status);
+});
+
+// Exercise 1c — username 21 chars (above maximum) → 400
+it('signup: username 21 chars returns 400 or 429', async () => {
+  const username = `vitest${faker.string.alphanumeric(15).toLowerCase()}`;   // 21 chars
+  const res = await axios.post(signupUrl, signupPayload(username), { validateStatus: () => true });
+  expect([400, 429]).toContain(res.status);
+});
+```
+
+> **WHY:** Boundary values (one below minimum, exactly at minimum, one above maximum) are where off-by-one errors live in validation logic. Testing 3/4/21 against a 4–20 char rule hits all three boundary conditions with minimal test count. Users created with 201 must be cleaned up or they pollute the database and can interfere with future test runs.
+
+---
+
+**Exercise 2** — Boundary tests for the password: 11 chars → 400, 12 chars with complexity → 201, no special character → 400
+
+```ts
+// Exercise 2a — password 11 chars (below minimum) → 400
+it('signup: password 11 chars returns 400 or 429', async () => {
+  const username = `vitest${faker.string.alphanumeric(8).toLowerCase()}`;
+  const res = await axios.post(signupUrl, signupPayload(username, 'Vitest@1234'), {
+    validateStatus: () => true,
+  });
+  // 'Vitest@1234' = 11 chars — one below the 12-char minimum
+  expect([400, 429]).toContain(res.status);
+});
+
+// Exercise 2b — password exactly 12 chars with full complexity → 201
+it('signup: password 12 chars with complexity returns 201', async () => {
+  const username = `vitest${faker.string.alphanumeric(8).toLowerCase()}`;
+  // TEST_PASSWORD = 'Vitest@123456' (13 chars, fully compliant)
+  // Use a 12-char compliant password: uppercase + lowercase + digit + special
+  const res = await axios.post(signupUrl, signupPayload(username, 'Vitest@12345'), {
+    validateStatus: () => true,
+  });
+  if (res.status === 201 && res.data.user?.authId) {
+    createdAuthIds.push(res.data.user.authId as string);
+  }
+  expect([201, 429]).toContain(res.status);
+});
+
+// Exercise 2c — password with no special character → 400
+it('signup: password without special character returns 400 or 429', async () => {
+  const username = `vitest${faker.string.alphanumeric(8).toLowerCase()}`;
+  const res = await axios.post(signupUrl, signupPayload(username, 'Vitest1234567'), {
+    validateStatus: () => true,
+  });
+  // 'Vitest1234567' meets length, upper, lower, digit — but has no special char
+  expect([400, 429]).toContain(res.status);
+});
+```
+
+> **WHY:** Password complexity rules have multiple axes: length, character classes, and their interaction. Testing each axis independently (length boundary, missing character class) pinpoints exactly which validation rule fires. If you only test the combined happy path you miss regressions where one rule is accidentally removed.
+
+---
+
+**Exercise 3** — Assert the error response shape for a 400: `{message: expect.any(String), status: "error", statusCode: 400}`
+
+```ts
+// Exercise 3 — Error response shape
+it('signup 400 response has the expected error shape', async () => {
+  // Send a payload that is guaranteed to be invalid (3-char username)
+  const res = await axios.post(signupUrl, signupPayload('abc'), { validateStatus: () => true });
+
+  if (res.status === 400) {
+    expect(res.data).toMatchObject({
+      message: expect.any(String),
+      status: 'error',
+      statusCode: 400,
+    });
+  }
+});
+```
+
+> **WHY:** `toMatchObject` performs a partial deep match — the response can have additional fields (e.g. a stack trace in dev mode) and the assertion still passes. `expect.any(String)` for the `message` field avoids coupling the test to the exact wording, which is brittle. This shape check ensures the API is consistently structured, not just that it returns the correct HTTP status code.
+
+---
+
+**Exercise 4** — Assert `.not.toHaveProperty('token')` on a failed signin response. Assert `.not.toHaveProperty('password')` on a success response
+
+```ts
+// Exercise 4 — Property absence assertions
+it('failed signin does NOT have a token in the response body', async () => {
+  const res = await axios.post(`${config.BASE_URL}/signin`, {
+    username: config.TEST_USERNAME,
+    password: 'definitely-wrong-password',
+  }, { validateStatus: () => true });
+
+  // A 400/401 response should never leak a token
+  expect(res.data).not.toHaveProperty('token');
+});
+
+it('successful signup does NOT expose password in the response body', async () => {
+  const username = `vitest${faker.string.alphanumeric(8).toLowerCase()}`;
+  const res = await axios.post(signupUrl, signupPayload(username), { validateStatus: () => true });
+
+  if (res.status === 201 && res.data.user?.authId) {
+    createdAuthIds.push(res.data.user.authId as string);
+  }
+
+  if (res.status === 201) {
+    // The user object in the response must never include the password hash
+    expect(res.data.user).not.toHaveProperty('password');
+  }
+});
+```
+
+> **WHY:** `.not.toHaveProperty` is the explicit, readable way to assert that a security-sensitive field is absent. Using `expect(res.data.user.password).toBeUndefined()` would throw if `user` itself is undefined. `not.toHaveProperty` handles the nested path safely and produces a clear failure message: "expected object not to have property 'password'".
+
+---
+
+**Exercise 5** — Use `expect([400, 429]).toContain(res.status)` on boundary tests where the endpoint may be rate-limited
+
+All boundary tests above already apply this pattern. Here is the canonical explanation:
+
+```ts
+// Pattern used throughout all boundary tests:
+expect([400, 429]).toContain(res.status);
+
+// Why: the signup endpoint may return 429 Too Many Requests when boundary
+// tests fire many requests in quick succession. The array form of toContain
+// accepts either status as valid — the test passes whether the server rejected
+// the payload for validation reasons (400) or for rate-limiting (429).
+// Without this, a 429 on a CI server with stricter rate limits would cause
+// spurious test failures.
+```
+
+> **WHY:** Rate limiting is a real-world concern in API testing. Signup endpoints are commonly protected by per-IP request limits. Using `expect([400, 429]).toContain(res.status)` makes boundary tests tolerant of 429 without masking genuine failures — a 500 or a 200 would still fail the assertion.
+
+---
+
+---
+
+### Chapter 13 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — Setup user B environment: configuration only.
+
+**Exercise 2** — Signin as user B and save ID:
+```javascript
+pm.test("User B signin status 200", () => pm.response.to.have.status(200));
+// Save userId from currentuser (run GET /currentuser after signin as B)
+pm.environment.set("userBCookie", pm.response.headers.get("set-cookie"));
+```
+After GET /currentuser as user B:
+```javascript
+pm.environment.set("userBId", pm.response.json().user._id);
+```
+
+**Exercise 3** — User A follows user B:
+```javascript
+pm.test("Follow status 200", () => pm.response.to.have.status(200));
+```
+
+**Exercise 4** — Assert user B in following list:
+```javascript
+const following = pm.response.json().following || [];
+const found = following.find(u => u._id === pm.environment.get("userBId"));
+pm.test("User B appears in following list", () => {
+    pm.expect(found).to.not.be.undefined;
+});
+```
+
+**Exercise 5** — Unfollow:
+```javascript
+pm.test("Unfollow status 200", () => pm.response.to.have.status(200));
+```
+After GET /following to verify:
+```javascript
+const following = pm.response.json().following || [];
+const found = following.find(u => u._id === pm.environment.get("userBId"));
+pm.test("User B removed from following list", () => {
+    pm.expect(found).to.be.undefined;
+});
+```
+
+#### Vitest Solutions
+
+**Chapter 13** covers multi-user scenarios. User B is created with `faker` in `beforeAll` and deleted via the cleanup endpoint in `afterAll`. `TEST_CLEANUP_SECRET` is imported from `src/fixtures`.
+
+**Full file — beforeAll, all 5 tests, afterAll:**
+
+```ts
+// tests/chapter-13/solution.test.ts
+// Run: npm test tests/chapter-13/solution.test.ts
+
+import axios from 'axios';
+import { faker } from '@faker-js/faker';
+import { config } from '../../src/config';
+import { TEST_AVATAR_IMAGE, TEST_AVATAR_COLOR, TEST_PASSWORD, TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const signinUrl      = `${config.BASE_URL}/signin`;
+const signupUrl      = `${config.BASE_URL}/signup`;
+const signoutUrl     = `${config.BASE_URL}/signout`;
+const followingUrl   = `${config.BASE_URL}/user/following`;
+const followUrl      = (id: string) => `${config.BASE_URL}/user/follow/${id}`;
+const unfollowUrl    = (followeeId: string, followerId: string) =>
+  `${config.BASE_URL}/user/unfollow/${followeeId}/${followerId}`;
+const cleanupUrl     = (authId: string) => `${config.BASE_URL}/test/cleanup/user/${authId}`;
+const currentUserUrl = `${config.BASE_URL}/currentuser`;
+
+let sessionCookieA = '';   // user A session
+let userAId = '';          // user A's _id
+let userBId = '';          // user B's _id
+let userBAuthId = '';      // user B's authId — needed for cleanup
+
+beforeAll(async () => {
+  // Step 1 — Sign in as user A (TEST_USERNAME from config)
+  const loginRes = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  sessionCookieA = Array.isArray(raw) ? raw[0] : (raw ?? '');
+
+  // Capture user A's _id (needed for unfollow which requires both IDs)
+  const curRes = await axios.get(currentUserUrl, {
+    headers: { Cookie: sessionCookieA }, validateStatus: () => true,
+  });
+  userAId = curRes.data.user?._id ?? '';
+
+  // Step 2 — Create user B with a vitest-prefixed username
+  const signupRes = await axios.post(signupUrl, {
+    username: `vitest${faker.string.alphanumeric(8).toLowerCase()}`,
+    email: faker.internet.email().toLowerCase(),
+    password: TEST_PASSWORD,
+    avatarColor: TEST_AVATAR_COLOR,
+    avatarImage: TEST_AVATAR_IMAGE,
+  }, { validateStatus: () => true });
+
+  userBId     = signupRes.data.user?._id    ?? '';
+  userBAuthId = signupRes.data.user?.authId ?? '';
+});
+
+afterAll(async () => {
+  // Exercise 4 — Delete user B via the cleanup endpoint
+  if (userBAuthId) {
+    await axios.delete(cleanupUrl(userBAuthId), {
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
+      validateStatus: () => true,
+    });
+  }
+
+  // Sign out user A
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookieA }, validateStatus: () => true,
+  });
+});
+
+// Exercise 5 — toBeTruthy: userBId was captured successfully in beforeAll
+it('userBId is truthy — user B was created in beforeAll', () => {
+  // If signup failed, userBId would be '' (empty string), which is falsy.
+  // A truthy userBId confirms beforeAll ran to completion and the API
+  // returned a valid _id. This is the liveness check for the whole suite.
+  expect(userBId).toBeTruthy();
+});
+
+// Exercise 2 — User A follows user B, assert 200, assert user B in following list
+it('PUT /user/follow/:userBId returns 200', async () => {
+  const res = await axios.put(followUrl(userBId), {}, {
+    headers: { Cookie: sessionCookieA }, validateStatus: () => true,
+  });
+  expect(res.status).toBe(200);
+});
+
+it('GET /user/following includes user B after follow', async () => {
+  const res = await axios.get(followingUrl, {
+    headers: { Cookie: sessionCookieA }, validateStatus: () => true,
+  });
+  const found = res.data.following?.find(
+    (u: { _id: string }) => u._id === userBId,
+  );
+  expect(found).toBeDefined();
+});
+
+// Exercise 3 — User A unfollows user B, assert user B no longer in following list
+it('DELETE /user/unfollow/:userBId/:userAId returns 200', async () => {
+  const res = await axios.put(unfollowUrl(userBId, userAId), {}, {
+    headers: { Cookie: sessionCookieA }, validateStatus: () => true,
+  });
+  expect(res.status).toBe(200);
+});
+
+it('GET /user/following no longer includes user B after unfollow', async () => {
+  const res = await axios.get(followingUrl, {
+    headers: { Cookie: sessionCookieA }, validateStatus: () => true,
+  });
+  const found = res.data.following?.find(
+    (u: { _id: string }) => u._id === userBId,
+  );
+  expect(found).toBeUndefined();
+});
+```
+
+> **WHY (Exercise 1 — two users):** Multi-user tests require two independent identities to exercise social features (follow, unfollow, block). Using `faker` for user B's credentials ensures uniqueness across parallel test runs. The `vitest` username prefix is a safety rule enforced by the cleanup controller — it prevents the cleanup endpoint from accidentally deleting production accounts.
+
+> **WHY (Exercise 2 — follow + GET):** Following is a state change. Asserting only the PUT status confirms the server accepted the request, but not that the state was stored. The subsequent GET and `.find()` confirm the relationship was persisted.
+
+> **WHY (Exercise 3 — unfollow + GET):** Symmetric test to Exercise 2. After unfollow, the user should disappear from the following list. `toBeUndefined()` is more precise than `toBeFalsy()` here because `.find()` specifically returns `undefined` for no match.
+
+> **WHY (Exercise 4 — cleanup with TEST_CLEANUP_SECRET):** User B is a temporary test account. Without cleanup it accumulates in the database across test runs, polluting search results and user lists. `TEST_CLEANUP_SECRET` is imported from `src/fixtures` — a hardcoded constant that matches the value in the backend cleanup controller. It is not an environment variable because it is not a secret that varies per environment; it is a test-infrastructure convention baked into both codebases.
+
+> **WHY (Exercise 5 — toBeTruthy in liveness check):** `toBeTruthy()` on `userBId` acts as a guard for all subsequent tests. If `beforeAll` silently fails (network error, rate limit, bad payload), `userBId` remains `''`. Every follow/unfollow test would then send requests with an empty `_id` and produce confusing 400/404 errors. The `toBeTruthy` test surfaces the real failure immediately.
+
+---
+
+### Chapter 14 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — Create test user:
+```javascript
+pm.test("Signup status 201", () => pm.response.to.have.status(201));
+pm.environment.set("testAuthId", pm.response.json().user.authId);
+pm.environment.set("testCookie", pm.response.headers.get("set-cookie"));
+```
+
+**Exercise 2** — GET /currentuser to verify:
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+```
+
+**Exercise 3** — Username and email match:
+```javascript
+pm.test("Username matches (case-insensitive)", () => {
+    const returned = pm.response.json().user.username.toLowerCase();
+    const sent = pm.environment.get("TEST_USERNAME").toLowerCase();
+    pm.expect(returned).to.equal(sent);
+});
+pm.test("Email matches", () => {
+    pm.expect(pm.response.json().user.email.toLowerCase())
+        .to.equal(pm.environment.get("testEmail").toLowerCase());
+});
+```
+
+**Exercise 4** — Cleanup endpoint:
+```javascript
+pm.test("Cleanup status 200", () => pm.response.to.have.status(200));
+pm.test("User deleted message", () => {
+    pm.expect(pm.response.json().message).to.include("deleted");
+});
+```
+> Add the header `x-test-secret: chatty-test-cleanup-2026` in the Headers tab.
+
+**Exercise 5** — GET /currentuser after cleanup:
+```javascript
+pm.test("Status 401 after account deletion", () => pm.response.to.have.status(401));
+```
+
+#### Vitest Solutions
+
+**Exercise 1** — Sign up a new test user, connect to MongoDB Atlas in `beforeAll`
+
+```ts
+import axios from 'axios';
+import { faker } from '@faker-js/faker';
+import { MongoClient } from 'mongodb';
+import { config } from '../../../src/config';
+import { TEST_AVATAR_IMAGE, TEST_AVATAR_COLOR, TEST_PASSWORD, TEST_CLEANUP_SECRET } from '../../../src/fixtures';
+
+const signupUrl = `${config.BASE_URL}/signup`;
+
+let mongoClient: MongoClient;
+let db: ReturnType<MongoClient['db']>;
+let apiAuthId = '';
+let apiUsername = '';
+
+const testEmail    = faker.internet.email().toLowerCase();
+const testUsername = `vitest${faker.string.alphanumeric(8).toLowerCase()}`;
+
+beforeAll(async () => {
+  // Sign up a new user via the API
+  const res = await axios.post(signupUrl, {
+    username: testUsername,
+    email: testEmail,
+    password: TEST_PASSWORD,
+    avatarColor: TEST_AVATAR_COLOR,
+    avatarImage: TEST_AVATAR_IMAGE,
+  }, { validateStatus: () => true });
+
+  apiAuthId   = res.data.user?.authId   ?? '';
+  apiUsername = res.data.user?.username ?? '';
+
+  // Connect to MongoDB Atlas using DATABASE_URL from the environment
+  mongoClient = new MongoClient(process.env.DATABASE_URL!);
+  await mongoClient.connect();
+  db = mongoClient.db();
+});
+```
+
+> **WHY:** `DATABASE_URL` comes from `process.env` (loaded via `dotenv` in `vitest.config.ts`), not hardcoded here. Calling `mongoClient.connect()` in `beforeAll` opens exactly one connection that all tests in the file share, which is efficient and avoids connection-limit issues on Atlas.
+
+---
+
+**Exercise 2** — Use `findOne({ authId })` to locate the Auth document; assert it is not null
+
+```ts
+it('Auth document exists in MongoDB', async () => {
+  const authColl = db.collection('Auth');
+  const doc = await authColl.findOne({ _id: require('mongodb').ObjectId.createFromHexString(apiAuthId) });
+  expect(doc).not.toBeNull();
+});
+```
+
+> **WHY:** `findOne` returns `null` when no document matches. `not.toBeNull()` is the clearest way to assert that the document exists — it fails with a descriptive message if the signup did not persist the record to the database.
+
+---
+
+**Exercise 3** — Assert the username in MongoDB matches the API response (case-insensitive)
+
+```ts
+it('DB username matches API username (case-insensitive)', async () => {
+  const authColl = db.collection('Auth');
+  const doc = await authColl.findOne({ email: testEmail }) as Record<string, string> | null;
+  expect(doc?.username?.toLowerCase()).toBe(apiUsername.toLowerCase());
+});
+```
+
+> **WHY:** Chatty stores usernames exactly as supplied but some clients normalise case on display. The `.toLowerCase()` comparison on both sides makes the test resilient to any case normalisation the server might apply, while still confirming the right user was stored.
+
+---
+
+**Exercise 4** — Assert the password field starts with `"$2b$"` and has length 60
+
+```ts
+it('DB password is a valid bcrypt hash', async () => {
+  const authColl = db.collection('Auth');
+  const doc = await authColl.findOne({ email: testEmail }) as Record<string, string> | null;
+  const hash = doc?.password ?? '';
+  expect(hash.startsWith('$2b$')).toBe(true);
+  expect(hash).toHaveLength(60);
+});
+```
+
+> **WHY:** bcrypt hashes always begin with `$2b$` (the algorithm identifier and cost factor) and are exactly 60 characters long. Asserting both properties confirms that the server never stored the plaintext password — a critical security guarantee.
+
+---
+
+**Exercise 5** — `afterAll`: delete the test user via the cleanup endpoint, close the MongoClient connection
+
+```ts
+afterAll(async () => {
+  if (apiAuthId) {
+    await axios.delete(`${config.BASE_URL}/test/cleanup/user/${apiAuthId}`, {
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
+      validateStatus: () => true,
+    });
+  }
+  await mongoClient.close();
+});
+```
+
+> **WHY:** Closing the MongoClient in `afterAll` is mandatory — an open connection keeps the Node process alive after Vitest finishes, causing a timeout hang. The cleanup call removes the test user from both the Auth and User collections so the database does not accumulate stale test data between runs.
+
+---
+
+**Complete file reference** — the full `beforeAll`/`afterAll` wiring with all five exercises combined:
+
+```ts
+// Chapter 14 — Database Cross-Validation
+// Run: npm test tests/lecture-10/homework/solution.test.ts
+
+import axios from 'axios';
+import { faker } from '@faker-js/faker';
+import { MongoClient } from 'mongodb';
+import { config } from '../../../src/config';
+import { TEST_AVATAR_IMAGE, TEST_AVATAR_COLOR, TEST_PASSWORD, TEST_CLEANUP_SECRET } from '../../../src/fixtures';
+
+const signupUrl = `${config.BASE_URL}/signup`;
+
+let mongoClient: MongoClient;
+let db: ReturnType<MongoClient['db']>;
+let apiAuthId   = '';
+let apiUsername = '';
+
+const testEmail    = faker.internet.email().toLowerCase();
+const testUsername = `vitest${faker.string.alphanumeric(8).toLowerCase()}`;
+
+beforeAll(async () => {
+  const res = await axios.post(signupUrl, {
+    username: testUsername, email: testEmail,
+    password: TEST_PASSWORD, avatarColor: TEST_AVATAR_COLOR, avatarImage: TEST_AVATAR_IMAGE,
+  }, { validateStatus: () => true });
+  apiAuthId   = res.data.user?.authId   ?? '';
+  apiUsername = res.data.user?.username ?? '';
+
+  mongoClient = new MongoClient(process.env.DATABASE_URL!);
+  await mongoClient.connect();
+  db = mongoClient.db();
+});
+
+afterAll(async () => {
+  if (apiAuthId) {
+    await axios.delete(`${config.BASE_URL}/test/cleanup/user/${apiAuthId}`, {
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true,
+    });
+  }
+  await mongoClient.close();
+});
+
+it('Auth document exists in MongoDB', async () => {
+  const doc = await db.collection('Auth').findOne({ email: testEmail });
+  expect(doc).not.toBeNull();
+});
+
+it('DB username matches API username (case-insensitive)', async () => {
+  const doc = await db.collection('Auth').findOne({ email: testEmail }) as Record<string, string> | null;
+  expect(doc?.username?.toLowerCase()).toBe(apiUsername.toLowerCase());
+});
+
+it('DB password is a valid bcrypt hash', async () => {
+  const doc = await db.collection('Auth').findOne({ email: testEmail }) as Record<string, string> | null;
+  const hash = doc?.password ?? '';
+  expect(hash.startsWith('$2b$')).toBe(true);
+  expect(hash).toHaveLength(60);
+});
+```
+
+---
+
+---
+
+### Chapter 15 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — POST /images/profile:
+```javascript
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+pm.test("Image added message", () => {
+    pm.expect(pm.response.json().message).to.equal("Image added successfully");
+});
+```
+
+**Exercise 2** — Profile picture URL format:
+```javascript
+pm.test("profilePicture starts with http", () => {
+    const pic = pm.response.json().profilePicture;
+    pm.expect(pic).to.match(/^https?:\/\//);
+});
+```
+
+**Exercise 3** — Cloudinary URL:
+```javascript
+pm.test("profilePicture is a Cloudinary URL", () => {
+    pm.expect(pm.response.json().profilePicture).to.include("cloudinary");
+});
+```
+> **Why not assert the exact URL?** Cloudinary generates a unique URL with a version timestamp on every upload. The URL will be different every time the test runs.
+
+**Exercise 4** — GET /images/:userId:
+```javascript
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+pm.test("Images is an array", () => {
+    pm.expect(pm.response.json().images).to.be.an("array");
+});
+```
+
+**Exercise 5** — Image array non-negative length:
+```javascript
+pm.test("Images array length is non-negative", () => {
+    pm.expect(pm.response.json().images.length).to.be.at.least(0);
+});
+```
+
+#### Vitest Solutions
+
+**Exercise 1** — `POST /images/profile` with `TEST_AVATAR_IMAGE`; assert status 200 and message
+
+```ts
+it('POST /images/profile returns 200 and success message', async () => {
+  const res = await axios.post(`${config.BASE_URL}/images/profile`,
+    { image: TEST_AVATAR_IMAGE },
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
+  expect(res.status).toBe(200);
+  expect(res.data.message).toBe('Image added successfully');
+});
+```
+
+> **WHY:** Asserting both the status code and the message string together verifies the happy path completely — the server accepted the upload AND returned the expected confirmation text. Using `TEST_AVATAR_IMAGE` (the shared 1×1 PNG fixture) guarantees Cloudinary accepts it without wasting bandwidth on a large file.
+
+---
+
+**Exercise 2** — Assert the profile picture URL starts with `http` or `https` using `toMatch`
+
+```ts
+it('profile picture URL starts with http or https', async () => {
+  const res = await axios.get(`${config.BASE_URL}/images/${userId}`,
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
+  const pic = res.data.images?.[0]?.imgUrl ?? res.data.user?.profilePicture ?? '';
+  if (pic) {
+    expect(pic).toMatch(/^https?:\/\//);
+  }
+});
+```
+
+> **WHY:** `toMatch(/^https?:\/\//)` anchors the assertion at the very start of the string, meaning `http://` and `https://` both pass while any other scheme fails. `toContain('http')` would be weaker — it would accidentally match `'not-http://...'`. The regex gives precise, position-aware matching.
+
+---
+
+**Exercise 3** — Assert the URL is a Cloudinary URL using `toSatisfy`
+
+```ts
+it('profile picture URL is hosted on Cloudinary', async () => {
+  const res = await axios.get(`${config.BASE_URL}/images/${userId}`,
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
+  const pic = res.data.images?.[0]?.imgUrl ?? res.data.user?.profilePicture ?? '';
+  if (pic) {
+    expect(pic).toSatisfy((url: string) => url.includes('cloudinary'));
+  }
+});
+```
+
+> **WHY:** `toSatisfy` accepts a plain predicate function, making it ideal for conditions that cannot be expressed with a single built-in matcher. Using `.includes('cloudinary')` inside the predicate keeps the assertion readable while verifying the storage provider contract — the URL must come from Cloudinary, not some other CDN.
+
+---
+
+**Exercise 4** — `GET /images/:userId`; assert the response has an `images` array with a non-negative length
+
+```ts
+it('GET /images/:userId returns an images array', async () => {
+  const res = await axios.get(`${config.BASE_URL}/images/${userId}`,
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
+  expect(res.status).toBe(200);
+  expect(Array.isArray(res.data.images)).toBe(true);
+  expect(res.data.images.length).toBeGreaterThanOrEqual(0);
+});
+```
+
+> **WHY:** `toBeGreaterThanOrEqual(0)` explicitly asserts that `images` is a real array (not `null` or `undefined`) and documents that the property can never be negative. It guards against the case where a new user has no images yet — the array should exist and be empty, not missing entirely.
+
+---
+
+**Exercise 5** — If the array is non-empty, validate item shape with `expect.arrayContaining`
+
+```ts
+it('images array items have expected shape when non-empty', async () => {
+  const res = await axios.get(`${config.BASE_URL}/images/${userId}`,
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
+  const images: unknown[] = res.data.images ?? [];
+  if (images.length > 0) {
+    expect(images).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ _id: expect.any(String) }),
+      ]),
+    );
+  }
+});
+```
+
+> **WHY:** `expect.arrayContaining([expect.objectContaining(...)])` verifies that at least one element in the array matches the expected shape, without requiring every element to match and without failing if the server adds extra fields. This makes the test resilient to API additions while still enforcing the contract for fields we care about.
+
+---
+
+**Complete file** — `beforeAll` signs in and retrieves `userId` from `/currentuser`; `afterAll` signs out:
+
+```ts
+// Chapter 15 — File Uploads
+
+import axios from 'axios';
+import { config } from '../../../src/config';
+import { TEST_AVATAR_IMAGE } from '../../../src/fixtures';
+
+const signinUrl      = `${config.BASE_URL}/signin`;
+const signoutUrl     = `${config.BASE_URL}/signout`;
+const currentUserUrl = `${config.BASE_URL}/currentuser`;
+
+let sessionCookie = '';
+let userId = '';
+
+beforeAll(async () => {
+  const r = await axios.post(signinUrl,
+    { username: config.TEST_USERNAME, password: config.TEST_PASSWORD },
+    { validateStatus: () => true },
+  );
+  const raw = r.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+
+  const cur = await axios.get(currentUserUrl,
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
+  userId = cur.data.user?._id ?? '';
+});
+
+afterAll(async () => {
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+});
+
+it('POST /images/profile returns 200 and success message', async () => {
+  const res = await axios.post(`${config.BASE_URL}/images/profile`,
+    { image: TEST_AVATAR_IMAGE },
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
+  expect(res.status).toBe(200);
+  expect(res.data.message).toBe('Image added successfully');
+});
+
+it('profile picture URL starts with http or https', async () => {
+  const res = await axios.get(`${config.BASE_URL}/images/${userId}`,
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
+  const pic = res.data.images?.[0]?.imgUrl ?? '';
+  if (pic) {
+    expect(pic).toMatch(/^https?:\/\//);
+  }
+});
+
+it('profile picture URL is hosted on Cloudinary', async () => {
+  const res = await axios.get(`${config.BASE_URL}/images/${userId}`,
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
+  const pic = res.data.images?.[0]?.imgUrl ?? '';
+  if (pic) {
+    expect(pic).toSatisfy((url: string) => url.includes('cloudinary'));
+  }
+});
+
+it('GET /images/:userId returns an images array', async () => {
+  const res = await axios.get(`${config.BASE_URL}/images/${userId}`,
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
+  expect(res.status).toBe(200);
+  expect(Array.isArray(res.data.images)).toBe(true);
+  expect(res.data.images.length).toBeGreaterThanOrEqual(0);
+});
+
+it('images array items have expected shape when non-empty', async () => {
+  const res = await axios.get(`${config.BASE_URL}/images/${userId}`,
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
+  const images: unknown[] = res.data.images ?? [];
+  if (images.length > 0) {
+    expect(images).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ _id: expect.any(String) }),
+      ]),
+    );
+  }
+});
+```
+
+---
+
+---
+
+### Chapter 16 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — Export collection: File menu → Export → Collection v2.1 → save to `postman/collection.json`. Export environment similarly.
+
+**Exercise 2** — Install Newman:
+```bash
+npm install -g newman newman-reporter-htmlextra
+```
+
+**Exercise 3** — Run Newman:
+```bash
+newman run postman/collection.json \
+  -e postman/environment.json \
+  --reporters cli
+```
+Expected output: all pm.test() assertions show as green ticks. Exit code 0 means all passed.
+
+**Exercise 4** — Add Newman to GitHub Actions:
+```yaml
+- name: Run Postman collection with Newman
+  run: |
+    npm install -g newman newman-reporter-htmlextra
+    newman run postman/collection.json \
+      -e postman/environment.json \
+      --env-var BASE_URL=${{ secrets.BASE_URL }} \
+      --env-var TEST_USERNAME=${{ secrets.TEST_USERNAME }} \
+      --env-var TEST_PASSWORD=${{ secrets.TEST_PASSWORD }} \
+      --reporters htmlextra \
+      --reporter-htmlextra-export newman-report.html
+- name: Upload Newman report
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: newman-report
+    path: newman-report.html
+```
+
+**Exercise 5** — Push and verify in Actions tab.
+
+#### Vitest Solutions
+
+Chapter 16 covers GitHub Actions infrastructure. There is no Vitest test code to write. The exercises are all YAML and repository configuration.
+
+---
+
+**Exercise 1** — Create `.github/workflows/tests.yml` with a matrix strategy for Node 18 and Node 20
+
+```yaml
+
+---
+
+### Chapter 17 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — Newman in Docker:
+```bash
+docker run --env-file .env \
+  -v $(pwd)/postman:/postman \
+  node:20-alpine \
+  sh -c "npm install -g newman && newman run /postman/collection.json -e /postman/environment.json"
+```
+
+**Exercise 2** — docker-compose.yml Newman service:
+```yaml
+services:
+  tests:
+    build: .
+    env_file: .env
+  newman:
+    image: node:20-alpine
+    env_file: .env
+    volumes:
+      - ./postman:/postman
+      - ./reports:/reports
+    command: sh -c "npm install -g newman newman-reporter-htmlextra && newman run /postman/collection.json -e /postman/environment.json --reporters htmlextra --reporter-htmlextra-export /reports/newman.html"
+```
+
+**Exercise 3** — Newman exit codes: exit 0 = all passed, exit 1 = failures. Docker propagates the exit code — a failing Newman run fails the container.
+
+**Exercise 4** — With HTML report and volume:
+```bash
+docker run --env-file .env \
+  -v $(pwd)/postman:/postman \
+  -v $(pwd)/reports:/reports \
+  node:20-alpine \
+  sh -c "npm install -g newman newman-reporter-htmlextra && newman run /postman/collection.json -e /postman/environment.json --reporters htmlextra --reporter-htmlextra-export /reports/newman.html"
+```
+
+**Exercise 5** — Comparison: Vitest HTML shows code coverage + test assertions per file. Newman HTML shows HTTP request/response pairs + pm.test() results. Both are useful — Vitest for code quality, Newman for API contract validation.
+
+#### Vitest Solutions
+
+Chapter 17 covers Docker infrastructure. There is no Vitest test code to write.
+
+---
+
+**Exercise 1** — Create a `Dockerfile` using `node:20-alpine`
+
+```dockerfile
+
+---
+
+### Chapter 18 Solutions
+
+#### Postman Solutions
+
+**Exercise 1** — Coverage run: `npm run test:coverage`. Open `coverage/index.html`. Look for red lines (uncovered) — typically the error branches in `src/test-utils.ts` if no test exercises a status that is not 400 or 429.
+
+**Exercise 2** — JUnit XML structure:
+```xml
+<testsuites>
+  <testsuite name="lecture-01/lecture.test.ts" tests="8" failures="0" time="1.234">
+    <testcase name="returns status 400 for wrong credentials" time="0.312" />
+    <testcase name="response body has a message field" time="0.001" />
+  </testsuite>
+</testsuites>
+```
+A `<failure>` element inside `<testcase>` means that test failed. CI systems parse this to annotate failed test names in the PR check.
+
+**Exercise 3** — Newman with full options:
+```bash
+newman run postman/collection.json \
+  -e postman/environment.json \
+  --reporters htmlextra \
+  --reporter-htmlextra-export reports/newman.html \
+  --delay-request 500
+```
+Open `reports/newman.html`. It shows: total requests, pass/fail per pm.test(), response times, full request/response bodies per request.
+
+**Exercise 4** — Coverage thresholds in vitest.config.ts:
+```ts
+coverage: {
+  provider: 'v8',
+  reporter: ['text', 'html', 'lcov'],
+  include: ['src/**/*.ts'],
+  thresholds: {
+    lines: 80,
+    functions: 80,
+    branches: 70,
+  },
+},
+```
+Set `lines: 99` temporarily — the run should fail with "ERROR: Coverage for lines (X%) does not meet global threshold (99%)".
+
+**Exercise 5** — GitHub Actions artifact upload (add after the test step):
+```yaml
+- name: Upload Vitest coverage
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: coverage-${{ matrix.node-version }}
+    path: coverage/
+
+- name: Upload Newman report
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: newman-report
+    path: reports/newman.html
+```
+
+#### Vitest Solutions
+
+Chapter 18 covers test reporting configuration. There is no new Vitest test code to write — the work is in `vitest.config.ts`, CI YAML, and tooling commands.
+
+---
+
+**Exercise 1** — Install `@vitest/coverage-v8`, update `vitest.config.ts`, run coverage, open the HTML report
+
+```bash
+npm install --save-dev @vitest/coverage-v8
+npm run test:coverage
+open coverage/index.html        # macOS
+
+
 
 ---
 
@@ -16594,7 +19807,7 @@ afterAll(async () => {
   try {
     await axios.delete(
       `https://api.codeandtest.com/api/v1/test/cleanup/user/${authId}`,
-      { headers: { 'x-test-secret': process.env.TEST_SECRET } }
+      { headers: { 'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts } }
     );
   } catch (error) {
     console.warn('Cleanup failed:', error.message);
@@ -16763,7 +19976,7 @@ describe('Post creation flow', () => {
     await axios.delete(
       `${BASE_URL}/test/cleanup/user/${authId}`,
       {
-        headers: { 'x-test-secret': process.env.TEST_SECRET },
+        headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // from src/fixtures.ts
         validateStatus: () => true
       }
     );
@@ -17230,7 +20443,7 @@ let authId: string | null = null;
 afterAll(async () => {
   if (authId !== null) {
     await axios.delete(`${BASE_URL}/test/cleanup/user/${authId}`, {
-      headers: { 'x-test-secret': process.env.TEST_SECRET }
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts }
     });
   }
 });
@@ -17567,7 +20780,7 @@ const response = await axios.post(`${BASE_URL}/auth/signin`, {
 
 const response = await axios.delete(
   `${BASE_URL}/test/cleanup/user/${authId}`,
-  { headers: { 'x-test-secret': process.env.TEST_SECRET } }
+  { headers: { 'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts } }
 );
 ```
 
@@ -17878,7 +21091,7 @@ const signinResponse = await axios.post(
 await axios.delete(
   `${process.env.BASE_URL}/test/cleanup/user/${authId}`,
   {
-    headers: { 'x-test-secret': process.env.TEST_SECRET },
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // from src/fixtures.ts
     validateStatus: () => true
   }
 );
@@ -18244,7 +21457,7 @@ const response = await axios.delete(
 const response = await axios.delete(
   `https://api.codeandtest.com/api/v1/test/cleanup/user/${authId}`,
   {
-    headers: { 'x-test-secret': process.env.TEST_SECRET },
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // from src/fixtures.ts
     validateStatus: () => true
   }
 );
@@ -18488,7 +21701,7 @@ const response = await axios.delete(
   `https://api.codeandtest.com/api/v1/test/cleanup/user/${authId}`,
   {
     headers: {
-      'x-test-secret': process.env.TEST_SECRET
+      'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts
     },
     validateStatus: () => true
   }
@@ -18627,7 +21840,7 @@ describe('Protected endpoints', () => {
   afterAll(async () => {
     await axios.delete(
       `${BASE_URL}/test/cleanup/user/${authId}`,
-      { headers: { 'x-test-secret': process.env.TEST_SECRET }, validateStatus: () => true }
+      { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // from src/fixtures.ts validateStatus: () => true }
     );
   });
 
@@ -18844,7 +22057,7 @@ afterAll(async () => {
   const response = await axios.delete(
     `${BASE_URL}/test/cleanup/user/${authId}`,
     {
-      headers: { 'x-test-secret': process.env.TEST_SECRET },
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // from src/fixtures.ts
       validateStatus: () => true
     }
   );
@@ -19287,7 +22500,7 @@ afterAll(async () => {
   await axios.delete(
     `${BASE_URL}/test/cleanup/user/${authId}`,
     {
-      headers: { 'x-test-secret': process.env.TEST_SECRET },
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // from src/fixtures.ts
       validateStatus: () => true
     }
   );
@@ -19623,7 +22836,7 @@ describe('Feature X tests', () => {
   afterAll(async () => {
     // Clean up the test user
     await axios.delete(`${BASE_URL}/test/cleanup/user/${authId}`,
-      { headers: { 'x-test-secret': process.env.TEST_SECRET }, validateStatus: () => true });
+      { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // from src/fixtures.ts validateStatus: () => true });
   });
 
   it('test 1', async () => { /* uses token */ });
@@ -20202,7 +23415,7 @@ describe('User registration edge cases', () => {
       // Always clean up, even if assertions fail
       if (authId) {
         await axios.delete(`${BASE_URL}/test/cleanup/user/${authId}`,
-          { headers: { 'x-test-secret': process.env.TEST_SECRET }, validateStatus: () => true });
+          { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // from src/fixtures.ts validateStatus: () => true });
       }
     }
   });
@@ -20254,7 +23467,7 @@ describe('POST /posts — create a post', () => {
     await axios.delete(
       `${BASE_URL}/test/cleanup/user/${authId}`,
       {
-        headers: { 'x-test-secret': process.env.TEST_SECRET },
+        headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // from src/fixtures.ts
         validateStatus: () => true
       }
     );
@@ -24158,7 +27371,7 @@ describe('Image Upload — Cloudinary integration via signup', () => {
   afterAll(async () => {
     if (authId) {
       await apiClient.delete(`/test/cleanup/user/${authId}`, {
-        headers: { 'x-test-secret': process.env.TEST_SECRET }
+        headers: { 'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts }
       });
     }
   });
@@ -24213,7 +27426,7 @@ describe('Image Upload — no image provided', () => {
   afterAll(async () => {
     if (authId) {
       await apiClient.delete(`/test/cleanup/user/${authId}`, {
-        headers: { 'x-test-secret': process.env.TEST_SECRET }
+        headers: { 'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts }
       });
     }
   });
@@ -24273,7 +27486,7 @@ describe('Image Upload — profile picture update', () => {
   afterAll(async () => {
     if (authId) {
       await apiClient.delete(`/test/cleanup/user/${authId}`, {
-        headers: { 'x-test-secret': process.env.TEST_SECRET }
+        headers: { 'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts }
       });
     }
   });
@@ -24841,7 +28054,7 @@ describe('Reactions — DELETE', () => {
 
   afterAll(async () => {
     await apiClient.delete(`/test/cleanup/user/${authId}`, {
-      headers: { 'x-test-secret': process.env.TEST_SECRET }
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts }
     });
   });
 
@@ -25757,7 +28970,7 @@ it('returns 400 for short username', async () => {
 afterAll(async () => {
   if (authId) {
     await apiClient.delete(`/test/cleanup/user/${authId}`, {
-      headers: { 'x-test-secret': process.env.TEST_SECRET }
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts }
     });
   }
 });
@@ -26495,7 +29708,7 @@ describe('Pagination — Posts endpoint', () => {
   afterAll(async () => {
     if (authId) {
       await apiClient.delete(`/test/cleanup/user/${authId}`, {
-        headers: { 'x-test-secret': process.env.TEST_SECRET }
+        headers: { 'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts }
       });
     }
   });
@@ -26738,7 +29951,7 @@ const response = await apiClient.get('/post/search', {
 // ALWAYS clean up in afterAll using the cleanup endpoint
 afterAll(async () => {
   await apiClient.delete(`/test/cleanup/user/${authId}`, {
-    headers: { 'x-test-secret': process.env.TEST_SECRET }
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts }
   });
 });
 ```

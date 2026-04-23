@@ -122,12 +122,21 @@ it('message matches non-empty string regex — toMatch', () => {
 });
 
 // ─── Solution 7 ───────────────────────────────────────────────────────────────
-// Two different assertion styles in one test:
+// Two assertion techniques in one test:
+//
+// Second argument to expect() — custom error message
+//   WHY: When an assertion fails, Vitest shows only the expected vs received values.
+//   If response.data.statusCode is undefined, you see "expected undefined to be 'number'"
+//   but have no idea WHY it is undefined. Passing a message as the second argument
+//   prints that message above the assertion failure — so you immediately see the full
+//   response body and HTTP status that caused the problem.
+//   Pattern: expect(value, `Got: ${JSON.stringify(response.data)} and status: ${JSON.stringify(response.status)}`).matcher()
 //
 // toBeTypeOf('number')
 //   WHY: Vitest-specific — cleaner than `expect(typeof x).toBe('number')`.
-//   The failure message says "expected 'string' to be 'number'" which is more readable
-//   than the generic message from the typeof workaround.
+//   The failure message says "expected 'undefined' to be type of 'number'" which is
+//   more readable than the generic message from the typeof workaround.
+//   Typical cause of failure here: a 429 rate-limit response has no statusCode field.
 //
 // toBeTruthy()
 //   WHY: any non-empty string is truthy, so this is a loose but quick existence check.
