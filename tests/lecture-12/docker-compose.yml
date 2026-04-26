@@ -1,0 +1,13 @@
+# docker-compose.yml for running API tests in a container
+# Run: docker-compose run tests
+
+version: '3.9'
+
+services:
+  tests:
+    build: .
+    env_file: .env
+    volumes:
+      # Mount test-results so reports are available on the host after the run
+      - ./test-results:/app/test-results
+      - ./coverage:/app/coverage

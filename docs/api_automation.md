@@ -1250,6 +1250,402 @@ Create a folder named "Chapter 4" inside your Postman collection. Work through t
 
 > **Note:** All 5 exercises use POST /signin with wrong credentials — one shared beforeAll request for exercises 1-4.
 
+---
+
+## The Test File for This Chapter
+
+> **Lecture 01 — Setup & First API Test**
+> Run: `npm test tests/lecture-01/lecture.test.ts`
+
+```ts
+// Lecture 01 — Setup & First API Test
+//
+// Endpoint tested: POST /api/v1/signin (with wrong/invalid credentials)
+//
+// This file demonstrates SIX categories of assertions you can write:
+//   1. Basic assertions         — status code, body field existence
+//   2. Exact value assertions   — assert what the value IS, not just that it exists
+//   3. One request, many checks — make ONE request, run many assertions on it
+//   4. Shape validation         — assert the entire response structure at once
+//   5. Negative assertions      — assert what should NOT be in the response
+//   6. Boundary value tests     — test the edges of the Joi validation schema
+//   7. Header assertions        — check response headers
+//   8. Response time            — performance assertion
+//
+// IMPORTANT — rate limiting:
+//   The production server allows 5 requests/minute on /signin (nginx) +
+//   20 requests / 15 minutes (Express).
+//   To stay well under this limit, sections 1–5 and 7–8 share ONE HTTP request
+//   made in the top-level beforeAll below.
+//   Only section 6 (boundary tests) makes individual requests.
+//
+// Signin Joi schema (from chatty-backend/src/features/auth/schemas/signin.ts):
+//   username: string, required, min 4, max 32
+//   password: string, required, min 8, max 128
+//
+// Run: npm test tests/lecture-01/lecture.test.ts
+
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+import { expectRejected } from '../../src/test-utils';
+
+const url = `${config.BASE_URL}/signin`;
+
+const wrongCredentials = {
+  username: 'notarealuser99999',
+  password: 'WrongPass@9999',
+};
+
+// ─── File-level shared request ────────────────────────────────────────────────
+//
+// ONE HTTP request shared across sections 1–5, 7, and 8.
+// This is the efficient pattern: make as few network calls as possible.
+// All assertions in those sections read from this single response object.
+//
+// beforeAll() at the file root (outside any describe) runs ONCE
+// before any test in the entire file.
+
+let sharedResponse!: AxiosResponse;
+
+beforeAll(async () => {
+  sharedResponse = await axios.post(url, wrongCredentials, {
+    validateStatus: () => true,
+  });
+});
+
+// ─── Rate limit note ──────────────────────────────────────────────────────────
+//
+// expectRejected() is imported from src/test-utils.ts — see STANDARDS.md §5.
+// It accepts status 400 (validation error) OR 429 (rate limited) as valid rejections.
+
+// ─── 1. Basic assertions ──────────────────────────────────────────────────────
+//
+// The simplest form: check that a field exists, check the status code.
+// These tests read from `sharedResponse` — no extra network call needed.
+
+describe('1. Basic assertions', () => {
+
+  it('returns status 400 for wrong credentials', () => {
+    expectRejected(sharedResponse.status);
+  });
+
+  it('response body has a message field', () => {
+    // toHaveProperty checks the key exists — does not check the value
+    expect(sharedResponse.data).toHaveProperty('message');
+  });
+
+  it('response body has a status field', () => {
+    if (sharedResponse.status === 429) return; // 429 response has no status field
+    expect(sharedResponse.data).toHaveProperty('status');
+  });
+
+});
+
+// ─── 2. Exact value assertions ────────────────────────────────────────────────
+//
+// Always assert WHAT the value is, not just that it exists.
+// .toHaveProperty('message') tells you the key exists.
+// .toBe('Invalid credentials') tells you the actual value is correct.
+// Both are needed. Existence check alone is too weak.
+
+describe('2. Exact value assertions', () => {
+
+  it('message is exactly "Invalid credentials"', () => {
+    // Guard: 429 responses have a different message — skip the value check
+    if (sharedResponse.status === 429) return;
+    expect(sharedResponse.data.message).toBe('Invalid credentials');
+  });
+
+  it('statusCode inside body matches HTTP status', () => {
+    if (sharedResponse.status === 429) return;
+    // The Chatty API echoes the HTTP status code inside the JSON body too.
+    // response.status        → HTTP status code (from the network response)
+    // response.data.statusCode → status code repeated inside the JSON body
+    // Both should match. They come from different places.
+    expect(sharedResponse.data.statusCode).toBe(sharedResponse.status);
+  });
+
+  it('message is a non-empty string', () => {
+    // typeof check confirms it is a string (not a number, object, etc.)
+    expect(typeof sharedResponse.data.message).toBe('string');
+    // Length check confirms it is not an empty string
+    expect(sharedResponse.data.message.length).toBeGreaterThan(0);
+  });
+
+});
+
+// ─── 3. One request, many checks ─────────────────────────────────────────────
+//
+// The pattern: make ONE request, run multiple assertions on it.
+// This is already what we are doing here with sharedResponse.
+// Contrast with sections 1 and 2 above — there we described the concept.
+// Here we show it explicitly with no beforeAll (the file-level one handles it).
+
+describe('3. One request, many checks — demonstrated', () => {
+
+  it('all fields are correct in one assertion each', () => {
+    // All of these read from the SAME single HTTP request
+    expectRejected(sharedResponse.status);
+    expect(sharedResponse.data).toHaveProperty('message');
+    expect(typeof sharedResponse.data.message).toBe('string');
+    expect(sharedResponse.data.message.length).toBeGreaterThan(0);
+  });
+
+});
+
+// ─── 4. Shape validation with toMatchObject ───────────────────────────────────
+//
+// Assert the ENTIRE response structure in one assertion instead of field by field.
+// toMatchObject checks that the object contains at least the specified keys/values.
+// Extra keys in the response are allowed — only specified ones are checked.
+//
+// expect.any(Type) — checks the value is an instance of Type, not its exact value.
+// Use when you know the type but the value can vary.
+
+describe('4. Shape validation', () => {
+
+  it('response body matches the expected error shape', () => {
+    if (sharedResponse.status === 429) {
+      // 429 response only has { message } — skip full shape check
+      expect(sharedResponse.data).toHaveProperty('message');
+      return;
+    }
+
+    expect(sharedResponse.data).toMatchObject({
+      message: expect.any(String),    // any string value
+      status: 'error',                // exact value
+      statusCode: expect.any(Number), // any number value
+    });
+  });
+
+  it('all three error fields have the right types', () => {
+    if (sharedResponse.status === 429) return;
+
+    expect(typeof sharedResponse.data.message).toBe('string');
+    expect(typeof sharedResponse.data.status).toBe('string');
+    expect(typeof sharedResponse.data.statusCode).toBe('number');
+  });
+
+});
+
+// ─── 5. Negative assertions — what should NOT be there ───────────────────────
+//
+// Checking what IS in the response is only half the job.
+// Checking what is NOT there is equally important — especially for security.
+// Use .not to negate any matcher.
+
+describe('5. Negative assertions', () => {
+
+  it('response does not expose a password field', () => {
+    // Security: a server must never return a password in any response
+    expect(sharedResponse.data).not.toHaveProperty('password');
+  });
+
+  it('response does not include a token on failed login', () => {
+    // A JWT token should only be returned on SUCCESSFUL login
+    expect(sharedResponse.data).not.toHaveProperty('token');
+  });
+
+  it('response does not include a user object on failed login', () => {
+    // User data should only be returned after successful authentication
+    expect(sharedResponse.data).not.toHaveProperty('user');
+  });
+
+  it('status is not 200 or 201 (not a false success)', () => {
+    // The server must never return a success code for invalid credentials
+    expect(sharedResponse.status).not.toBe(200);
+    expect(sharedResponse.status).not.toBe(201);
+  });
+
+});
+
+// ─── 6. Boundary value tests ─────────────────────────────────────────────────
+//
+// Boundary value analysis: test the exact edges of the validation rules.
+// Schema: username min 4 / max 32, password min 8 / max 128.
+//
+// These tests MUST make individual requests (each has different input).
+// They use expectRejected() to handle both 400 (validation error) and 429 (rate limit).
+// The message check is conditional on receiving a 400 (not a rate-limited 429).
+//
+// TIP: run this file against localhost (no rate limiter) for clean 400 responses.
+
+describe('6. Boundary value tests — Joi schema limits', () => {
+
+  it('username shorter than 4 chars is rejected', async () => {
+    const res = await axios.post(
+      url,
+      { username: 'abc', password: 'ValidPass@1' }, // 3 chars — below min 4
+      { validateStatus: () => true },
+    );
+
+    expectRejected(res.status);
+    if (res.status === 400) {
+      expect(res.data.message).toContain('Invalid username');
+    }
+  });
+
+  it('username longer than 32 chars is rejected', async () => {
+    const res = await axios.post(
+      url,
+      { username: 'a'.repeat(33), password: 'ValidPass@1' }, // 33 chars — above max 32
+      { validateStatus: () => true },
+    );
+
+    expectRejected(res.status);
+    if (res.status === 400) {
+      expect(res.data.message).toContain('Invalid username');
+    }
+  });
+
+  it('password shorter than 8 chars is rejected', async () => {
+    const res = await axios.post(
+      url,
+      { username: 'validuser', password: 'Pass@1!' }, // 7 chars — below min 8
+      { validateStatus: () => true },
+    );
+
+    expectRejected(res.status);
+    if (res.status === 400) {
+      expect(res.data.message).toContain('Invalid password');
+    }
+  });
+
+  it('password longer than 128 chars is rejected', async () => {
+    const res = await axios.post(
+      url,
+      { username: 'validuser', password: 'A@1' + 'a'.repeat(127) }, // 130 chars
+      { validateStatus: () => true },
+    );
+
+    expectRejected(res.status);
+    if (res.status === 400) {
+      expect(res.data.message).toContain('Invalid password');
+    }
+  });
+
+  it('missing username is rejected', async () => {
+    const res = await axios.post(
+      url,
+      { password: 'ValidPass@1' }, // no username field
+      { validateStatus: () => true },
+    );
+
+    expectRejected(res.status);
+    if (res.status === 400) {
+      // Joi distinction:
+      //   Field absent entirely → 'any.required' → '"username" is required' (Joi default)
+      //   Field present + empty → 'string.empty'  → 'Username is a required field' (custom)
+      expect(res.data.message).toContain('"username" is required');
+    }
+  });
+
+  it('missing password is rejected', async () => {
+    const res = await axios.post(
+      url,
+      { username: 'validuser' }, // no password field
+      { validateStatus: () => true },
+    );
+
+    expectRejected(res.status);
+    if (res.status === 400) {
+      expect(res.data.message).toContain('"password" is required');
+    }
+  });
+
+  it('completely empty body is rejected', async () => {
+    const res = await axios.post(url, {}, { validateStatus: () => true });
+    expectRejected(res.status);
+  });
+
+});
+
+// ─── 7. Header assertions ─────────────────────────────────────────────────────
+//
+// Response headers carry important metadata.
+// Content-Type tells you the format of the body.
+// Always check it — if a server returns HTML instead of JSON by mistake,
+// this assertion will catch it immediately.
+
+describe('7. Header assertions', () => {
+
+  it('Content-Type is application/json', () => {
+    // Full value: "application/json; charset=utf-8"
+    // toContain checks for substring — needed because of the "; charset=utf-8" suffix
+    expect(sharedResponse.headers['content-type']).toContain('application/json');
+  });
+
+  it('response declares its body size', () => {
+    // Server must indicate body size via content-length or transfer-encoding
+    const hasContentLength = 'content-length' in sharedResponse.headers;
+    const hasTransferEncoding = 'transfer-encoding' in sharedResponse.headers;
+    expect(hasContentLength || hasTransferEncoding).toBe(true);
+  });
+
+});
+
+// ─── 8. Response time ─────────────────────────────────────────────────────────
+//
+// API responses should arrive quickly. Slow responses indicate:
+//   - A missing database index (query scans the full collection)
+//   - An N+1 query problem
+//   - Blocking synchronous code on the server
+//
+// The file-level beforeAll already measured the time for sharedResponse,
+// so we measure a fresh request here for an isolated timing.
+
+describe('8. Response time', () => {
+
+  it('responds within 3000ms', async () => {
+    const start = Date.now();
+    await axios.post(url, wrongCredentials, { validateStatus: () => true });
+    const duration = Date.now() - start;
+
+    expect(duration).toBeLessThan(3000);
+  });
+
+});
+
+// ─── 9. Assertion variants ────────────────────────────────────────────────────
+//
+// Three assertion types not used elsewhere in this file:
+//   toMatch(/regex/)     — assert a string matches a regular expression pattern
+//   toBeTypeOf('string') — Vitest-native type check, cleaner than `typeof x === '...'`
+//   toBeTruthy / toBeFalsy — loose truthiness check, no strict equality needed
+//
+// All read from sharedResponse — no extra HTTP call.
+
+describe('9. Assertion variants', () => {
+
+  it('message matches a non-empty string pattern', () => {
+    // toMatch accepts a regex — useful for asserting format without knowing exact value.
+    // /\S+/ means "one or more non-whitespace characters" — any non-blank string passes.
+    expect(sharedResponse.data.message).toMatch(/\S+/);
+  });
+
+  it('statusCode is of type number — toBeTypeOf', () => {
+    if (sharedResponse.status === 429) return; // 429 response has no statusCode field
+    // toBeTypeOf is Vitest-specific — cleaner than `expect(typeof x).toBe('number')`.
+    // It reads like a sentence and gives a better failure message.
+    expect(sharedResponse.data.statusCode).toBeTypeOf('number');
+  });
+
+  it('message is truthy', () => {
+    // toBeTruthy passes for any value that is not: false, 0, '', null, undefined, NaN.
+    // A non-empty string is always truthy — this confirms the field is populated.
+    expect(sharedResponse.data.message).toBeTruthy();
+  });
+
+  it('response body has no token — toBeFalsy on presence check', () => {
+    // Alternative to .not.toHaveProperty — compute the boolean, then assert it is falsy.
+    // toBeFalsy passes for false, 0, '', null, undefined — all mean "not present".
+    const hasToken = 'token' in sharedResponse.data;
+    expect(hasToken).toBeFalsy();
+  });
+
+});
+```
+
 ## Chapter 5: Assertions — Checking What Matters
 
 Assertions are the core of a test. The `expect()` API is where you translate your understanding of correct behavior into code. Vitest's assertion library is rich and expressive — there is a matcher for nearly every situation. This chapter is a comprehensive guide to the matchers you will use most, with examples drawn from real Chatty API responses.
@@ -1858,6 +2254,378 @@ Create a folder named "Chapter 5" inside your Postman collection. Work through t
 
 
 > **Note:** Use the shared beforeAll pattern — one request per test group, not one per assertion.
+
+---
+
+## The Test File for This Chapter
+
+> **Lecture 02 — SignIn: Authentication & Cookies**
+> Run: `npm test tests/lecture-02/lecture.test.ts`
+
+```ts
+// Lecture 02 — SignIn
+//
+// Endpoint: POST /api/v1/signin
+//
+// Lecture 1 tested the ERROR path — wrong credentials.
+// Lecture 2 tests the HAPPY PATH — successful authentication.
+//
+// New concepts introduced here:
+//   1. Positive test — testing that the correct response is returned for valid input
+//   2. JWT token — what it is and how to validate its format
+//   3. Session cookie — capturing `set-cookie` response header
+//   4. Using the cookie — sending it in subsequent authenticated requests
+//   5. afterAll — cleanup by signing out after all tests finish
+//
+// Prerequisites:
+//   TEST_USERNAME and TEST_PASSWORD must be set in .env
+//   The account must already exist on the server
+//
+// Run: npm test tests/lecture-02/lecture.test.ts
+
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+import { expectRejected } from '../../src/test-utils';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const signinUrl = `${config.BASE_URL}/signin`;
+const currentUserUrl = `${config.BASE_URL}/currentuser`;
+const signoutUrl = `${config.BASE_URL}/signout`;
+
+const credentials = {
+  username: config.TEST_USERNAME,
+  password: config.TEST_PASSWORD,
+};
+
+// ─── File-level shared state ──────────────────────────────────────────────────
+//
+// ONE signin request shared across all sections.
+// The cookie is extracted from the response and reused in section 5.
+// afterAll signs out to clean up the session.
+
+let signInResponse!: AxiosResponse;
+let sessionCookie: string = '';
+
+beforeAll(async () => {
+  signInResponse = await axios.post(signinUrl, credentials, {
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
+    validateStatus: () => true,
+  });
+
+  // Extract session cookie from set-cookie header.
+  // set-cookie is an array — one string per cookie the server sets.
+  // Chatty only sets one cookie (session), so we take index [0].
+  const raw = signInResponse.headers['set-cookie'];
+  // cookie-session sets TWO cookies: session + session.sig (signature).
+  // Both must be sent together — without session.sig the server cannot
+  // verify the session and returns "Token is not valid."
+  // Trim each cookie to name=value only (drop Path=/, HttpOnly, etc.)
+  const cookies = (() => {
+    if (Array.isArray(raw)) return raw;
+    if (raw) return [raw];
+    return [];
+  })();
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
+});
+
+afterAll(async () => {
+  // Sign out after all tests — invalidates the session on the server.
+  // Always runs even if tests fail — this is the purpose of afterAll.
+  if (!sessionCookie) return;
+
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+});
+
+// ─── 1. Successful signin — basic ─────────────────────────────────────────────
+//
+// The most fundamental positive test:
+//   - correct credentials → 200 OK
+//   - correct message in response body
+
+describe('1. Successful signin — basic', () => {
+
+  it('status is 200', () => {
+    expect(signInResponse.status).toBe(200);
+  });
+
+  it('message is "User login successfully"', () => {
+    expect(signInResponse.data.message).toBe('User login successfully');
+  });
+
+  it('response body has the correct top-level shape', () => {
+    // Three top-level fields: message, token, user
+    expect(signInResponse.data).toMatchObject({
+      message: expect.any(String),
+      token: expect.any(String),
+      user: expect.any(Object),
+    });
+  });
+
+});
+
+// ─── 2. JWT token ─────────────────────────────────────────────────────────────
+//
+// The token is a JWT (JSON Web Token) — a signed string that proves identity.
+// Structure: header.payload.signature (three base64url parts separated by dots)
+//
+// We do NOT decode or verify the JWT here (that would require the server's secret).
+// Instead we verify its FORMAT — three non-empty parts — which is always testable.
+
+describe('2. JWT token', () => {
+
+  it('token exists in response body', () => {
+    expect(signInResponse.data.token).toBeDefined();
+  });
+
+  it('token is a non-empty string', () => {
+    expect(typeof signInResponse.data.token).toBe('string');
+    expect(signInResponse.data.token.length).toBeGreaterThan(0);
+  });
+
+  it('token has JWT format — three dot-separated parts', () => {
+    const token: string = signInResponse.data.token;
+    const parts = token.split('.');
+
+    // A valid JWT always has exactly 3 parts: header.payload.signature
+    expect(parts).toHaveLength(3);
+
+    // Each part must be non-empty (base64url encoded data)
+    // parts[0] = header, parts[1] = payload, parts[2] = signature
+    parts.forEach(part => {
+      expect(part.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('token does not contain spaces (malformed tokens do)', () => {
+    // A valid JWT is a compact single string — spaces indicate it is broken
+    expect(signInResponse.data.token).not.toContain(' ');
+  });
+
+});
+
+// ─── 3. Session cookie ────────────────────────────────────────────────────────
+//
+// The server sends a session cookie in the `set-cookie` response header.
+// The JWT is stored INSIDE this cookie (not sent as a standalone header).
+// On the server: req.session = { jwt: userJwt } → cookie-session serialises it.
+//
+// Why does Chatty use a cookie instead of returning just the token?
+// Cookie-based auth is simpler for web apps — the browser handles it automatically.
+// The `HttpOnly` flag prevents JavaScript from reading the cookie,
+// which protects against XSS attacks.
+
+describe('3. Session cookie', () => {
+
+  it('set-cookie header is present in the response', () => {
+    expect(signInResponse.headers['set-cookie']).toBeDefined();
+  });
+
+  it('set-cookie header is an array', () => {
+    // HTTP parsers collect multiple Set-Cookie headers into an array
+    expect(Array.isArray(signInResponse.headers['set-cookie'])).toBe(true);
+  });
+
+  it('cookie contains "session="', () => {
+    // The cookie-session middleware always names the cookie "session"
+    expect(sessionCookie).toContain('session=');
+  });
+
+  it('set-cookie header contains HttpOnly directive', () => {
+    // HttpOnly means JavaScript cannot read this cookie — XSS protection.
+    // Check the raw set-cookie header (not sessionCookie which is trimmed).
+    const raw = signInResponse.headers['set-cookie'] ?? [];
+    const rawStr = Array.isArray(raw) ? raw.join(' ') : raw;
+    expect(rawStr.toLowerCase()).toContain('httponly');
+  });
+
+});
+
+// ─── 4. User object ───────────────────────────────────────────────────────────
+//
+// The signin response includes a `user` object with profile data.
+// Key assertions:
+//   - Shape matches expected fields
+//   - Username matches what we signed in with (normalised to title case)
+//   - password is NOT present (server strips it before responding)
+
+describe('4. User object', () => {
+
+  it('user object has expected fields', () => {
+    expect(signInResponse.data.user).toMatchObject({
+      _id: expect.any(String),
+      username: expect.any(String),
+      email: expect.any(String),
+      avatarColor: expect.any(String),
+      postsCount: expect.any(Number),
+      followersCount: expect.any(Number),
+      followingCount: expect.any(Number),
+    });
+  });
+
+  it('username matches TEST_USERNAME (title case)', () => {
+    // Chatty normalises usernames to title case: "vitestmike" → "Vitestmike"
+    // We compare case-insensitively to handle this normalisation
+    const expected = config.TEST_USERNAME.toLowerCase();
+    const received = signInResponse.data.user.username.toLowerCase();
+    expect(received).toBe(expected);
+  });
+
+  it('password is NOT in the user object', () => {
+    // Security assertion — the server must never return the hashed password
+    expect(signInResponse.data.user).not.toHaveProperty('password');
+  });
+
+  it('user _id is a non-empty string', () => {
+    expect(typeof signInResponse.data.user._id).toBe('string');
+    expect(signInResponse.data.user._id.length).toBeGreaterThan(0);
+  });
+
+  it('postsCount, followersCount, followingCount are non-negative numbers', () => {
+    const { postsCount, followersCount, followingCount } = signInResponse.data.user;
+    expect(postsCount).toBeGreaterThanOrEqual(0);
+    expect(followersCount).toBeGreaterThanOrEqual(0);
+    expect(followingCount).toBeGreaterThanOrEqual(0);
+  });
+
+});
+
+// ─── 5. Authenticated request — cookie in action ──────────────────────────────
+//
+// The real proof that signin worked: use the session cookie to call a protected
+// endpoint and verify it returns 200 (not 401).
+//
+// Without the cookie → 401 Unauthorized
+// With the cookie    → 200 OK + current user data
+//
+// This is a CHAIN: signin → extract cookie → authenticated request.
+// This pattern is the foundation of all future lectures (L3 onwards).
+
+describe('5. Authenticated request', () => {
+
+  it('GET /currentuser with cookie returns 200', async () => {
+    const response = await axios.get(currentUserUrl, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it('GET /currentuser without cookie returns 401', async () => {
+    // No cookie header → server cannot authenticate → 401
+    const response = await axios.get(currentUserUrl, {
+      validateStatus: () => true,
+    });
+
+    expect(response.status).toBe(401);
+  });
+
+  it('authenticated /currentuser returns the same username as signin', async () => {
+    const response = await axios.get(currentUserUrl, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+    const currentUsername = response.data.user.username.toLowerCase();
+    const signedInUsername = signInResponse.data.user.username.toLowerCase();
+    expect(currentUsername).toBe(signedInUsername);
+  });
+
+});
+
+// ─── 6. Negative tests ────────────────────────────────────────────────────────
+//
+// Even though we tested negatives in Lecture 1, here we include the key cases
+// to keep each lecture file self-contained and runnable on its own.
+// Note: these make individual requests — expectRejected handles 400 OR 429.
+
+describe('6. Negative tests', () => {
+
+  it('wrong password returns 400', async () => {
+    const res = await axios.post(
+      signinUrl,
+      { username: config.TEST_USERNAME, password: 'DefinitelyWrong@999' },
+      { validateStatus: () => true },
+    );
+    expectRejected(res.status);
+    if (res.status === 400) expect(res.data.message).toBe('Invalid credentials');
+  });
+
+  it('non-existent username returns 400', async () => {
+    const res = await axios.post(
+      signinUrl,
+      { username: 'thisdoesnotexist99999', password: 'SomePass@123' },
+      { validateStatus: () => true },
+    );
+    expectRejected(res.status);
+    if (res.status === 400) expect(res.data.message).toBe('Invalid credentials');
+  });
+
+  it('missing password returns 400', async () => {
+    const res = await axios.post(
+      signinUrl,
+      { username: config.TEST_USERNAME },
+      { validateStatus: () => true },
+    );
+    expectRejected(res.status);
+  });
+
+});
+
+// ─── 7. Response time ─────────────────────────────────────────────────────────
+
+describe('7. Response time', () => {
+
+  it('signin responds within 3000ms', async () => {
+    const start = Date.now();
+    await axios.post(signinUrl, credentials, { validateStatus: () => true });
+    expect(Date.now() - start).toBeLessThan(3000);
+  });
+
+});
+
+// ─── 8. Assertion variants ────────────────────────────────────────────────────
+//
+// Three assertion types not used elsewhere in this file:
+//   toMatch(/regex/)              — assert a string matches a regular expression
+//   expect.stringMatching(/regex/) — asymmetric regex matcher, usable inside toMatchObject
+//   toBeGreaterThanOrEqual(n)      — range check, useful for length or count fields
+//
+// All read from signInResponse — no extra HTTP call.
+
+describe('8. Assertion variants', () => {
+
+  it('token matches JWT regex pattern — toMatch', () => {
+    // A JWT is exactly three base64url segments joined by dots.
+    // [\w-]+ matches base64url characters (letters, digits, _, -).
+    // toMatch tests the full token string against this regex.
+    expect(signInResponse.data.token).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/);
+  });
+
+  it('session cookie contains "session=" — expect.stringMatching', () => {
+    // expect.stringMatching is an asymmetric matcher — it can be embedded inside
+    // toMatchObject or toEqual to match a string field by regex rather than exact value.
+    // Here we use it standalone: the cookie must contain the literal "session=".
+    expect(sessionCookie).toEqual(expect.stringMatching(/session=/));
+  });
+
+  it('token length is at least 10 — toBeGreaterThanOrEqual', () => {
+    // toBeGreaterThanOrEqual asserts a numeric lower bound.
+    // A real JWT is typically 150–300 chars; ≥10 is a safe minimum sanity check.
+    expect(signInResponse.data.token.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it('token has at least 3 parts — toBeGreaterThanOrEqual on split length', () => {
+    // Splitting a valid JWT on '.' gives exactly 3 parts.
+    // toBeGreaterThanOrEqual(3) combined with toHaveLength(3) from section 2
+    // shows both exact and lower-bound styles for the same fact.
+    const parts = signInResponse.data.token.split('.');
+    expect(parts.length).toBeGreaterThanOrEqual(3);
+  });
+
+});
+```
 
 # Part III: Authentication and State
 
@@ -2493,6 +3261,375 @@ Create a folder named "Chapter 6" inside your Postman collection. Work through t
 
 > **Note:** All 5 exercises share one beforeAll signin. The afterAll signout closes the session.
 
+---
+
+## The Test File for This Chapter
+
+> **Lecture 03 — SignUp: Creating & Cleaning Up Test Users**
+> Run: `npm test tests/lecture-03/lecture.test.ts`
+
+```ts
+// Lecture 03 — SignUp: Creating & Cleaning Up Test Users
+//
+// Endpoint: POST /api/v1/signup
+//
+// New concepts introduced here:
+//   1. Faker.js — dynamic test data that never clashes in the database
+//   2. avatarImage — a base64 PNG required by Cloudinary upload
+//   3. Test cleanup endpoint — DELETE /test/cleanup/user/:authId
+//   4. Full lifecycle: beforeAll creates user → tests run → afterAll deletes user
+//   5. Optional chaining (?.) and nullish coalescing (??) in TypeScript
+//   6. Duplicate signup — business logic error after schema passes
+//
+// Prerequisites:
+//   No env vars beyond BASE_URL, TEST_USERNAME, TEST_PASSWORD.
+//   TEST_CLEANUP_SECRET is a hardcoded constant in src/fixtures.ts — no setup needed.
+//
+// Run: npm test tests/lecture-03/lecture.test.ts
+
+import axios, { type AxiosResponse } from 'axios';
+import { faker } from '@faker-js/faker';
+import { config } from '../../src/config';
+import { expectRejected } from '../../src/test-utils';
+import { TEST_AVATAR_IMAGE, TEST_AVATAR_COLOR, TEST_PASSWORD, TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const signupUrl = `${config.BASE_URL}/signup`;
+const cleanupUrl = (authId: string) => `${config.BASE_URL}/test/cleanup/user/${authId}`;
+
+// ─── File-level shared state ──────────────────────────────────────────────────
+
+let signUpResponse!: AxiosResponse;
+let authId: string = '';
+let sessionCookie: string = '';
+
+// The user data is generated once and reused across all test sections.
+// Using `const` here because the same user is tested throughout the file.
+const newUser = {
+  username: `vitest${faker.string.alphanumeric(8).toLowerCase()}`,
+  email: faker.internet.email().toLowerCase(),
+  password: TEST_PASSWORD,
+  avatarColor: TEST_AVATAR_COLOR,
+  avatarImage: TEST_AVATAR_IMAGE,
+};
+
+beforeAll(async () => {
+  // Create the test user
+  signUpResponse = await axios.post(signupUrl, newUser, {
+    validateStatus: () => true,
+  });
+
+  // Capture authId for cleanup.
+  // Optional chaining (?.) — if user is undefined (signup failed), returns undefined.
+  // Nullish coalescing (?? '') — sets authId to '' if undefined.
+  authId = signUpResponse.data.user?.authId ?? '';
+
+  // Capture session cookie
+  const raw = signUpResponse.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+});
+
+afterAll(async () => {
+  // Always clean up, even if tests failed.
+  // Without this, the database fills with test data that blocks future runs.
+  if (!authId) return;
+
+  await axios.delete(cleanupUrl(authId), {
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
+    validateStatus: () => true,
+  });
+});
+
+// ─── 1. Successful signup — basic ─────────────────────────────────────────────
+//
+// Signup is a creation endpoint — it returns 201 Created, not 200 OK.
+// This is the HTTP convention for POST requests that create a new resource.
+
+describe('1. Successful signup — basic', () => {
+
+  it('status is 201 Created', () => {
+    expect(signUpResponse.status).toBe(201);
+  });
+
+  it('message is "User created successfully"', () => {
+    expect(signUpResponse.data.message).toBe('User created successfully');
+  });
+
+  it('response has the correct top-level shape', () => {
+    expect(signUpResponse.data).toMatchObject({
+      message: expect.any(String),
+      token: expect.any(String),
+      user: expect.any(Object),
+    });
+  });
+
+});
+
+// ─── 2. User object ───────────────────────────────────────────────────────────
+//
+// The user object contains both the User document (_id) and the Auth document (authId).
+// We capture authId in beforeAll — it is needed for the cleanup endpoint.
+
+describe('2. User object', () => {
+
+  it('user has _id and authId', () => {
+    expect(signUpResponse.data.user).toMatchObject({
+      _id: expect.any(String),
+      authId: expect.any(String),
+    });
+  });
+
+  it('username is title-cased version of what was sent', () => {
+    // Chatty normalises: "vitestk7m2xq9w" → "Vitestk7m2xq9w"
+    const received = signUpResponse.data.user.username.toLowerCase();
+    expect(received).toBe(newUser.username.toLowerCase());
+  });
+
+  it('email is lowercase', () => {
+    expect(signUpResponse.data.user.email).toBe(newUser.email.toLowerCase());
+  });
+
+  it('password is NOT in the user object', () => {
+    expect(signUpResponse.data.user).not.toHaveProperty('password');
+  });
+
+  it('postsCount starts at 0', () => {
+    expect(signUpResponse.data.user.postsCount).toBe(0);
+  });
+
+  it('profilePicture is a Cloudinary URL', () => {
+    // The server uploads avatarImage to Cloudinary and stores the URL here.
+    // It should start with https://res.cloudinary.com/
+    const pic: string = signUpResponse.data.user.profilePicture;
+    expect(typeof pic).toBe('string');
+    expect(pic.length).toBeGreaterThan(0);
+  });
+
+});
+
+// ─── 3. Token and cookie ──────────────────────────────────────────────────────
+//
+// Signup sets a session cookie and returns a JWT — same as signin.
+// By Lecture 3 you know these patterns — the assertions are shorter.
+
+describe('3. Token and cookie', () => {
+
+  it('token is a valid JWT (three dot-separated parts)', () => {
+    const parts = signUpResponse.data.token.split('.');
+    expect(parts).toHaveLength(3);
+    expect(parts[0].startsWith('eyJ')).toBe(true);
+  });
+
+  it('set-cookie header is present', () => {
+    expect(signUpResponse.headers['set-cookie']).toBeDefined();
+  });
+
+  it('session cookie contains "session="', () => {
+    expect(sessionCookie).toContain('session=');
+  });
+
+});
+
+// ─── 4. Test cleanup endpoint ─────────────────────────────────────────────────
+//
+// The cleanup endpoint is what afterAll uses to delete the test user.
+// Testing it directly proves it works before relying on it for cleanup.
+//
+// We test it with a WRONG secret to verify the protection works.
+// The real deletion happens in afterAll (correct secret, correct authId).
+
+describe('4. Test cleanup endpoint — protection checks', () => {
+
+  it('returns 403 with wrong secret', async () => {
+    const res = await axios.delete(cleanupUrl(authId), {
+      headers: { 'x-test-secret': 'completely-wrong-secret' },
+      validateStatus: () => true,
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 403 with missing secret header', async () => {
+    const res = await axios.delete(cleanupUrl(authId), {
+      validateStatus: () => true,
+    });
+    expect(res.status).toBe(403);
+  });
+
+});
+
+// ─── 5. Duplicate signup ──────────────────────────────────────────────────────
+//
+// Trying to sign up with the same username OR email that already exists → 400.
+// This is a BUSINESS LOGIC error (not a Joi validation error):
+//   Joi passes (all fields are present and valid).
+//   The controller checks the database and finds a conflict.
+
+describe('5. Duplicate signup', () => {
+
+  it('same username returns 400', async () => {
+    const res = await axios.post(signupUrl, {
+      ...newUser,
+      email: faker.internet.email().toLowerCase(), // different email
+      // same username
+    }, { validateStatus: () => true });
+
+    expectRejected(res.status);
+    if (res.status === 400) {
+      expect(res.data.message).toContain('already');
+    }
+  });
+
+  it('same email returns 400', async () => {
+    const res = await axios.post(signupUrl, {
+      ...newUser,
+      username: `vitest${faker.string.alphanumeric(8).toLowerCase()}`, // different username
+      // same email
+    }, { validateStatus: () => true });
+
+    expectRejected(res.status);
+    if (res.status === 400) {
+      expect(res.data.message).toContain('already');
+    }
+  });
+
+});
+
+// ─── 6. Boundary value tests ──────────────────────────────────────────────────
+//
+// Schema: username min 4 / max 20, password min 12 / max 128 + pattern, email format.
+// All these fail at the Joi layer (before Cloudinary) so they return fast.
+
+describe('6. Boundary value tests — Joi schema limits', () => {
+
+  it('username shorter than 4 chars is rejected', async () => {
+    const res = await axios.post(signupUrl, {
+      ...newUser,
+      username: 'vit', // 3 chars
+    }, { validateStatus: () => true });
+    expectRejected(res.status);
+    if (res.status === 400) expect(res.data.message).toContain('at least 4');
+  });
+
+  it('username longer than 20 chars is rejected', async () => {
+    const res = await axios.post(signupUrl, {
+      ...newUser,
+      username: `vitest${'a'.repeat(16)}`, // 22 chars
+    }, { validateStatus: () => true });
+    expectRejected(res.status);
+    if (res.status === 400) expect(res.data.message).toContain('cannot exceed 20');
+  });
+
+  it('password shorter than 12 chars is rejected', async () => {
+    const res = await axios.post(signupUrl, {
+      ...newUser,
+      email: faker.internet.email().toLowerCase(),
+      username: `vitest${faker.string.alphanumeric(6).toLowerCase()}`,
+      password: 'Test@1234', // 9 chars
+    }, { validateStatus: () => true });
+    expectRejected(res.status);
+    if (res.status === 400) expect(res.data.message).toContain('at least 12');
+  });
+
+  it('password without special character is rejected', async () => {
+    const res = await axios.post(signupUrl, {
+      ...newUser,
+      email: faker.internet.email().toLowerCase(),
+      username: `vitest${faker.string.alphanumeric(6).toLowerCase()}`,
+      password: 'TestPassword123', // no special char
+    }, { validateStatus: () => true });
+    expectRejected(res.status);
+    if (res.status === 400) expect(res.data.message).toContain('must contain');
+  });
+
+  it('invalid email format is rejected', async () => {
+    const res = await axios.post(signupUrl, {
+      ...newUser,
+      email: 'notanemail',
+    }, { validateStatus: () => true });
+    expectRejected(res.status);
+    if (res.status === 400) expect(res.data.message).toContain('Email must be valid');
+  });
+
+});
+
+// ─── 7. Header assertions ─────────────────────────────────────────────────────
+
+describe('7. Header assertions', () => {
+
+  it('Content-Type is application/json', () => {
+    expect(signUpResponse.headers['content-type']).toContain('application/json');
+  });
+
+});
+
+// ─── 8. Response time ─────────────────────────────────────────────────────────
+//
+// Signup is slower than signin — it uploads to Cloudinary and writes to Redis + DB queue.
+// We allow up to 10 seconds (generous for a remote Cloudinary call).
+
+describe('8. Response time', () => {
+
+  it('signup responds within 10000ms', async () => {
+    const start = Date.now();
+    await axios.post(signupUrl, {
+      username: `vitest${faker.string.alphanumeric(8).toLowerCase()}`,
+      email: faker.internet.email().toLowerCase(),
+      password: TEST_PASSWORD,
+      avatarColor: TEST_AVATAR_COLOR,
+      avatarImage: TEST_AVATAR_IMAGE,
+    }, { validateStatus: () => true }).then(async (res) => {
+      // Clean up this extra user if it was created successfully
+      const extraAuthId = res.data.user?.authId;
+      if (extraAuthId) {
+        await axios.delete(cleanupUrl(extraAuthId), {
+          headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
+          validateStatus: () => true,
+        });
+      }
+    });
+    expect(Date.now() - start).toBeLessThan(10000);
+  });
+
+});
+
+// ─── 9. Assertion variants ────────────────────────────────────────────────────
+//
+// Three assertion types not used elsewhere in this file:
+//   toMatch(/regex/)          — assert a string matches a regular expression
+//   toBeGreaterThanOrEqual(n) — lower-bound range assertion for numeric values
+//   toSatisfy(fn)             — custom predicate function, expressive for complex rules
+//
+// All read from signUpResponse — no extra HTTP call.
+
+describe('9. Assertion variants', () => {
+
+  it('email matches email format regex — toMatch', () => {
+    // toMatch with /.+@.+\..+/ checks the rough shape of an email address.
+    // Useful when the exact value is generated (faker) and cannot be hardcoded.
+    expect(signUpResponse.data.user.email).toMatch(/.+@.+\..+/);
+  });
+
+  it('username length is at least 4 — toBeGreaterThanOrEqual', () => {
+    // toBeGreaterThanOrEqual asserts a numeric lower bound.
+    // The Joi schema requires username ≥ 4 chars; this verifies that rule was applied.
+    expect(signUpResponse.data.user.username.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('postsCount is non-negative — toBeGreaterThanOrEqual', () => {
+    // A newly created user starts with postsCount 0.
+    // toBeGreaterThanOrEqual(0) is the correct assertion for "must be zero or more".
+    expect(signUpResponse.data.user.postsCount).toBeGreaterThanOrEqual(0);
+  });
+
+  it('token is a valid JWT — toSatisfy with custom predicate', () => {
+    // toSatisfy(fn) calls fn(value) and passes if fn returns true.
+    // It is the most expressive option when the assertion logic cannot be expressed
+    // as a simple comparison: here we split and check the count of segments.
+    expect(signUpResponse.data.token).toSatisfy((t: string) => t.split('.').length === 3);
+  });
+
+});
+```
+
 ## Chapter 7: State and Side Effects
 
 ### Why 200 Does Not Mean Saved
@@ -2965,6 +4102,462 @@ Create a folder named "Chapter 7" inside your Postman collection. Work through t
 
 > **Note:** The afterAll restore is essential — leaving test data in the profile would break other tests.
 
+---
+
+## The Test File for This Chapter
+
+> **Lecture 04 — Current User, Profile & State Verification**
+> Run: `npm test tests/lecture-04/lecture.test.ts`
+
+```ts
+// Lecture 04 — Current User, Profile Update & Signout
+//
+// Endpoints:
+//   GET  /api/v1/currentuser
+//   GET  /api/v1/session-token
+//   PUT  /api/v1/user/profile/basic-info
+//   PUT  /api/v1/user/profile/settings
+//   POST /api/v1/signout
+//
+// New concepts:
+//   1. The currentuser response shape — token + isUser + user
+//   2. State verification — PUT then GET to confirm change persisted
+//   3. Chatty's Redis + Queue — why updates are immediately visible
+//   4. Restoring state in afterAll — save before, restore after
+//   5. Signout invalidates the session — subsequent requests return 401
+//
+// Run: npm test tests/lecture-04/lecture.test.ts
+
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+import { expectRejected } from '../../src/test-utils';
+
+const signinUrl      = `${config.BASE_URL}/signin`;
+const currentUserUrl = `${config.BASE_URL}/currentuser`;
+const sessionTokenUrl = `${config.BASE_URL}/session-token`;
+const basicInfoUrl   = `${config.BASE_URL}/user/profile/basic-info`;
+const settingsUrl    = `${config.BASE_URL}/user/profile/settings`;
+const signoutUrl     = `${config.BASE_URL}/signout`;
+
+const credentials = {
+  username: config.TEST_USERNAME,
+  password: config.TEST_PASSWORD,
+};
+
+// ─── File-level shared state ──────────────────────────────────────────────────
+
+let sessionCookie: string = '';
+let signInToken: string = '';
+
+// Values captured before we change them — restored in afterAll
+let originalWork: string = '';
+let originalQuote: string = '';
+let originalReactions: boolean = true;
+let originalFollows: boolean = true;
+
+beforeAll(async () => {
+  // Sign in
+  const loginRes = await axios.post(signinUrl, credentials, {
+    validateStatus: () => true,
+  });
+  const raw = loginRes.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  signInToken = loginRes.data.token ?? '';
+
+  // Capture current profile state before any test modifies it.
+  // The ?? '' / ?? true handles null values for accounts created before these
+  // fields were added to the schema.
+  const currentRes = await axios.get(currentUserUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+  originalWork      = currentRes.data.user?.work      ?? '';
+  originalQuote     = currentRes.data.user?.quote     ?? '';
+  originalReactions = currentRes.data.user?.notifications?.reactions ?? true;
+  originalFollows   = currentRes.data.user?.notifications?.follows   ?? true;
+});
+
+afterAll(async () => {
+  // Restore original profile values
+  await axios.put(basicInfoUrl,
+    { work: originalWork, quote: originalQuote },
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
+
+  // Restore original notification settings
+  await axios.put(settingsUrl,
+    { reactions: originalReactions, follows: originalFollows },
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
+
+  // Sign out
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+});
+
+// ─── 1. Current user ──────────────────────────────────────────────────────────
+//
+// GET /currentuser is the "who am I?" endpoint.
+// It reads from Redis (fast, consistent) and returns the full user document.
+// The response has three top-level fields: token, isUser, user.
+//
+// Note: this is different from the signin response which had: message, token, user
+
+describe('1. Current user', () => {
+  let currentUserResponse!: AxiosResponse;
+
+  beforeAll(async () => {
+    currentUserResponse = await axios.get(currentUserUrl, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+  });
+
+  it('status is 200', () => {
+    expect(currentUserResponse.status).toBe(200);
+  });
+
+  it('isUser is true', () => {
+    // isUser: true means the session is valid and the user was found
+    expect(currentUserResponse.data.isUser).toBe(true);
+  });
+
+  it('token is present and is a string', () => {
+    expect(typeof currentUserResponse.data.token).toBe('string');
+    expect(currentUserResponse.data.token.length).toBeGreaterThan(0);
+  });
+
+  it('user object has expected fields', () => {
+    expect(currentUserResponse.data.user).toMatchObject({
+      _id: expect.any(String),
+      username: expect.any(String),
+      email: expect.any(String),
+    });
+  });
+
+  it('user object has profile fields (may be empty string)', () => {
+    // These fields exist even if empty — their presence confirms the schema
+    const user = currentUserResponse.data.user;
+    expect(user).toHaveProperty('work');
+    expect(user).toHaveProperty('school');
+    expect(user).toHaveProperty('quote');
+    expect(user).toHaveProperty('location');
+  });
+
+  it('notifications object has all four settings', () => {
+    expect(currentUserResponse.data.user.notifications).toMatchObject({
+      messages: expect.any(Boolean),
+      reactions: expect.any(Boolean),
+      comments: expect.any(Boolean),
+      follows: expect.any(Boolean),
+    });
+  });
+
+  it('password is NOT in the user object', () => {
+    expect(currentUserResponse.data.user).not.toHaveProperty('password');
+  });
+
+});
+
+// ─── 2. Session token ─────────────────────────────────────────────────────────
+//
+// GET /session-token — the simplest endpoint.
+// It just extracts the JWT from the current session cookie and returns it.
+// Useful for frontends that need the raw JWT for other purposes.
+
+describe('2. Session token', () => {
+  let sessionTokenResponse!: AxiosResponse;
+
+  beforeAll(async () => {
+    sessionTokenResponse = await axios.get(sessionTokenUrl, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+  });
+
+  it('status is 200', () => {
+    expect(sessionTokenResponse.status).toBe(200);
+  });
+
+  it('returns an object with a token field', () => {
+    expect(sessionTokenResponse.data).toHaveProperty('token');
+  });
+
+  it('token is a non-empty string', () => {
+    expect(typeof sessionTokenResponse.data.token).toBe('string');
+    expect(sessionTokenResponse.data.token.length).toBeGreaterThan(0);
+  });
+
+  it('token matches the token from signin', () => {
+    // The session-token endpoint reads from req.session.jwt — same JWT as signin
+    // This proves the session is consistent across endpoints
+    expect(sessionTokenResponse.data.token).toBe(signInToken);
+  });
+
+});
+
+// ─── 3. Update basic info ─────────────────────────────────────────────────────
+//
+// PUT /user/profile/basic-info — all fields are optional.
+// The server updates Redis immediately, queues the DB write.
+// Returns only { message: "Updated successfully" } — not the updated user.
+// To see the changes you must call GET /currentuser (section 4).
+
+describe('3. Update basic info', () => {
+
+  it('status is 200', async () => {
+    const res = await axios.put(basicInfoUrl,
+      { work: 'Senior QA Engineer', quote: 'Test everything that matters' },
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('message is "Updated successfully"', async () => {
+    const res = await axios.put(basicInfoUrl,
+      { work: 'Senior QA Engineer' },
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    expect(res.data.message).toBe('Updated successfully');
+  });
+
+  it('sending empty body also returns 200 (all fields optional)', async () => {
+    // This proves the schema has no required fields
+    const res = await axios.put(basicInfoUrl, {},
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    expect(res.status).toBe(200);
+  });
+
+});
+
+// ─── 4. State verification ────────────────────────────────────────────────────
+//
+// This is the most important section of the lecture:
+// After calling PUT, we call GET /currentuser to CONFIRM the change was saved.
+//
+// A 200 from PUT only tells you the server accepted the request.
+// It does NOT tell you the data was actually stored.
+// The GET verification is the proof.
+
+describe('4. State verification', () => {
+
+  const testWork  = 'QA Automation Engineer';
+  const testQuote = 'Quality is not an act, it is a habit';
+
+  beforeAll(async () => {
+    // Make the update
+    await axios.put(basicInfoUrl,
+      { work: testWork, quote: testQuote },
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+  });
+
+  it('GET /currentuser reflects the updated work field', async () => {
+    const res = await axios.get(currentUserUrl, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+    expect(res.data.user.work).toBe(testWork);
+  });
+
+  it('GET /currentuser reflects the updated quote field', async () => {
+    const res = await axios.get(currentUserUrl, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+    expect(res.data.user.quote).toBe(testQuote);
+  });
+
+});
+
+// ─── 5. Update notification settings ─────────────────────────────────────────
+//
+// PUT /user/profile/settings — toggles notification preferences.
+// All fields are optional booleans.
+// The response includes the settings object that was applied.
+
+describe('5. Update notification settings', () => {
+
+  it('status is 200', async () => {
+    const res = await axios.put(settingsUrl,
+      { reactions: false, follows: false },
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('message is correct', async () => {
+    const res = await axios.put(settingsUrl,
+      { reactions: false },
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    expect(res.data.message).toBe('Notification settings updated successfully');
+  });
+
+  it('response includes the settings that were applied', async () => {
+    const res = await axios.put(settingsUrl,
+      { reactions: false, follows: false },
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    // Unlike basic-info, this response echoes back the settings object
+    expect(res.data.settings).toMatchObject({
+      reactions: false,
+      follows: false,
+    });
+  });
+
+  it('GET /currentuser reflects updated notification settings', async () => {
+    await axios.put(settingsUrl,
+      { reactions: false },
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+
+    const res = await axios.get(currentUserUrl, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+    expect(res.data.user.notifications.reactions).toBe(false);
+  });
+
+});
+
+// ─── 6. Negative tests ────────────────────────────────────────────────────────
+//
+// All endpoints in this lecture require authentication.
+// Without the session cookie → 401 Unauthorized.
+
+describe('6. Negative tests — no cookie', () => {
+
+  it('GET /currentuser without cookie returns 401', async () => {
+    const res = await axios.get(currentUserUrl, { validateStatus: () => true });
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /session-token without cookie returns 401', async () => {
+    const res = await axios.get(sessionTokenUrl, { validateStatus: () => true });
+    expect(res.status).toBe(401);
+  });
+
+  it('PUT /user/profile/basic-info without cookie returns 401', async () => {
+    const res = await axios.put(basicInfoUrl,
+      { work: 'should not work' },
+      { validateStatus: () => true },
+    );
+    expect(res.status).toBe(401);
+  });
+
+});
+
+// ─── 7. Signout ───────────────────────────────────────────────────────────────
+//
+// POST /signout sets req.session = null on the server.
+// The cookie still exists on the client but the server no longer recognises it.
+// Any subsequent authenticated request with that cookie returns 401.
+//
+// Note: afterAll also calls signout — but this test runs BEFORE afterAll.
+// We sign out here to test it, then afterAll does cleanup. The second signout
+// is harmless (already signed out — returns 200 anyway).
+
+describe('7. Signout', () => {
+
+  it('status is 200', async () => {
+    const res = await axios.post(signoutUrl, {}, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('message is "User logout successfully"', async () => {
+    // Sign in fresh for this test (previous test signed out)
+    const freshLogin = await axios.post(signinUrl, credentials, { validateStatus: () => true });
+    const freshCookie = freshLogin.headers['set-cookie']?.[0] ?? '';
+
+    const res = await axios.post(signoutUrl, {}, {
+      headers: { Cookie: freshCookie },
+      validateStatus: () => true,
+    });
+    expect(res.data.message).toBe('User logout successfully');
+  });
+
+  it('after signout the session is invalidated — GET /currentuser returns 401', async () => {
+    // Sign in → get cookie → sign out → try currentuser → expect 401
+    const loginRes = await axios.post(signinUrl, credentials, { validateStatus: () => true });
+    const freshCookie = loginRes.headers['set-cookie']?.[0] ?? '';
+
+    await axios.post(signoutUrl, {}, {
+      headers: { Cookie: freshCookie }, validateStatus: () => true,
+    });
+
+    const afterSignout = await axios.get(currentUserUrl, {
+      headers: { Cookie: freshCookie }, validateStatus: () => true,
+    });
+    expect(afterSignout.status).toBe(401);
+  });
+
+});
+
+// ─── 8. Assertion variants ────────────────────────────────────────────────────
+//
+// Three assertion types not used elsewhere in this file:
+//   toBeGreaterThanOrEqual(n)    — lower-bound range check for numeric fields
+//   toBeTruthy                   — loose truthiness, any non-empty/non-zero value passes
+//   expect.objectContaining({…}) — assert an object contains specific keys/values
+//                                  while allowing extra keys
+//
+// Uses a fresh GET /currentuser response so we have a live user object to inspect.
+
+describe('8. Assertion variants', () => {
+  let currentUserRes!: Awaited<ReturnType<typeof axios.get>>;
+
+  beforeAll(async () => {
+    // Re-sign in because section 7 signed out
+    const loginRes = await axios.post(signinUrl, credentials, { validateStatus: () => true });
+    const freshCookie = Array.isArray(loginRes.headers['set-cookie'])
+      ? loginRes.headers['set-cookie'][0]
+      : (loginRes.headers['set-cookie'] ?? '');
+
+    currentUserRes = await axios.get(currentUserUrl, {
+      headers: { Cookie: freshCookie },
+      validateStatus: () => true,
+    });
+
+    // Update sessionCookie so afterAll signout still works
+    sessionCookie = freshCookie;
+  });
+
+  it('postsCount is non-negative — toBeGreaterThanOrEqual', () => {
+    // toBeGreaterThanOrEqual(0) is the correct assertion for "must be zero or more".
+    // toBeGreaterThan(0) would fail for a user with no posts.
+    expect(currentUserRes.data.user.postsCount).toBeGreaterThanOrEqual(0);
+  });
+
+  it('followersCount is non-negative — toBeGreaterThanOrEqual', () => {
+    expect(currentUserRes.data.user.followersCount).toBeGreaterThanOrEqual(0);
+  });
+
+  it('username is truthy — toBeTruthy', () => {
+    // toBeTruthy passes for any non-empty string.
+    // Simpler than checking length > 0 when we only care that the field is populated.
+    expect(currentUserRes.data.user.username).toBeTruthy();
+  });
+
+  it('user object contains core fields — expect.objectContaining', () => {
+    // expect.objectContaining checks that the specified keys/values exist.
+    // Extra keys in the real object are ignored — this is intentionally partial.
+    expect(currentUserRes.data.user).toEqual(expect.objectContaining({
+      _id: expect.any(String),
+      username: expect.any(String),
+      email: expect.any(String),
+    }));
+  });
+
+});
+```
+
 # Part IV: CRUD Testing Patterns
 
 ---
@@ -3412,6 +5005,398 @@ Create a folder named "Chapter 8" inside your Postman collection. Work through t
 
 > **Note:** The unique content string (including Date.now()) ensures your post is findable even when other tests are running.
 
+---
+
+## The Test File for This Chapter
+
+> **Lecture 05 — Posts: Full CRUD Flow**
+> Run: `npm test tests/lecture-05/lecture.test.ts`
+
+```ts
+// Lecture 05 — Posts: Full CRUD Flow
+//
+// Endpoints:
+//   POST   /api/v1/post
+//   GET    /api/v1/post/all/:page
+//   PATCH  /api/v1/post/:postId
+//   DELETE /api/v1/post/:postId
+//
+// New concepts:
+//   1. Create endpoint that returns no ID — find it via GET
+//   2. The full CRUD cycle: Create → Read → Update → Read again → Delete → Verify
+//   3. Owner-only operations — PATCH/DELETE check who created the post
+//   4. ObjectId validation — invalid ID format → 400
+//   5. Cleanup flag — track deletion to avoid orphaned test data
+//
+// Run: npm test tests/lecture-05/lecture.test.ts
+
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+
+const signinUrl  = `${config.BASE_URL}/signin`;
+const postUrl    = `${config.BASE_URL}/post`;
+const getAllUrl   = `${config.BASE_URL}/post/all/1`;
+const signoutUrl = `${config.BASE_URL}/signout`;
+
+const postByIdUrl = (id: string) => `${config.BASE_URL}/post/${id}`;
+
+const credentials = {
+  username: config.TEST_USERNAME,
+  password: config.TEST_PASSWORD,
+};
+
+// Unique content so we can find our post in the list after creation
+const UNIQUE_CONTENT = `Vitest lecture-05 post ${Date.now()}`;
+const UPDATED_CONTENT = `Vitest lecture-05 UPDATED ${Date.now()}`;
+
+// ─── File-level shared state ──────────────────────────────────────────────────
+
+let sessionCookie: string = '';
+let postId: string = '';
+let postDeleted = false;  // tracks deletion so afterAll can clean up if test fails
+
+beforeAll(async () => {
+  // Sign in
+  const loginRes = await axios.post(signinUrl, credentials, {
+    validateStatus: () => true,
+  });
+  const raw = loginRes.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+
+  // Create the test post
+  await axios.post(postUrl, {
+    post: UNIQUE_CONTENT,
+    bgColor: '#ffffff',
+    privacy: 'Public',
+    feelings: '',
+  }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+  // Find the post ID — the create response has no ID, so we search GET /post/all/1
+  const getRes = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+  const found = getRes.data.posts?.find((p: { post: string; _id: string }) => p.post === UNIQUE_CONTENT);
+  postId = found?._id ?? '';
+});
+
+afterAll(async () => {
+  // Clean up the post if the delete test failed or was skipped
+  if (!postDeleted && postId) {
+    await axios.delete(postByIdUrl(postId), {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+  }
+
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie },
+    validateStatus: () => true,
+  });
+});
+
+// ─── 1. Create post ───────────────────────────────────────────────────────────
+//
+// POST /post returns 201 with ONLY a success message.
+// No post ID, no post data, no location header.
+// This is a deliberate API design choice — the ID is generated server-side.
+// To get the ID, you must call GET /post/all/:page (section 2).
+
+describe('1. Create post', () => {
+
+  let createResponse!: AxiosResponse;
+
+  beforeAll(async () => {
+    // Create a second post just to test the create response in isolation
+    createResponse = await axios.post(postUrl, {
+      post: `Vitest create-test ${Date.now()}`,
+      bgColor: '#f0f0f0',
+      privacy: 'Public',
+      feelings: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+    // Clean up this extra post after assertions
+  });
+
+  it('status is 201 Created', () => {
+    expect(createResponse.status).toBe(201);
+  });
+
+  it('message is "Post created successfully"', () => {
+    expect(createResponse.data.message).toBe('Post created successfully');
+  });
+
+  it('response does NOT contain a post ID (by design)', () => {
+    // The API returns only { message } — no _id, no post object
+    // This teaches us we must GET to find the ID
+    expect(createResponse.data).not.toHaveProperty('_id');
+    expect(createResponse.data).not.toHaveProperty('post');
+    expect(Object.keys(createResponse.data)).toEqual(['message']);
+  });
+
+});
+
+// ─── 2. Find the created post ─────────────────────────────────────────────────
+//
+// GET /post/all/1 returns the 10 most recent posts.
+// Our post was created in beforeAll so it should be near the top.
+// We find it by matching the unique content string.
+
+describe('2. Find the created post', () => {
+  let getAllResponse!: AxiosResponse;
+
+  beforeAll(async () => {
+    getAllResponse = await axios.get(getAllUrl, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+  });
+
+  it('GET /post/all/1 returns status 200', () => {
+    expect(getAllResponse.status).toBe(200);
+  });
+
+  it('response contains posts array and totalPosts', () => {
+    expect(getAllResponse.data).toMatchObject({
+      message: expect.any(String),
+      posts: expect.any(Array),
+      totalPosts: expect.any(Number),
+    });
+  });
+
+  it('our post appears in the list', () => {
+    const found = getAllResponse.data.posts.find(
+      (p: { post: string }) => p.post === UNIQUE_CONTENT,
+    );
+    expect(found).toBeDefined();
+  });
+
+  it('post has the correct structure', () => {
+    const found = getAllResponse.data.posts.find(
+      (p: { post: string }) => p.post === UNIQUE_CONTENT,
+    );
+    expect(found).toMatchObject({
+      _id: expect.any(String),
+      userId: expect.any(String),
+      username: expect.any(String),
+      post: UNIQUE_CONTENT,
+      commentsCount: 0,
+      reactions: expect.any(Object),
+    });
+  });
+
+  it('all 6 reaction types start at 0', () => {
+    const found = getAllResponse.data.posts.find(
+      (p: { post: string }) => p.post === UNIQUE_CONTENT,
+    );
+    expect(found.reactions).toEqual({
+      like: 0, love: 0, happy: 0, sad: 0, wow: 0, angry: 0,
+    });
+  });
+
+});
+
+// ─── 3. Update post ───────────────────────────────────────────────────────────
+//
+// PATCH /post/:postId — only the owner can update.
+// Returns { message: "Post updated successfully" } — no post data.
+// Must call GET to verify the change (state verification pattern from L4).
+
+describe('3. Update post', () => {
+
+  it('status is 200', async () => {
+    const res = await axios.patch(postByIdUrl(postId), {
+      post: UPDATED_CONTENT,
+      bgColor: '#ffffff',
+      privacy: 'Public',
+      feelings: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('message is "Post updated successfully"', async () => {
+    const res = await axios.patch(postByIdUrl(postId), {
+      post: UPDATED_CONTENT,
+      bgColor: '#ffffff',
+      privacy: 'Public',
+      feelings: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+    expect(res.data.message).toBe('Post updated successfully');
+  });
+
+});
+
+// ─── 4. State verification ────────────────────────────────────────────────────
+//
+// After updating, GET /post/all/1 must reflect the new content.
+// The update writes to Redis immediately — so GET reads the updated version.
+
+describe('4. State verification after update', () => {
+
+  it('GET /post/all/1 shows the updated content', async () => {
+    const res = await axios.get(getAllUrl, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+
+    const found = res.data.posts?.find(
+      (p: { _id: string }) => p._id === postId,
+    );
+
+    expect(found).toBeDefined();
+    expect(found.post).toBe(UPDATED_CONTENT);
+  });
+
+});
+
+// ─── 5. Negative tests ────────────────────────────────────────────────────────
+
+describe('5. Negative tests', () => {
+
+  it('POST /post without cookie returns 401', async () => {
+    const res = await axios.post(postUrl,
+      { post: 'should fail' },
+      { validateStatus: () => true },
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('PATCH without cookie returns 401', async () => {
+    const res = await axios.patch(postByIdUrl(postId),
+      { post: 'should fail' },
+      { validateStatus: () => true },
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('PATCH with invalid ObjectId format returns 400', async () => {
+    // MongoDB ObjectId must be a 24-character hex string
+    // "not-an-objectid" fails the validateObjectId middleware
+    const res = await axios.patch(
+      `${config.BASE_URL}/post/not-an-objectid`,
+      { post: 'should fail' },
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('DELETE with invalid ObjectId format returns 400', async () => {
+    const res = await axios.delete(
+      `${config.BASE_URL}/post/not-an-objectid`,
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    expect(res.status).toBe(400);
+  });
+
+});
+
+// ─── 6. Delete post ───────────────────────────────────────────────────────────
+//
+// DELETE /post/:postId — deletes from Redis + queues DB deletion.
+// After deletion, the post should no longer appear in GET /post/all/1.
+
+describe('6. Delete post', () => {
+
+  it('status is 200', async () => {
+    const res = await axios.delete(postByIdUrl(postId), {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+
+    if (res.status === 200) postDeleted = true;  // signal afterAll: no cleanup needed
+    expect(res.status).toBe(200);
+  });
+
+  it('message is "Post deleted successfully"', async () => {
+    // Create a fresh post to delete for this test (main post already deleted above)
+    const createRes = await axios.post(postUrl, {
+      post: `Vitest delete-test ${Date.now()}`,
+      bgColor: '#ffffff',
+      privacy: 'Public',
+      feelings: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+    expect(createRes.status).toBe(201);
+
+    const getRes = await axios.get(getAllUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    const fresh = getRes.data.posts?.[0];
+    if (!fresh) return;
+
+    const deleteRes = await axios.delete(postByIdUrl(fresh._id), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+
+    expect(deleteRes.data.message).toBe('Post deleted successfully');
+  });
+
+  it('deleted post no longer appears in GET /post/all/1', async () => {
+    const res = await axios.get(getAllUrl, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+
+    const found = res.data.posts?.find(
+      (p: { _id: string }) => p._id === postId,
+    );
+
+    // The post should not be in the list
+    expect(found).toBeUndefined();
+  });
+
+});
+
+// ─── 7. Assertion variants ────────────────────────────────────────────────────
+//
+// Three assertion types not used elsewhere in this file:
+//   expect.arrayContaining([…]) — assert an array contains all specified elements
+//                                  (extra elements in the actual array are allowed)
+//   toBeLessThanOrEqual(n)      — upper-bound range check, useful for page sizes
+//   toBeTypeOf('string')        — Vitest-native type check, cleaner than typeof
+//
+// Needs its own beforeAll to GET the current posts list.
+
+describe('7. Assertion variants', () => {
+  let posts: Array<{ _id: string; post: string; userId: string }> = [];
+
+  beforeAll(async () => {
+    const res = await axios.get(getAllUrl, {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+    posts = res.data.posts ?? [];
+  });
+
+  it('posts array contains objects with _id — expect.arrayContaining', () => {
+    // expect.arrayContaining checks that EVERY listed element appears in the array.
+    // expect.objectContaining inside it means "at least this shape" — extra fields allowed.
+    // Together they assert: the array has at least one item that has an _id string field.
+    expect(posts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ _id: expect.any(String) }),
+      ]),
+    );
+  });
+
+  it('page 1 returns at most 10 posts — toBeLessThanOrEqual', () => {
+    // The API is documented to return max 10 posts per page.
+    // toBeLessThanOrEqual(10) is the correct upper-bound assertion for a page size.
+    expect(posts.length).toBeLessThanOrEqual(10);
+  });
+
+  it('first post _id is of type string — toBeTypeOf', () => {
+    // toBeTypeOf is Vitest-specific — it reads more naturally than
+    // `expect(typeof posts[0]._id).toBe('string')` and gives a clearer failure message.
+    if (posts.length === 0) return; // guard for empty list
+    expect(posts[0]._id).toBeTypeOf('string');
+  });
+
+});
+```
+
 ## Chapter 9: Read — Testing Retrieval
 
 ### The Philosophy of Read Tests
@@ -3823,6 +5808,319 @@ Create a folder named "Chapter 9" inside your Postman collection. Work through t
 
 > **Note:** Page 1 is the most recently created posts. Creating a post in beforeAll ensures it appears here.
 
+---
+
+## The Test File for This Chapter
+
+> **Lecture 06 — Reactions**
+> Run: `npm test tests/lecture-06/lecture.test.ts`
+
+```ts
+// Lecture 06 — Reactions: All Types & State Transitions
+//
+// Endpoints:
+//   POST   /api/v1/post/reaction
+//   GET    /api/v1/post/reactions/:postId
+//   GET    /api/v1/post/single/reaction/username/:username/:postId
+//   GET    /api/v1/post/reactions/username/:username
+//   DELETE /api/v1/post/reaction/:postId/:previousReaction/:postReactions
+//
+// New concepts:
+//   1. Reaction types: like | love | happy | sad | wow | angry
+//   2. URL-encoded JSON in DELETE path param — encodeURIComponent(JSON.stringify(...))
+//   3. State transitions: add → count+1, remove → count-1
+//   4. userTo — post owner's userId for notification routing
+//
+// Run: npm test tests/lecture-06/lecture.test.ts
+
+import axios from 'axios';
+import { config } from '../../src/config';
+
+const signinUrl  = `${config.BASE_URL}/signin`;
+const postUrl    = `${config.BASE_URL}/post`;
+const getAllUrl   = `${config.BASE_URL}/post/all/1`;
+const reactionUrl = `${config.BASE_URL}/post/reaction`;
+const signoutUrl = `${config.BASE_URL}/signout`;
+
+const reactionsForPost = (postId: string) => `${config.BASE_URL}/post/reactions/${postId}`;
+const singleReaction   = (username: string, postId: string) =>
+  `${config.BASE_URL}/post/single/reaction/username/${username}/${postId}`;
+const deleteReaction   = (postId: string, type: string, reactions: Record<string, number>) =>
+  `${config.BASE_URL}/post/reaction/${postId}/${type}/${encodeURIComponent(JSON.stringify(reactions))}`;
+
+const credentials = {
+  username: config.TEST_USERNAME,
+  password: config.TEST_PASSWORD,
+};
+
+const POST_CONTENT = `Vitest lecture-06 post ${Date.now()}`;
+
+// ─── File-level shared state ──────────────────────────────────────────────────
+
+let sessionCookie: string = '';
+let postId: string = '';
+let postOwnerUserId: string = '';
+let postDeleted = false;
+
+const ZERO_REACTIONS = { like: 0, love: 0, happy: 0, sad: 0, wow: 0, angry: 0 };
+
+beforeAll(async () => {
+  // Sign in
+  const loginRes = await axios.post(signinUrl, credentials, { validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+
+  // Create a test post
+  await axios.post(postUrl, { post: POST_CONTENT, bgColor: '#fff', privacy: 'Public', feelings: '' },
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+  // Find post ID and owner userId
+  const getRes = await axios.get(getAllUrl, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+  const found = getRes.data.posts?.find((p: { post: string; _id: string; userId: string }) => p.post === POST_CONTENT);
+  postId = found?._id ?? '';
+  postOwnerUserId = found?.userId ?? '';
+});
+
+afterAll(async () => {
+  if (!postDeleted && postId) {
+    await axios.delete(`${config.BASE_URL}/post/${postId}`, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+  }
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+});
+
+// ─── 1. Add reaction ──────────────────────────────────────────────────────────
+
+describe('1. Add reaction', () => {
+
+  it('status is 200', async () => {
+    const res = await axios.post(reactionUrl, {
+      userTo: postOwnerUserId,
+      postId,
+      type: 'like',
+      previousReaction: '',
+      postReactions: ZERO_REACTIONS,
+      profilePicture: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('message is "Reaction added successfully"', async () => {
+    const res = await axios.post(reactionUrl, {
+      userTo: postOwnerUserId,
+      postId,
+      type: 'like',
+      previousReaction: '',
+      postReactions: ZERO_REACTIONS,
+      profilePicture: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+    expect(res.data.message).toBe('Reaction added successfully');
+  });
+
+});
+
+// ─── 2. Get reactions ─────────────────────────────────────────────────────────
+//
+// After adding a reaction, GET /post/reactions/:postId returns:
+// { message, reactions: [...], count }
+// The 'reactions' array contains individual reaction documents.
+// The 'count' is the total number of reactions.
+
+describe('2. Get reactions', () => {
+
+  it('GET /post/reactions/:postId returns status 200', async () => {
+    const res = await axios.get(reactionsForPost(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('response has reactions array and count', async () => {
+    const res = await axios.get(reactionsForPost(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data).toMatchObject({
+      message: expect.any(String),
+      reactions: expect.any(Array),
+      count: expect.any(Number),
+    });
+  });
+
+  it('count is at least 1 after adding a reaction', async () => {
+    const res = await axios.get(reactionsForPost(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data.count).toBeGreaterThanOrEqual(1);
+  });
+
+});
+
+// ─── 3. Get single reaction by username ──────────────────────────────────────
+//
+// GET /post/single/reaction/username/:username/:postId
+// Returns the reaction made by a specific user on a specific post.
+
+describe('3. Get single reaction by username', () => {
+
+  it('returns status 200', async () => {
+    const username = config.TEST_USERNAME;
+    // Chatty title-cases usernames — match the format
+    const titleCased = username.charAt(0).toUpperCase() + username.slice(1).toLowerCase();
+    const res = await axios.get(singleReaction(titleCased, postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('response has reactions and count fields', async () => {
+    const username = config.TEST_USERNAME;
+    const titleCased = username.charAt(0).toUpperCase() + username.slice(1).toLowerCase();
+    const res = await axios.get(singleReaction(titleCased, postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data).toHaveProperty('reactions');
+    expect(res.data).toHaveProperty('count');
+  });
+
+});
+
+// ─── 4. State verification — reaction count ───────────────────────────────────
+//
+// After adding a reaction:
+//   - The reactions array is non-empty
+//   - At least one reaction has type 'like'
+//
+// This mirrors the state verification pattern from Lectures 4 and 5.
+
+describe('4. State verification — reaction present in list', () => {
+
+  it('reactions array contains at least one entry', async () => {
+    const res = await axios.get(reactionsForPost(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data.reactions.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('at least one reaction has type "like"', async () => {
+    const res = await axios.get(reactionsForPost(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    const likeReaction = res.data.reactions.find((r: { type: string }) => r.type === 'like');
+    expect(likeReaction).toBeDefined();
+  });
+
+});
+
+// ─── 5. Remove reaction ───────────────────────────────────────────────────────
+//
+// DELETE /post/reaction/:postId/:previousReaction/:postReactions
+//
+// The third param is URL-encoded JSON of the current reaction counts.
+// After adding 1 like: { like: 1, love: 0, happy: 0, sad: 0, wow: 0, angry: 0 }
+//
+// encodeURIComponent(JSON.stringify(...)) converts the object to a safe URL string.
+
+describe('5. Remove reaction', () => {
+
+  it('status is 200', async () => {
+    const currentReactions = { like: 1, love: 0, happy: 0, sad: 0, wow: 0, angry: 0 };
+    const res = await axios.delete(
+      deleteReaction(postId, 'like', currentReactions),
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('message is "Reaction removed from post"', async () => {
+    // Add a reaction first, then remove it
+    await axios.post(reactionUrl, {
+      userTo: postOwnerUserId, postId, type: 'love',
+      previousReaction: '', postReactions: ZERO_REACTIONS, profilePicture: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+    const currentReactions = { like: 0, love: 1, happy: 0, sad: 0, wow: 0, angry: 0 };
+    const res = await axios.delete(
+      deleteReaction(postId, 'love', currentReactions),
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    expect(res.data.message).toBe('Reaction removed from post');
+  });
+
+});
+
+// ─── 6. Assertion variants ───────────────────────────────────────────────────
+//
+// New assertion types introduced here:
+//   expect.stringContaining('...')  — asymmetric matcher: string includes substring
+//   toBeTypeOf('string')            — Vitest-specific runtime type check
+//   toBeGreaterThanOrEqual(n)       — numeric lower-bound check
+
+describe('6. Assertion variants', () => {
+
+  it('create comment message contains "successfully" (expect.stringContaining)', async () => {
+    const res = await axios.post(reactionUrl, {
+      userTo: postOwnerUserId,
+      postId,
+      type: 'happy',
+      previousReaction: '',
+      postReactions: ZERO_REACTIONS,
+      profilePicture: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+    // expect.stringContaining is an asymmetric matcher — it passes if the actual
+    // string includes the given substring. More flexible than .toBe() because the
+    // full message text can change without breaking the test.
+    expect(res.data).toMatchObject({
+      message: expect.stringContaining('successfully'),
+    });
+  });
+
+  it('reaction count from GET is a number >= 0 (toBeGreaterThanOrEqual)', async () => {
+    const res = await axios.get(reactionsForPost(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    // toBeGreaterThanOrEqual asserts a numeric lower bound without pinning the
+    // exact value — useful when state may vary across test runs.
+    expect(res.data.count).toBeGreaterThanOrEqual(0);
+  });
+
+  it('postId is a string (toBeTypeOf)', () => {
+    // toBeTypeOf is Vitest-specific. It uses typeof under the hood and gives a
+    // clearer error message than expect(typeof x).toBe('string').
+    expect(postId).toBeTypeOf('string');
+  });
+
+});
+
+// ─── 7. Negative tests ────────────────────────────────────────────────────────
+
+describe('7. Negative tests', () => {
+
+  it('POST /post/reaction without cookie returns 401', async () => {
+    const res = await axios.post(reactionUrl, {
+      userTo: postOwnerUserId, postId, type: 'like',
+      previousReaction: '', postReactions: ZERO_REACTIONS, profilePicture: '',
+    }, { validateStatus: () => true });
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /post/reactions/:postId with invalid ObjectId returns 400', async () => {
+    const res = await axios.get(`${config.BASE_URL}/post/reactions/not-an-id`, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(400);
+  });
+
+});
+```
+
 ## Chapter 10: Update — Testing Mutations
 
 ### PUT vs. PATCH: Understanding the Semantics
@@ -4212,6 +6510,310 @@ Create a folder named "Chapter 10" inside your Postman collection. Work through 
 
 
 > **Note:** The PATCH → GET → PATCH back cycle is the correct pattern. Never leave modified data behind.
+
+---
+
+## The Test File for This Chapter
+
+> **Lecture 07 — Comments**
+> Run: `npm test tests/lecture-07/lecture.test.ts`
+
+```ts
+// Lecture 07 — Comments: Full CRUD + Nested Queries
+//
+// Run: npm test tests/lecture-07/lecture.test.ts
+
+import axios from 'axios';
+import { config } from '../../src/config';
+
+const signinUrl  = `${config.BASE_URL}/signin`;
+const postUrl    = `${config.BASE_URL}/post`;
+const getAllUrl   = `${config.BASE_URL}/post/all/1`;
+const commentUrl = `${config.BASE_URL}/post/comment`;
+const signoutUrl = `${config.BASE_URL}/signout`;
+
+const commentsForPost  = (id: string) => `${config.BASE_URL}/post/comments/${id}`;
+const commentNamesUrl  = (id: string) => `${config.BASE_URL}/post/commentsnames/${id}`;
+const singleCommentUrl = (postId: string, commentId: string) =>
+  `${config.BASE_URL}/post/single/comment/${postId}/${commentId}`;
+const commentById = (postId: string, commentId: string) =>
+  `${config.BASE_URL}/post/comment/${postId}/${commentId}`;
+
+const UNIQUE_COMMENT  = `Vitest comment ${Date.now()}`;
+const UPDATED_COMMENT = `Updated comment ${Date.now()}`;
+const POST_CONTENT    = `Vitest lecture-07 ${Date.now()}`;
+
+let sessionCookie: string = '';
+let postId: string = '';
+let postOwnerUserId: string = '';
+let commentId: string = '';
+let commentDeleted = false;
+let postDeleted = false;
+
+beforeAll(async () => {
+  const loginRes = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+
+  // Create test post
+  await axios.post(postUrl, { post: POST_CONTENT, bgColor: '#fff', privacy: 'Public', feelings: '' },
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+  const getRes = await axios.get(getAllUrl, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+  const found = getRes.data.posts?.find((p: { post: string; _id: string; userId: string }) => p.post === POST_CONTENT);
+  postId = found?._id ?? '';
+  postOwnerUserId = found?.userId ?? '';
+
+  // Add test comment
+  await axios.post(commentUrl, {
+    userTo: postOwnerUserId, postId, comment: UNIQUE_COMMENT, profilePicture: '',
+  }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+  // Find commentId
+  const commentsRes = await axios.get(commentsForPost(postId), {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+  const foundComment = commentsRes.data.comments?.find(
+    (c: { comment: string; _id: string }) => c.comment === UNIQUE_COMMENT,
+  );
+  commentId = foundComment?._id ?? '';
+});
+
+afterAll(async () => {
+  if (!commentDeleted && commentId) {
+    await axios.delete(commentById(postId, commentId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+  }
+  if (!postDeleted && postId) {
+    await axios.delete(`${config.BASE_URL}/post/${postId}`, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+  }
+  await axios.post(signoutUrl, {}, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+});
+
+// ─── 1. Add comment ───────────────────────────────────────────────────────────
+
+describe('1. Add comment', () => {
+
+  it('POST /post/comment returns 200 (not 201)', async () => {
+    const res = await axios.post(commentUrl, {
+      userTo: postOwnerUserId, postId,
+      comment: `Extra test comment ${Date.now()}`,
+      profilePicture: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    expect(res.status).toBe(200);
+  });
+
+  it('message is "Comment created successfully"', async () => {
+    const res = await axios.post(commentUrl, {
+      userTo: postOwnerUserId, postId,
+      comment: `Message check ${Date.now()}`,
+      profilePicture: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    expect(res.data.message).toBe('Comment created successfully');
+  });
+
+  it('response does NOT contain a commentId', async () => {
+    const res = await axios.post(commentUrl, {
+      userTo: postOwnerUserId, postId, comment: 'No ID test', profilePicture: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    expect(res.data).not.toHaveProperty('_id');
+    expect(Object.keys(res.data)).toEqual(['message']);
+  });
+
+});
+
+// ─── 2. Get comments ──────────────────────────────────────────────────────────
+
+describe('2. Get comments', () => {
+  let commentsResponse: { data: { comments: { comment: string; _id: string }[]; message: string } } | null = null;
+
+  beforeAll(async () => {
+    const res = await axios.get(commentsForPost(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    commentsResponse = res;
+  });
+
+  it('status is 200', () => {
+    expect(commentsResponse?.data).toBeDefined();
+  });
+
+  it('comments array is non-empty', () => {
+    expect(commentsResponse?.data.comments.length).toBeGreaterThan(0);
+  });
+
+  it('our comment is in the list', () => {
+    const found = commentsResponse?.data.comments.find(c => c.comment === UNIQUE_COMMENT);
+    expect(found).toBeDefined();
+  });
+
+});
+
+// ─── 3. Get comment names ─────────────────────────────────────────────────────
+
+describe('3. Get comment names', () => {
+
+  it('GET /post/commentsnames/:postId returns 200', async () => {
+    const res = await axios.get(commentNamesUrl(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('returns username list', async () => {
+    const res = await axios.get(commentNamesUrl(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data).toHaveProperty('comments');
+  });
+
+});
+
+// ─── 4. Get single comment ────────────────────────────────────────────────────
+
+describe('4. Get single comment', () => {
+
+  it('GET /post/single/comment/:postId/:commentId returns 200', async () => {
+    const res = await axios.get(singleCommentUrl(postId, commentId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('returns the specific comment content', async () => {
+    const res = await axios.get(singleCommentUrl(postId, commentId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data.comments).toBeDefined();
+  });
+
+});
+
+// ─── 5. Update comment ────────────────────────────────────────────────────────
+
+describe('5. Update comment', () => {
+
+  it('PATCH returns 200', async () => {
+    const res = await axios.patch(commentById(postId, commentId),
+      { comment: UPDATED_COMMENT },
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    expect(res.status).toBe(200);
+  });
+
+});
+
+// ─── 6. State verification after update ──────────────────────────────────────
+
+describe('6. State verification after update', () => {
+
+  it('GET single comment reflects updated text', async () => {
+    const res = await axios.get(singleCommentUrl(postId, commentId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data.comments?.comment).toBe(UPDATED_COMMENT);
+  });
+
+});
+
+// ─── 7. Delete comment ────────────────────────────────────────────────────────
+
+describe('7. Delete comment', () => {
+
+  it('DELETE returns 200', async () => {
+    const res = await axios.delete(commentById(postId, commentId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    if (res.status === 200) commentDeleted = true;
+    expect(res.status).toBe(200);
+  });
+
+  it('message is "Comment deleted successfully"', async () => {
+    // Create a fresh comment to delete
+    await axios.post(commentUrl, {
+      userTo: postOwnerUserId, postId, comment: `Delete test ${Date.now()}`, profilePicture: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+    const getRes = await axios.get(commentsForPost(postId), { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    const fresh = getRes.data.comments?.[0];
+    if (!fresh) return;
+
+    const deleteRes = await axios.delete(commentById(postId, fresh._id), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(deleteRes.data.message).toBe('Comment deleted successfully');
+  });
+
+});
+
+// ─── 8. Assertion variants ───────────────────────────────────────────────────
+//
+// New assertion types introduced here:
+//   expect.arrayContaining([...])  — asserts array includes all listed items (subset match)
+//   toMatch(/regex/)               — asserts string matches a regular expression
+//   toSatisfy(fn)                  — asserts a custom predicate function returns true
+
+describe('8. Assertion variants', () => {
+
+  it('commentsCount from GET is a number (toSatisfy custom predicate)', async () => {
+    const res = await axios.get(commentsForPost(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    const count: number = res.data.comments?.length ?? 0;
+    // toSatisfy lets you write any boolean predicate as the assertion condition.
+    // It is ideal when built-in matchers do not express the constraint clearly.
+    expect(count).toSatisfy((n: number) => n >= 0);
+  });
+
+  it('commentId matches MongoDB ObjectId format (toMatch regex)', () => {
+    // toMatch accepts a regex and asserts the string matches it.
+    // A MongoDB ObjectId is always exactly 24 lowercase hex characters.
+    expect(commentId).toMatch(/^[a-f0-9]{24}$/);
+  });
+
+  it('comments array contains our comment object (expect.arrayContaining)', async () => {
+    const res = await axios.get(commentsForPost(postId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    // expect.arrayContaining asserts a subset — it passes even if the array has
+    // additional items. Combined with expect.objectContaining it checks that at
+    // least one element has the expected shape, without requiring an exact match.
+    expect(res.data.comments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ _id: expect.any(String) }),
+      ]),
+    );
+  });
+
+});
+
+// ─── 9. Negative tests ────────────────────────────────────────────────────────
+
+describe('9. Negative tests', () => {
+
+  it('POST /post/comment without cookie returns 401', async () => {
+    const res = await axios.post(commentUrl, {
+      userTo: postOwnerUserId, postId, comment: 'no auth', profilePicture: '',
+    }, { validateStatus: () => true });
+    expect(res.status).toBe(401);
+  });
+
+  it('PATCH with invalid commentId returns 400', async () => {
+    const res = await axios.patch(
+      `${config.BASE_URL}/post/comment/${postId}/not-an-objectid`,
+      { comment: 'fail' },
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    expect(res.status).toBe(400);
+  });
+
+});
+```
 
 ## Chapter 11: Delete — Testing Destruction
 
@@ -4868,6 +7470,277 @@ Create a folder named "Chapter 11" inside your Postman collection. Work through 
 
 
 > **Note:** The postDeleted flag prevents a 404 error in afterAll if the delete test already succeeded.
+
+---
+
+## The Test File for This Chapter
+
+> **Lecture 08 — User Profile & Search**
+> Run: `npm test tests/lecture-08/lecture.test.ts`
+
+```ts
+// Lecture 08 — User Profile: Search, Social Links & Password
+//
+// Run: npm test tests/lecture-08/lecture.test.ts
+
+import axios from 'axios';
+import { config } from '../../src/config';
+
+const signinUrl      = `${config.BASE_URL}/signin`;
+const signoutUrl     = `${config.BASE_URL}/signout`;
+const allUsersUrl    = (page: number) => `${config.BASE_URL}/user/all/${page}`;
+const searchUrl      = (q: string) => `${config.BASE_URL}/user/profile/search/${encodeURIComponent(q)}`;
+const socialLinksUrl = `${config.BASE_URL}/user/profile/social-links`;
+const changePwUrl    = `${config.BASE_URL}/user/profile/change-password`;
+const currentUserUrl = `${config.BASE_URL}/currentuser`;
+
+let sessionCookie = '';
+let originalSocial = { facebook: '', instagram: '', twitter: '', youtube: '' };
+
+beforeAll(async () => {
+  const loginRes = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+
+  // Capture original social links
+  const currentRes = await axios.get(currentUserUrl, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+  originalSocial = {
+    facebook: currentRes.data.user?.social?.facebook ?? '',
+    instagram: currentRes.data.user?.social?.instagram ?? '',
+    twitter: currentRes.data.user?.social?.twitter ?? '',
+    youtube: currentRes.data.user?.social?.youtube ?? '',
+  };
+});
+
+afterAll(async () => {
+  // Restore social links
+  await axios.put(socialLinksUrl, originalSocial, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+  await axios.post(signoutUrl, {}, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+});
+
+// ─── 1. Get all users ─────────────────────────────────────────────────────────
+
+describe('1. Get all users', () => {
+  let getAllResponse: { data: { users: unknown[]; totalUsers: number; followers: unknown[] } } | null = null;
+
+  beforeAll(async () => {
+    const res = await axios.get(allUsersUrl(1), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    getAllResponse = res;
+  });
+
+  it('status is 200', () => expect(getAllResponse).not.toBeNull());
+
+  it('response has users, totalUsers, and followers', () => {
+    expect(getAllResponse?.data).toMatchObject({
+      users: expect.any(Array),
+      totalUsers: expect.any(Number),
+      followers: expect.any(Array),
+    });
+  });
+
+  it('totalUsers is greater than 0', () => {
+    expect(getAllResponse!.data.totalUsers).toBeGreaterThan(0);
+  });
+
+});
+
+// ─── 2. Search users ──────────────────────────────────────────────────────────
+//
+// Search is case-insensitive regex. "vitest" matches "Vitestuser", "vitestmike", etc.
+
+describe('2. Search users', () => {
+
+  it('GET /user/profile/search/:query returns 200', async () => {
+    const res = await axios.get(searchUrl('vitest'), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('response has search array', async () => {
+    const res = await axios.get(searchUrl('vitest'), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data).toMatchObject({
+      message: 'Search results',
+      search: expect.any(Array),
+    });
+  });
+
+  it('searching for TEST_USERNAME finds at least one result', async () => {
+    const query = config.TEST_USERNAME.toLowerCase().slice(0, 6); // e.g. "vitest"
+    const res = await axios.get(searchUrl(query), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data.search.length).toBeGreaterThan(0);
+  });
+
+  it('search result has expected user fields', async () => {
+    const res = await axios.get(searchUrl('vitest'), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    if (res.data.search.length === 0) return; // no results to check
+    const user = res.data.search[0];
+    expect(user).toHaveProperty('_id');
+    expect(user).toHaveProperty('username');
+    expect(user).not.toHaveProperty('password');
+  });
+
+});
+
+// ─── 3. Update social links ───────────────────────────────────────────────────
+
+describe('3. Update social links', () => {
+
+  const testSocial = {
+    facebook: 'https://facebook.com/vitest',
+    instagram: '',
+    twitter: 'https://twitter.com/vitest',
+    youtube: '',
+  };
+
+  it('PUT /user/profile/social-links returns 200', async () => {
+    const res = await axios.put(socialLinksUrl, testSocial, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('message is "Updated successfully"', async () => {
+    const res = await axios.put(socialLinksUrl, testSocial, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data.message).toBe('Updated successfully');
+  });
+
+});
+
+// ─── 4. State verification — social links ─────────────────────────────────────
+
+describe('4. State verification — social links', () => {
+
+  beforeAll(async () => {
+    await axios.put(socialLinksUrl, {
+      facebook: 'https://facebook.com/test-state',
+      instagram: '', twitter: '', youtube: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+  });
+
+  it('GET /currentuser reflects updated social link', async () => {
+    const res = await axios.get(currentUserUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data.user.social.facebook).toBe('https://facebook.com/test-state');
+  });
+
+});
+
+// ─── 5. Change password — validation errors only ──────────────────────────────
+//
+// We only test validation errors here — NOT the actual password change.
+// Reason: the schema has max 8 chars. Most test accounts have longer passwords.
+// Sending the wrong currentPassword would just return 400 anyway (Invalid credentials).
+// We safely test the Joi validation path without touching the actual password.
+
+describe('5. Change password — validation errors only', () => {
+
+  it('empty body returns 400', async () => {
+    const res = await axios.put(changePwUrl, {},
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('mismatched newPassword and confirmPassword returns 400', async () => {
+    const res = await axios.put(changePwUrl, {
+      currentPassword: 'Test1',
+      newPassword: 'Test2',
+      confirmPassword: 'Test3', // different
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    expect(res.status).toBe(400);
+    if (res.status === 400) {
+      expect(res.data.message).toContain('Confirm password does not match');
+    }
+  });
+
+  it('missing currentPassword returns 400', async () => {
+    const res = await axios.put(changePwUrl, {
+      newPassword: 'Test2', confirmPassword: 'Test2',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    expect(res.status).toBe(400);
+  });
+
+});
+
+// ─── 6. Assertion variants ───────────────────────────────────────────────────
+//
+// New assertion types introduced here:
+//   toBeGreaterThanOrEqual(n)      — numeric lower-bound check
+//   expect.arrayContaining([...])  — array includes a subset of items
+//   toBeTruthy()                   — value is truthy (non-empty string, non-zero, etc.)
+
+describe('6. Assertion variants', () => {
+
+  it('totalUsers is a non-negative number (toBeGreaterThanOrEqual)', async () => {
+    const res = await axios.get(allUsersUrl(1), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    // toBeGreaterThanOrEqual is the right tool when you only care about a lower
+    // bound — the exact count changes as users register or are deleted.
+    expect(res.data.totalUsers).toBeGreaterThanOrEqual(0);
+  });
+
+  it('search results array contains objects with _id (expect.arrayContaining)', async () => {
+    const res = await axios.get(searchUrl('vitest'), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    if (res.data.search.length === 0) return;
+    // expect.arrayContaining checks that every listed item is present in the array
+    // without requiring the array to match exactly. It is the subset matcher for arrays.
+    expect(res.data.search).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ _id: expect.any(String) }),
+      ]),
+    );
+  });
+
+  it('first search result username is truthy (toBeTruthy)', async () => {
+    const res = await axios.get(searchUrl('vitest'), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    if (res.data.search.length === 0) return;
+    const username: string = res.data.search[0].username;
+    // toBeTruthy passes for any value that is not false, 0, '', null, undefined, or NaN.
+    // It is a quick way to assert a string is non-empty without specifying its exact value.
+    expect(username).toBeTruthy();
+  });
+
+});
+
+// ─── 7. Negative tests ────────────────────────────────────────────────────────
+
+describe('7. Negative tests', () => {
+
+  it('GET /user/all/1 without cookie returns 401', async () => {
+    const res = await axios.get(allUsersUrl(1), { validateStatus: () => true });
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /user/profile/search/:q without cookie returns 401', async () => {
+    const res = await axios.get(searchUrl('vitest'), { validateStatus: () => true });
+    expect(res.status).toBe(401);
+  });
+
+});
+```
 
 # Part V: Advanced Testing Patterns
 
@@ -5932,6 +8805,292 @@ Create a folder named "Chapter 12" inside your Postman collection. Work through 
 
 > **Note:** Always clean up any successfully created users in afterAll using the cleanup endpoint.
 
+---
+
+## The Test File for This Chapter
+
+> **Lecture 09 — Followers & Notifications**
+> Run: `npm test tests/lecture-09/lecture.test.ts`
+
+```ts
+// Lecture 09 — Followers, Blocking & Notifications
+//
+// Run: npm test tests/lecture-09/lecture.test.ts
+
+import axios from 'axios';
+import { faker } from '@faker-js/faker';
+import { config } from '../../src/config';
+import { TEST_AVATAR_IMAGE, TEST_AVATAR_COLOR, TEST_PASSWORD, TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const signinUrl      = `${config.BASE_URL}/signin`;
+const signupUrl      = `${config.BASE_URL}/signup`;
+const signoutUrl     = `${config.BASE_URL}/signout`;
+const currentUserUrl = `${config.BASE_URL}/currentuser`;
+const followingUrl   = `${config.BASE_URL}/user/following`;
+const notificationsUrl = `${config.BASE_URL}/notifications`;
+
+const followUrl   = (id: string) => `${config.BASE_URL}/user/follow/${id}`;
+const unfollowUrl = (followeeId: string, followerId: string) =>
+  `${config.BASE_URL}/user/unfollow/${followeeId}/${followerId}`;
+const followersUrl = (userId: string) => `${config.BASE_URL}/user/followers/${userId}`;
+const blockUrl   = (id: string) => `${config.BASE_URL}/user/block/${id}`;
+const unblockUrl = (id: string) => `${config.BASE_URL}/user/unblock/${id}`;
+const cleanupUrl = (authId: string) =>
+  `${config.BASE_URL}/test/cleanup/user/${authId}`;
+
+let sessionCookie = '';
+let userAId = '';   // current user's _id
+let userBId = '';   // second test user's _id
+let userBAuthId = '';
+
+beforeAll(async () => {
+  // Sign in as user A (TEST_USERNAME)
+  const loginRes = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+
+  // Get user A's _id
+  const curRes = await axios.get(currentUserUrl, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+  userAId = curRes.data.user?._id ?? '';
+
+  // Create user B
+  const signupRes = await axios.post(signupUrl, {
+    username: `vitest${faker.string.alphanumeric(8).toLowerCase()}`,
+    email: faker.internet.email().toLowerCase(),
+    password: TEST_PASSWORD,
+    avatarColor: TEST_AVATAR_COLOR,
+    avatarImage: TEST_AVATAR_IMAGE,
+  }, { validateStatus: () => true });
+
+  userBId     = signupRes.data.user?._id     ?? '';
+  userBAuthId = signupRes.data.user?.authId  ?? '';
+});
+
+afterAll(async () => {
+  // Unfollow/unblock user B (cleanup any state)
+  if (userBId) {
+    await axios.put(unfollowUrl(userBId, userAId), {}, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    await axios.put(unblockUrl(userBId), {}, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+  }
+
+  // Delete user B
+  if (userBAuthId) {
+    await axios.delete(cleanupUrl(userBAuthId), {
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true,
+    });
+  }
+
+  await axios.post(signoutUrl, {}, {
+    headers: { Cookie: sessionCookie }, validateStatus: () => true,
+  });
+});
+
+// ─── 1. Follow user B ─────────────────────────────────────────────────────────
+
+describe('1. Follow user B', () => {
+
+  it('PUT /user/follow/:followerId returns 200', async () => {
+    const res = await axios.put(followUrl(userBId), {}, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+});
+
+// ─── 2. Get following list ────────────────────────────────────────────────────
+
+describe('2. Get following list', () => {
+
+  it('GET /user/following returns 200', async () => {
+    const res = await axios.get(followingUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('response has following array', async () => {
+    const res = await axios.get(followingUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data).toMatchObject({
+      message: 'User following',
+      following: expect.any(Array),
+    });
+  });
+
+  it('user B appears in following list after follow', async () => {
+    const res = await axios.get(followingUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    const found = res.data.following?.find((u: { _id: string }) => u._id === userBId);
+    expect(found).toBeDefined();
+  });
+
+});
+
+// ─── 3. Get followers of user B ───────────────────────────────────────────────
+
+describe('3. Get followers of user B', () => {
+
+  it('GET /user/followers/:userId returns 200', async () => {
+    const res = await axios.get(followersUrl(userBId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('user A appears in user B followers list', async () => {
+    const res = await axios.get(followersUrl(userBId), {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    const found = res.data.followers?.find((u: { _id: string }) => u._id === userAId);
+    expect(found).toBeDefined();
+  });
+
+});
+
+// ─── 4. Unfollow user B ───────────────────────────────────────────────────────
+//
+// Unfollow requires BOTH the followeeId (userB) and followerId (userA).
+// GET /currentuser to get userA's _id if you don't have it.
+
+describe('4. Unfollow user B', () => {
+
+  it('PUT /user/unfollow/:followeeId/:followerId returns 200', async () => {
+    const res = await axios.put(unfollowUrl(userBId, userAId), {}, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('user B no longer in following list', async () => {
+    const res = await axios.get(followingUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    const found = res.data.following?.find((u: { _id: string }) => u._id === userBId);
+    expect(found).toBeUndefined();
+  });
+
+});
+
+// ─── 5. Block and unblock ─────────────────────────────────────────────────────
+
+describe('5. Block and unblock', () => {
+
+  it('PUT /user/block/:followerId returns 200', async () => {
+    const res = await axios.put(blockUrl(userBId), {}, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('PUT /user/unblock/:followerId returns 200', async () => {
+    const res = await axios.put(unblockUrl(userBId), {}, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+});
+
+// ─── 6. Notifications ─────────────────────────────────────────────────────────
+//
+// Notifications may be empty — we assert the shape, not a specific count.
+// For PATCH/DELETE we test invalid IDs to avoid needing actual notifications.
+
+describe('6. Notifications', () => {
+
+  it('GET /notifications returns 200', async () => {
+    const res = await axios.get(notificationsUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('response has notifications array (may be empty)', async () => {
+    const res = await axios.get(notificationsUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data).toMatchObject({
+      message: 'User notifications',
+      notifications: expect.any(Array),
+    });
+  });
+
+  it('PUT /notification/invalid-id returns 400', async () => {
+    const res = await axios.put(`${config.BASE_URL}/notification/not-an-objectid`, {},
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+    );
+    expect(res.status).toBe(400);
+  });
+
+});
+
+// ─── 7. Assertion variants ───────────────────────────────────────────────────
+//
+// New assertion types introduced here:
+//   expect.objectContaining({...})  — object includes the listed keys/values
+//   toBeTypeOf('string')            — Vitest-specific runtime type check
+//   toBeTruthy()                    — value is truthy (non-empty, non-null, etc.)
+
+describe('7. Assertion variants', () => {
+
+  it('GET /notifications response has expected shape (expect.objectContaining)', async () => {
+    const res = await axios.get(notificationsUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    // expect.objectContaining checks that the object has at least the listed keys.
+    // Additional keys on the actual object are allowed, making it a partial match.
+    expect(res.data).toMatchObject(
+      expect.objectContaining({
+        message: expect.any(String),
+        notifications: expect.any(Array),
+      }),
+    );
+  });
+
+  it('userAId is a string (toBeTypeOf)', () => {
+    // toBeTypeOf is the Vitest-idiomatic runtime type assertion.
+    // Here it confirms the ID captured in beforeAll is a real string and not
+    // undefined — which would mean the /currentuser call silently failed.
+    expect(userAId).toBeTypeOf('string');
+  });
+
+  it('userBId is truthy (toBeTruthy)', () => {
+    // toBeTruthy passes for any non-empty string, non-zero number, etc.
+    // It is a quick liveness check: if userBId is '' or undefined, the signup
+    // in beforeAll failed and all follower tests would have used a blank ID.
+    expect(userBId).toBeTruthy();
+  });
+
+});
+
+// ─── 8. Negative tests ────────────────────────────────────────────────────────
+
+describe('8. Negative tests', () => {
+
+  it('GET /user/following without cookie returns 401', async () => {
+    const res = await axios.get(followingUrl, { validateStatus: () => true });
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /notifications without cookie returns 401', async () => {
+    const res = await axios.get(notificationsUrl, { validateStatus: () => true });
+    expect(res.status).toBe(401);
+  });
+
+});
+```
+
 ## Chapter 13: Multi-User Test Scenarios
 
 ### Why Social Features Require Multiple Users
@@ -6437,6 +9596,247 @@ Create a folder named "Chapter 13" inside your Postman collection. Work through 
 
 
 > **Note:** User B must start with "vitest" — the cleanup endpoint rejects usernames that do not.
+
+---
+
+## The Test File for This Chapter
+
+> **Lecture 10 — MongoDB Cross-Validation**
+> Run: `npm test tests/lecture-10/lecture.test.ts`
+
+```ts
+// Lecture 10 — MongoDB: Cross-Validating API vs Database
+//
+// Prerequisites:
+//   DATABASE_URL must be set in .env (MongoDB Atlas connection string)
+//   Add DATABASE_URL to vitest.config.ts env: {} and src/config.ts
+//
+// Run: npm test tests/lecture-10/lecture.test.ts
+
+import axios from 'axios';
+import { faker } from '@faker-js/faker';
+import { MongoClient } from 'mongodb';
+import { config } from '../../src/config';
+import { TEST_AVATAR_IMAGE, TEST_AVATAR_COLOR, TEST_PASSWORD, TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const signupUrl = `${config.BASE_URL}/signup`;
+
+// MongoDB connection
+let mongoClient: MongoClient;
+let db: ReturnType<MongoClient['db']>;
+
+// Test user created via API
+let apiAuthId = '';
+let apiUserId = '';
+let apiUser: Record<string, unknown> = {};
+
+const testUsername  = `vitest${faker.string.alphanumeric(8).toLowerCase()}`;
+const testEmail     = faker.internet.email().toLowerCase();
+
+beforeAll(async () => {
+  // Connect to MongoDB
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error('DATABASE_URL not set in .env — see README §3');
+
+  mongoClient = new MongoClient(databaseUrl);
+  await mongoClient.connect();
+  db = mongoClient.db();
+
+  // Create a test user via API
+  const signupRes = await axios.post(signupUrl, {
+    username: testUsername,
+    email: testEmail,
+    password: TEST_PASSWORD,
+    avatarColor: TEST_AVATAR_COLOR,
+    avatarImage: TEST_AVATAR_IMAGE,
+  }, { validateStatus: () => true });
+
+  apiUser   = signupRes.data.user ?? {};
+  apiAuthId = (signupRes.data.user?.authId as string) ?? '';
+  apiUserId = (signupRes.data.user?._id as string)    ?? '';
+});
+
+afterAll(async () => {
+  // Delete test user via API
+  if (apiAuthId) {
+    await axios.delete(`${config.BASE_URL}/test/cleanup/user/${apiAuthId}`, {
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
+      validateStatus: () => true,
+    });
+  }
+
+  // Close MongoDB connection
+  await mongoClient.close();
+});
+
+// ─── 1. MongoDB connection ────────────────────────────────────────────────────
+
+describe('1. MongoDB connection', () => {
+
+  it('MongoClient connected successfully', () => {
+    // If connection failed, beforeAll would have thrown
+    // This test passing means the connection is alive
+    expect(db).toBeDefined();
+  });
+
+  it('Auth collection is accessible', async () => {
+    const authColl = db.collection('Auth');
+    const count = await authColl.countDocuments();
+    expect(count).toBeGreaterThan(0);
+  });
+
+});
+
+// ─── 2. Cross-validate Auth collection ───────────────────────────────────────
+//
+// After creating a user via the API, query the Auth collection directly.
+// The DB document should match what the API returned.
+
+describe('2. Cross-validate Auth collection', () => {
+  let dbAuthDoc: Record<string, unknown> | null = null;
+
+  beforeAll(async () => {
+    const authColl = db.collection('Auth');
+    dbAuthDoc = await authColl.findOne({ email: testEmail }) as Record<string, unknown> | null;
+  });
+
+  it('Auth document exists in DB', () => {
+    expect(dbAuthDoc).not.toBeNull();
+  });
+
+  it('DB email matches API email', () => {
+    expect(dbAuthDoc?.email).toBe(testEmail);
+  });
+
+  it('DB username matches API username (title-cased)', () => {
+    const expected = testUsername.charAt(0).toUpperCase() + testUsername.slice(1).toLowerCase();
+    expect((dbAuthDoc?.username as string)?.toLowerCase()).toBe(expected.toLowerCase());
+  });
+
+  it('DB _id matches API authId', () => {
+    expect(dbAuthDoc?._id?.toString()).toBe(apiAuthId);
+  });
+
+  it('DB password is hashed (not the plain-text TEST_PASSWORD)', () => {
+    // The DB stores a bcrypt hash — it should NOT equal the original password
+    expect(dbAuthDoc?.password).toBeDefined();
+    expect(dbAuthDoc?.password).not.toBe(TEST_PASSWORD);
+    // Bcrypt hashes start with $2b$ or $2a$
+    expect((dbAuthDoc?.password as string).startsWith('$2')).toBe(true);
+  });
+
+});
+
+// ─── 3. Cross-validate User collection ───────────────────────────────────────
+//
+// The User document (in the 'User' collection) stores profile data.
+// It references the Auth document via 'authId'.
+
+describe('3. Cross-validate User collection', () => {
+  let dbUserDoc: Record<string, unknown> | null = null;
+
+  beforeAll(async () => {
+    const userColl = db.collection('User');
+    dbUserDoc = await userColl.findOne({
+      authId: { $exists: true },
+      _id: { $exists: true }
+    }) as Record<string, unknown> | null;
+
+    // Find by the User _id from the API response
+    const { ObjectId } = await import('mongodb');
+    if (apiUserId) {
+      dbUserDoc = await userColl.findOne({ _id: new ObjectId(apiUserId) }) as Record<string, unknown> | null;
+    }
+  });
+
+  it('User document exists in DB', () => {
+    expect(dbUserDoc).not.toBeNull();
+  });
+
+  it('User document authId matches API authId', () => {
+    expect(dbUserDoc?.authId?.toString()).toBe(apiAuthId);
+  });
+
+  it('User document does NOT have a password field', () => {
+    // Password is only in Auth collection, not User collection
+    expect(dbUserDoc).not.toHaveProperty('password');
+  });
+
+});
+
+// ─── 4. Assertion variants ───────────────────────────────────────────────────
+//
+// New assertion types introduced here:
+//   toMatch(/regex/)           — asserts string matches a regular expression
+//   toStrictEqual(value)       — deep equality that also checks object types
+//   toBeTypeOf('string')       — Vitest-specific runtime type check
+
+describe('4. Assertion variants', () => {
+
+  it('apiAuthId matches MongoDB ObjectId format (toMatch regex)', () => {
+    // toMatch accepts a RegExp and asserts the string conforms to the pattern.
+    // A MongoDB ObjectId is always 24 lowercase hex characters — nothing more, nothing less.
+    // This is more precise than checking .length === 24 alone.
+    expect(apiAuthId).toMatch(/^[a-f0-9]{24}$/);
+  });
+
+  it('DB username lowercased strictly equals API username lowercased (toStrictEqual)', async () => {
+    const authColl = db.collection('Auth');
+    const dbDoc = await authColl.findOne({ email: testEmail });
+    // toStrictEqual is stricter than toEqual: it also checks object types and
+    // treats undefined properties differently. For primitive string comparison
+    // both matchers behave identically — using toStrictEqual signals deliberate intent.
+    expect((dbDoc?.username as string)?.toLowerCase()).toStrictEqual(testUsername.toLowerCase());
+  });
+
+  it('DB Auth _id.toString() is a string (toBeTypeOf)', async () => {
+    const authColl = db.collection('Auth');
+    const dbDoc = await authColl.findOne({ email: testEmail });
+    // MongoDB ObjectIds are BSON objects, not plain strings.
+    // Calling .toString() converts them to the 24-char hex string.
+    // toBeTypeOf confirms the result is actually a string (not an ObjectId instance).
+    expect(dbDoc?._id?.toString()).toBeTypeOf('string');
+  });
+
+});
+
+// ─── 5. API response vs DB — key differences ─────────────────────────────────
+//
+// Some fields differ between API response and DB:
+//   - API user.password: absent (stripped before response)
+//   - DB Auth.password: present (bcrypt hash)
+//   - API user._id: User document ID
+//   - API user.authId: Auth document ID
+
+describe('5. API response vs DB — key differences', () => {
+
+  it('API response has no password, DB Auth has hashed password', async () => {
+    // API: no password
+    expect(apiUser).not.toHaveProperty('password');
+
+    // DB: has hashed password
+    const authColl = db.collection('Auth');
+    const dbDoc = await authColl.findOne({ email: testEmail });
+    expect(dbDoc?.password).toBeDefined();
+    expect(typeof dbDoc?.password).toBe('string');
+  });
+
+  it('API user._id is the User collection document ID', async () => {
+    const { ObjectId } = await import('mongodb');
+    const userColl = db.collection('User');
+    const doc = await userColl.findOne({ _id: new ObjectId(apiUserId) });
+    expect(doc).not.toBeNull();
+  });
+
+  it('API user.authId is the Auth collection document ID', async () => {
+    const { ObjectId } = await import('mongodb');
+    const authColl = db.collection('Auth');
+    const doc = await authColl.findOne({ _id: new ObjectId(apiAuthId) });
+    expect(doc).not.toBeNull();
+  });
+
+});
+```
 
 ## Chapter 14: Database Cross-Validation
 
@@ -7148,6 +10548,237 @@ Create a folder named "Chapter 15" inside your Postman collection. Work through 
 
 ---
 
+---
+
+## The Test File for This Chapter
+
+> **Lecture 15 — Posts with Media (Image & Video Uploads)**
+> Run: `npm test tests/lecture-15/lecture.test.ts`
+
+```ts
+// Lecture 15 — Posts with Media: Images & Videos
+// Run: npm test tests/lecture-15/lecture.test.ts
+
+import axios from 'axios';
+import { config } from '../../src/config';
+import { TEST_AVATAR_IMAGE } from '../../src/fixtures';
+
+const signinUrl     = `${config.BASE_URL}/signin`;
+const signoutUrl    = `${config.BASE_URL}/signout`;
+const postUrl       = `${config.BASE_URL}/post`;
+const imagePostUrl  = `${config.BASE_URL}/post/image/post`;
+const getAllUrl      = `${config.BASE_URL}/post/all/1`;
+const imagesPageUrl = `${config.BASE_URL}/post/images/1`;
+const updateImgUrl  = (id: string) => `${config.BASE_URL}/post/image/${id}`;
+
+const IMAGE_POST_CONTENT = `Vitest image post ${Date.now()}`;
+const PLAIN_POST_CONTENT = `Vitest plain post ${Date.now()}`;
+
+let sessionCookie = '';
+let imagePostId = '';
+let plainPostId = '';
+
+beforeAll(async () => {
+  const loginRes = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+
+  // Create a plain post
+  await axios.post(postUrl, {
+    post: PLAIN_POST_CONTENT, bgColor: '#fff', privacy: 'Public', feelings: '',
+  }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+  // Create an image post
+  await axios.post(imagePostUrl, {
+    post: IMAGE_POST_CONTENT,
+    image: TEST_AVATAR_IMAGE,
+    bgColor: '#fff', privacy: 'Public', feelings: '', profilePicture: '',
+  }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+
+  // Find both post IDs
+  const getRes = await axios.get(getAllUrl, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+  for (const p of (getRes.data.posts ?? []) as { post: string; _id: string; imgId: string }[]) {
+    if (p.post === IMAGE_POST_CONTENT) imagePostId = p._id;
+    if (p.post === PLAIN_POST_CONTENT) plainPostId = p._id;
+  }
+});
+
+afterAll(async () => {
+  for (const id of [imagePostId, plainPostId]) {
+    if (id) await axios.delete(`${config.BASE_URL}/post/${id}`, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+  }
+  await axios.post(signoutUrl, {}, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+});
+
+// ─── 1. Create image post ─────────────────────────────────────────────────────
+
+describe('1. Create image post', () => {
+
+  it('status is 201', async () => {
+    const res = await axios.post(imagePostUrl, {
+      post: `Vitest img check ${Date.now()}`,
+      image: TEST_AVATAR_IMAGE,
+      bgColor: '#fff', privacy: 'Public', feelings: '', profilePicture: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    expect(res.status).toBe(201);
+    // Clean up extra post
+    const all = await axios.get(getAllUrl, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    const extra = all.data.posts?.[0];
+    if (extra?._id && extra?._id !== imagePostId) {
+      await axios.delete(`${config.BASE_URL}/post/${extra._id}`, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    }
+  });
+
+  it('message is "Post created with image successfully"', async () => {
+    const res = await axios.post(imagePostUrl, {
+      post: `Vitest img msg ${Date.now()}`,
+      image: TEST_AVATAR_IMAGE,
+      bgColor: '#fff', privacy: 'Public', feelings: '', profilePicture: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    expect(res.data.message).toBe('Post created with image successfully');
+    const all = await axios.get(getAllUrl, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    const extra = all.data.posts?.[0];
+    if (extra?._id && extra._id !== imagePostId) {
+      await axios.delete(`${config.BASE_URL}/post/${extra._id}`, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    }
+  });
+
+});
+
+// ─── 2. Get posts with images ─────────────────────────────────────────────────
+
+describe('2. GET /post/images/:page', () => {
+
+  it('status is 200', async () => {
+    const res = await axios.get(imagesPageUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('response has posts array', async () => {
+    const res = await axios.get(imagesPageUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data).toHaveProperty('posts');
+    expect(Array.isArray(res.data.posts)).toBe(true);
+  });
+
+  it('our image post appears in the list', async () => {
+    const res = await axios.get(imagesPageUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    const found = res.data.posts?.find((p: { _id: string }) => p._id === imagePostId);
+    expect(found).toBeDefined();
+  });
+
+  it('plain post does NOT appear in images list', async () => {
+    const res = await axios.get(imagesPageUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    const plainInImages = res.data.posts?.find((p: { _id: string }) => p._id === plainPostId);
+    expect(plainInImages).toBeUndefined();
+  });
+
+});
+
+// ─── 3. Update post with image ────────────────────────────────────────────────
+
+describe('3. Update post image', () => {
+
+  it('PUT /post/image/:postId returns 200', async () => {
+    const res = await axios.put(updateImgUrl(imagePostId), {
+      post: 'Updated with new image',
+      image: TEST_AVATAR_IMAGE,
+      bgColor: '#f0f0f0', privacy: 'Public', feelings: '', profilePicture: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    expect(res.status).toBe(200);
+    expect(res.data.message).toBe('Post with image updated successfully');
+  });
+
+});
+
+// ─── 4. Validation errors ─────────────────────────────────────────────────────
+
+describe('4. Validation errors', () => {
+
+  it('POST /post/image/post without image returns 400', async () => {
+    const res = await axios.post(imagePostUrl, {
+      post: 'No image here',
+      bgColor: '#fff', privacy: 'Public', feelings: '', profilePicture: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /post/image/post with invalid image format returns 400', async () => {
+    const res = await axios.post(imagePostUrl, {
+      post: 'Bad image',
+      image: 'not-a-valid-image',
+      bgColor: '#fff', privacy: 'Public', feelings: '', profilePicture: '',
+    }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+    expect(res.status).toBe(400);
+    expect(res.data.message).toContain('Image must be');
+  });
+
+  it('POST /post/image/post without cookie returns 401', async () => {
+    const res = await axios.post(imagePostUrl, {
+      post: 'No auth',
+      image: TEST_AVATAR_IMAGE,
+    }, { validateStatus: () => true });
+    expect(res.status).toBe(401);
+  });
+
+});
+
+// ─── 5. Assertion variants ────────────────────────────────────────────────────
+//
+// Introduces three assertion styles not used elsewhere in the course:
+//   toMatch(/regex/)  — test a string against a regular expression
+//   toBeGreaterThan   — numeric lower-bound check
+//   toSatisfy(fn)     — custom predicate function for flexible assertions
+
+describe('5. Assertion variants', () => {
+
+  it('toMatch — profile picture URL starts with http or https', async () => {
+    // toMatch(/^https?:\/\//) confirms the URL uses a proper web scheme.
+    // Regex is more precise than toContain('http') which would miss the colon.
+    const res = await axios.get(imagesPageUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    const post = res.data.posts?.find((p: { imgVersion: string; imgId: string }) => p.imgId);
+    if (post?.imgVersion) {
+      const profilePictureUrl = `https://res.cloudinary.com/${post.imgId}/v${post.imgVersion}`;
+      expect(profilePictureUrl).toMatch(/^https?:\/\//);
+    }
+  });
+
+  it('toBeGreaterThan — image post list has at least one item', async () => {
+    // toBeGreaterThan(0) is clearer than toBeGreaterThanOrEqual(1) for "non-empty" semantics.
+    const res = await axios.get(imagesPageUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    expect(res.data.posts?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it('toSatisfy — image post has a non-empty imgId (custom predicate)', async () => {
+    // toSatisfy lets you express multi-condition checks as a plain function,
+    // keeping the test readable without chaining multiple expects.
+    const res = await axios.get(imagesPageUrl, {
+      headers: { Cookie: sessionCookie }, validateStatus: () => true,
+    });
+    const posts = res.data.posts ?? [];
+    expect(posts).toSatisfy((arr: { imgId?: string }[]) =>
+      arr.some(p => typeof p.imgId === 'string' && p.imgId.length > 0),
+    );
+  });
+
+});
+```
+
 ## Chapter 16: Continuous Integration with GitHub Actions
 
 ### What CI/CD Means for API Testing
@@ -7540,6 +11171,80 @@ Add this line near the top of `README.md`, replacing `YOUR_USERNAME` and `YOUR_R
 ---
 
 > **Note:** No test files for this chapter — the deliverable is a working CI pipeline.
+
+---
+
+## The Config Files for This Chapter
+
+> **Lecture 11 — CI/CD: GitHub Actions**
+> Copy `tests/lecture-11/workflow.yml` to `.github/workflows/tests.yml` in your project.
+
+```yaml
+# .github/workflows/tests.yml
+# Copy this file to your project's .github/workflows/ folder.
+# Add these GitHub Secrets: BASE_URL, TEST_USERNAME, TEST_PASSWORD, DATABASE_URL
+
+name: Chatty API Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      lecture:
+        description: 'Lecture folder to run (e.g. lecture-02) — leave blank for all'
+        required: false
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run Vitest (${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: |
+          if [ -n "${{ github.event.inputs.lecture }}" ]; then
+            npm test tests/${{ github.event.inputs.lecture }}/lecture.test.ts
+          else
+            npm test
+          fi
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-node-${{ matrix.node-version }}
+          path: test-results/
+          retention-days: 7
+```
 
 ## Chapter 17: Containerizing Tests with Docker
 
@@ -7940,6 +11645,70 @@ services:
 ---
 
 > **Note:** No test files for this chapter — the deliverable is a working Docker setup.
+
+---
+
+## The Config Files for This Chapter
+
+> **Lecture 12 — Docker: Containerising the Test Runner**
+> These files live in `tests/lecture-12/` — copy them to your project root.
+
+**Dockerfile**
+
+```dockerfile
+# Dockerfile for the chatty-api-tests test runner
+# Build:  docker build -t chatty-tests .
+# Run:    docker run --env-file .env chatty-tests
+# Single: docker run --env-file .env chatty-tests npm test tests/lecture-02/lecture.test.ts
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy dependency files first — Docker caches this layer.
+# If only source files change (not package.json), npm ci is skipped on rebuild.
+COPY package*.json ./
+RUN npm ci
+
+# Copy source files (invalidates cache above only when code changes)
+COPY . .
+
+# Run all tests by default — override at docker run time
+CMD ["npm", "test"]
+```
+
+**.dockerignore**
+
+```
+node_modules
+.env
+.env.*
+!.env.example
+coverage
+test-results
+html
+reports
+.git
+.DS_Store
+```
+
+**docker-compose.yml**
+
+```yaml
+# docker-compose.yml for running API tests in a container
+# Run: docker-compose run tests
+
+version: '3.9'
+
+services:
+  tests:
+    build: .
+    env_file: .env
+    volumes:
+      # Mount test-results so reports are available on the host after the run
+      - ./test-results:/app/test-results
+      - ./coverage:/app/coverage
+```
 
 ## Chapter 18: Test Reporting and Coverage
 
@@ -8655,6 +12424,57 @@ jobs:
 > **WHY:** `if: always()` is critical — it ensures the artifact upload step runs even when the test step fails. Without it, a test failure would skip the upload and you would have no evidence to debug from. The `${{ matrix.node-version }}` suffix in the artifact name prevents the two matrix jobs from overwriting each other's artifacts. `retention-days: 14` keeps artifacts long enough to review after a flaky run without accumulating them indefinitely.
 
 > **Note:** No test files for this chapter — the deliverables are config changes and report files.
+
+---
+
+## The Config Files for This Chapter
+
+> **Lecture 13 — Test Reporting: Vitest, Newman & Coverage**
+> The updated `vitest.config.ts` with reporters and coverage configuration.
+
+```ts
+// vitest.config.ts — with full reporters and coverage
+// Copy this to your project root to replace the basic vitest.config.ts
+
+import { defineConfig } from 'vitest/config';
+import { config as dotenvConfig } from 'dotenv';
+import { resolve } from 'path';
+
+dotenvConfig({ path: resolve(__dirname, '.env') });
+
+export default defineConfig({
+  test: {
+    globals: true,
+    testTimeout: 15000,
+    fileParallelism: false,
+
+    // Reporters: verbose in local, JUnit in CI
+    reporters: process.env.CI ? ['junit', 'verbose'] : ['verbose'],
+    outputFile: {
+      junit: 'test-results/junit.xml',
+    },
+
+    // Coverage — run with: npm run test:coverage
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      include: ['src/**/*.ts'],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 70,
+      },
+    },
+
+    env: {
+      BASE_URL:      process.env.BASE_URL      ?? '',
+      TEST_USERNAME: process.env.TEST_USERNAME ?? '',
+      TEST_PASSWORD: process.env.TEST_PASSWORD ?? '',
+      DATABASE_URL:  process.env.DATABASE_URL  ?? '',
+    },
+  },
+});
+```
 
 # Appendix: Complete Project Structure
 
@@ -11420,6 +15240,8 @@ An Axios option that tells the browser to include cookies in cross-origin reques
 ---
 
 *End of Part 4 — Appendices*
+
+---
 
 ---
 

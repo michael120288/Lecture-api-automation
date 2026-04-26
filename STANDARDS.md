@@ -12,8 +12,11 @@ Every lecture folder contains exactly these files:
 ```
 tests/lecture-XX/
   README.md               ← lecture notes, theory, setup, Postman, homework instructions
+  prereqs.md              ← pre-reading links and videos (~15 min before each lecture)
   lecture.test.ts         ← main test file (reference implementation, heavily commented)
+  slides.md               ← Marp slide deck for live presentation (12-15 slides)
   homework/
+    README.md             ← homework instructions, 7 TODOs table, Git section
     starter.test.ts       ← Vitest TODOs — structure only, no implementations
     solution.test.ts      ← Vitest solutions with WHY explanations
     postman-tasks.md      ← Postman tasks — what to do, hints only, no scripts
@@ -26,6 +29,21 @@ Lectures 11 (CI/CD), 12 (Docker), and 13 (Reporting) do NOT have `lecture.test.t
 or `homework/postman-solution.md`.
 Their homework folder contains only `homework/README.md` — a checklist of 5 core infrastructure
 setup tasks plus 5 stretch tasks and 5 reflection questions.
+
+Infrastructure lectures also contain reference config files that students copy to their project:
+
+```
+tests/lecture-11/
+  workflow.yml            ← complete GitHub Actions workflow (.github/workflows/tests.yml)
+
+tests/lecture-12/
+  Dockerfile              ← complete Dockerfile for the test runner
+  .dockerignore           ← files to exclude from the Docker image
+  docker-compose.yml      ← docker-compose.yml with env_file and volumes
+
+tests/lecture-13/
+  vitest.config.example.ts ← vitest.config.ts with reporters, coverage, and thresholds
+```
 
 Source files shared across lectures live in `src/`:
 
@@ -511,6 +529,15 @@ Not every lecture needs all 9 — add only those relevant to the endpoint.
 Always keep the same numbering so students recognise the pattern across lectures.
 The boundary section (6) must match the boundary values table in the README schema section.
 Section 9 (Assertion variants) always introduces 3–4 assertion types not used in earlier sections of the same file.
+
+**`slides.md` structure (Marp):**
+Each `slides.md` is a Marp presentation (~12-15 slides) with:
+- Frontmatter: `marp: true`, `theme: default`, `paginate: true`, custom CSS
+- No Mermaid blocks — use markdown tables and text flows instead (no plugin required)
+- Speaker notes on every concept slide: `<!-- note: what to say here -->`
+- Rate limiting and `x-test-secret` bypass explained where authentication is introduced
+- One idea per slide — max 3 bullet points, max 6 words per bullet
+- To present: install **Marp for VS Code**, open `slides.md`, press `P` for presenter mode
 
 ---
 
