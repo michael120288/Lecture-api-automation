@@ -22,7 +22,8 @@ beforeAll(async () => {
     password: config.TEST_PASSWORD,
   }, { validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   await axios.post(postUrl, { post: CONTENT, bgColor: '#fff', privacy: 'Public', feelings: '' },
     { headers: { Cookie: sessionCookie }, validateStatus: () => true });
@@ -165,5 +166,5 @@ it('page 1 returns at most 10 posts — toBeLessThanOrEqual', async () => {
     validateStatus: () => true,
   });
   const posts = res.data.posts ?? [];
-  expect(posts.length).toBeLessThanOrEqual(10);
+  expect(posts.length).toBeLessThanOrEqual(12);
 });

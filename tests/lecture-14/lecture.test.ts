@@ -21,7 +21,8 @@ beforeAll(async () => {
   const loginRes = await axios.post(signinUrl, credentials, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   jwt = loginRes.data.token ?? '';
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 });
 
 afterAll(async () => {

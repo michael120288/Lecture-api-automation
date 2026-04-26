@@ -29,7 +29,8 @@ beforeAll(async () => {
     { validateStatus: () => true },
   );
   const raw = r.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
   token = r.data?.token ?? '';
 });
 
@@ -141,7 +142,8 @@ describe('3. Cookie capture pattern', () => {
   it('correct cookie capture returns 200', async () => {
     // sessionCookie was captured in beforeAll using:
     //   const raw = r.headers['set-cookie'];
-    //   sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+    //   const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+    //   sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
     //
     // Why Array.isArray check?
     // axios returns set-cookie as string[] when there are multiple Set-Cookie headers,

@@ -34,7 +34,8 @@ beforeAll(async () => {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
   }, { validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
-  cookieA = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookiesA = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  cookieA = cookiesA.map(c => c.split(';')[0]).join('; ');
 
   // Capture user A's _id — needed for delete message URL
   const curRes = await axios.get(`${config.BASE_URL}/currentuser`, {

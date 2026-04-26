@@ -35,7 +35,8 @@ beforeAll(async () => {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
   }, { validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   // Create test post
   await axios.post(postUrl, { post: POST_CONTENT, bgColor: '#fff', privacy: 'Public', feelings: '' },

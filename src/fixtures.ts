@@ -2,20 +2,21 @@
 // Import from here instead of redefining in each test file.
 
 /**
- * A minimal valid base64-encoded PNG image (1×1 black pixel).
+ * A 10×10 solid blue PNG (#4a90e2) used as the test avatar image.
  *
  * Why we need this:
  *   The Chatty signup endpoint uploads the avatarImage to Cloudinary.
  *   Cloudinary requires a valid image — it rejects empty strings or fake data.
- *   Using a real (tiny) PNG guarantees the upload succeeds without wasting bandwidth.
  *
- * Why a fixed image instead of a random one:
- *   Random base64 data is not a valid image and Cloudinary rejects it.
- *   A fixed known-good image is predictable and fast.
- *   Size: ~68 bytes decoded — smallest possible valid PNG.
+ * Why 10×10 instead of 1×1:
+ *   A 1×1 pixel image renders as a broken-looking placeholder in the browser.
+ *   A 10×10 pixel image renders as a visible colored square — easier to
+ *   distinguish test account photos in the Chatty UI.
+ *
+ * Color matches TEST_AVATAR_COLOR (#4a90e2 — blue).
  */
 export const TEST_AVATAR_IMAGE =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAEklEQVR4nGPwmvAID2IYlcaGAM6+rXFsLAOFAAAAAElFTkSuQmCC';
 
 /**
  * A fixed avatar colour used in signup tests.

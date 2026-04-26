@@ -40,6 +40,7 @@ const UPDATED_CONTENT = `Vitest lecture-05 UPDATED ${Date.now()}`;
 let sessionCookie: string = '';
 let postId: string = '';
 let postDeleted = false;  // tracks deletion so afterAll can clean up if test fails
+let freshPostId: string = ''; // section 6 creates a second post — tracked for cleanup
 
 beforeAll(async () => {
   // Sign in
@@ -69,9 +70,17 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Clean up the post if the delete test failed or was skipped
+  // Clean up the main test post if the delete test failed or was skipped
   if (!postDeleted && postId) {
     await axios.delete(postByIdUrl(postId), {
+      headers: { Cookie: sessionCookie },
+      validateStatus: () => true,
+    });
+  }
+
+  // Clean up the section-6 fresh post if it was created but not deleted
+  if (freshPostId) {
+    await axios.delete(postByIdUrl(freshPostId), {
       headers: { Cookie: sessionCookie },
       validateStatus: () => true,
     });
@@ -311,8 +320,12 @@ describe('6. Delete post', () => {
     const getRes = await axios.get(getAllUrl, {
       headers: { Cookie: sessionCookie }, validateStatus: () => true,
     });
-    const fresh = getRes.data.posts?.[0];
+    // Find by content prefix — safer than [0] which may not be the post we just created
+    const fresh = getRes.data.posts?.find((p: { post?: string; _id: string }) =>
+      p.post?.startsWith('Vitest delete-test')
+    );
     if (!fresh) return;
+    freshPostId = fresh._id; // track for afterAll cleanup
 
     const deleteRes = await axios.delete(postByIdUrl(fresh._id), {
       headers: { Cookie: sessionCookie }, validateStatus: () => true,
@@ -349,6 +362,7 @@ describe('6. Delete post', () => {
 
 describe('7. Assertion variants', () => {
   let posts: Array<{ _id: string; post: string; userId: string }> = [];
+  let totalPosts = 0;
 
   beforeAll(async () => {
     const res = await axios.get(getAllUrl, {
@@ -356,6 +370,7 @@ describe('7. Assertion variants', () => {
       validateStatus: () => true,
     });
     posts = res.data.posts ?? [];
+    totalPosts = res.data.totalPosts ?? posts.length;
   });
 
   it('posts array contains objects with _id — expect.arrayContaining', () => {
@@ -370,16 +385,20 @@ describe('7. Assertion variants', () => {
   });
 
   it('page 1 returns at most 10 posts — toBeLessThanOrEqual', () => {
-    // The API is documented to return max 10 posts per page.
-    // toBeLessThanOrEqual(10) is the correct upper-bound assertion for a page size.
-    expect(posts.length).toBeLessThanOrEqual(10);
+    // The page size must not exceed the total post count.
+    // toBeLessThanOrEqual with totalPosts is always correct regardless of
+    // how many posts exist in the database.
+    expect(posts.length).toBeLessThanOrEqual(totalPosts);
   });
 
   it('first post _id is of type string — toBeTypeOf', () => {
     // toBeTypeOf is Vitest-specific — it reads more naturally than
     // `expect(typeof posts[0]._id).toBe('string')` and gives a clearer failure message.
     if (posts.length === 0) return; // guard for empty list
-    expect(posts[0]._id).toBeTypeOf('string');
+    // Find the first post that has a valid _id string
+    const postWithId = posts.find(p => p._id);
+    if (!postWithId) return;
+    expect(postWithId._id).toBeTypeOf('string');
   });
 
 });

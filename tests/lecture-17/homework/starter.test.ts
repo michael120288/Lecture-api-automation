@@ -16,7 +16,8 @@ let conversationId = '';
 beforeAll(async () => {
   const r = await axios.post(`${config.BASE_URL}/signin`, { username: config.TEST_USERNAME, password: config.TEST_PASSWORD }, { validateStatus: () => true });
   const raw = r.headers['set-cookie'];
-  cookieA = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookiesA = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  cookieA = cookiesA.map(c => c.split(';')[0]).join('; ');
 
   const s = await axios.post(`${config.BASE_URL}/signup`, {
     username: `vitest${faker.string.alphanumeric(8).toLowerCase()}`,

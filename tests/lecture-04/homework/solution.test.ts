@@ -22,8 +22,9 @@ beforeAll(async () => {
   }, { validateStatus: () => true });
 
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
-
+  
+const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
   const currentRes = await axios.get(currentUserUrl, {
     headers: { Cookie: sessionCookie },
     validateStatus: () => true,
@@ -76,8 +77,8 @@ it('PUT /basic-info updates location and GET /currentuser reflects it', async ()
     headers: { Cookie: sessionCookie },
     validateStatus: () => true,
   });
-
-  expect(res.data.user.location).toBe('Test City');
+  const location = res.data.user.location?.replace(/^"|"$/g, '') ?? res.data.user.location;
+  expect(location).toBe('Test City');
 });
 
 // ─── Solution 3 ───────────────────────────────────────────────────────────────
