@@ -259,6 +259,24 @@ import { expectRejected, expectSuccess } from '../../src/test-utils';
 When testing against production, rate limiting can change a valid `400` into a `429`.
 `expectRejected` makes your tests resilient to this without hiding real failures.
 
+**Bypassing the rate limit in `beforeAll`:**
+For the happy-path `beforeAll` signin (where you need a valid session, not testing errors),
+add the `x-test-secret` header to skip the rate limiter entirely:
+
+```ts
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+beforeAll(async () => {
+  signInResponse = await axios.post(signinUrl, credentials, {
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
+    validateStatus: () => true,
+  });
+});
+```
+
+This only bypasses the rate limit — it does not affect auth. The server still requires valid credentials.
+`TEST_CLEANUP_SECRET` is hardcoded in `src/fixtures.ts` — no `.env` entry needed.
+
 ---
 
 ## 9. Postman — Cookie Jar

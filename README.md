@@ -109,6 +109,21 @@ Copy `.env.example` to `.env` and fill in each value:
 
 `TEST_CLEANUP_SECRET` is not in `.env` — it is hardcoded in `src/fixtures.ts`.
 
+**Why are these variables also listed in `vitest.config.ts`?**
+
+`.env` stores the actual values. `vitest.config.ts` explicitly forwards them into the test sandbox:
+
+```ts
+env: {
+  BASE_URL:      process.env.BASE_URL      ?? '',
+  TEST_USERNAME: process.env.TEST_USERNAME ?? '',
+  TEST_PASSWORD: process.env.TEST_PASSWORD ?? '',
+  DATABASE_URL:  process.env.DATABASE_URL  ?? '',
+}
+```
+
+Vitest runs each test file in an isolated worker. Without this forwarding, `process.env.BASE_URL` inside a test file might return `undefined` even when `.env` is loaded. The `env` block in `vitest.config.ts` is a forwarding declaration — it contains no values, just the keys to pass through.
+
 ---
 
 ## API Reference

@@ -1241,6 +1241,49 @@ Write these tests in your file before reading the next chapter:
 4. Organise the tests into numbered describe blocks (1. Basic, 2. Exact values, 3. Shape, 4. Negative). Run with npm test — verify all pass.
 5. Name 3 tests badly (too vague) then rename them to follow the "what-condition-expected" format. Notice how the test output changes.
 
+#### Starter Template
+
+Copy this to `tests/chapter-04/first-test.test.ts` and fill in each `// write your code here` block:
+
+```ts
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+
+const url = `${config.BASE_URL}/signin`;
+const wrongCredentials = { username: 'notarealuser99999', password: 'WrongPass@9999' };
+
+let response!: AxiosResponse;
+
+beforeAll(async () => {
+  response = await axios.post(url, wrongCredentials, { validateStatus: () => true });
+});
+
+// Exercise 1 — assert the full error shape using toMatchObject()
+it('response body matches the error shape', () => {
+  // write your code here
+});
+
+// Exercise 2 — assert Content-Type header + status is not 200/201
+it('Content-Type is JSON and status is not a success code', () => {
+  // write your code here
+});
+
+// Exercise 3 — negative assertions: no token, no user, no password in error response
+it('response does not leak token, user, or password', () => {
+  // write your code here
+});
+
+// Exercise 4 — boundary: send username 'abc' (3 chars), expect rejection
+it('username shorter than 4 chars is rejected', async () => {
+  const res = await axios.post(url, { username: 'abc', password: 'ValidPass@1' }, { validateStatus: () => true });
+  // write your code here
+});
+
+// Exercise 5 — .then() style: assert the error shape without async/await — must return the promise
+it('response body matches error shape — .then() style', () => {
+  // write your code here
+});
+```
 
 #### Postman Exercises
 
@@ -1258,6 +1301,10 @@ Create a folder named "Chapter 4" inside your Postman collection. Work through t
 ---
 
 ## The Test File for This Chapter
+
+> **This is NOT the file you write for the exercises above.**
+> The Chapter Practice section has you create `tests/chapter-04/first-test.test.ts` with your own solutions.
+> The file below is a **reference implementation** — a complete, heavily commented example of all the patterns covered in this chapter. Read it after you have attempted the exercises yourself.
 
 > **Working example: Setup & First API Test**
 
@@ -2249,6 +2296,51 @@ Write these tests in your file before reading the next chapter:
 4. Write a test using expect.arrayContaining on POST /post/all/1 — assert every item in the posts array has an _id field.
 5. Write a test using toSatisfy to assert a JWT token has exactly 3 dot-separated parts: toSatisfy((t) => t.split('.').length === 3).
 
+#### Starter Template
+
+Copy this to `tests/chapter-05/assertions.test.ts` and fill in each `// write your code here` block:
+
+```ts
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const signinUrl = `${config.BASE_URL}/signin`;
+
+let response!: AxiosResponse;
+
+beforeAll(async () => {
+  response = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME,
+    password: config.TEST_PASSWORD,
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
+});
+
+// Exercise 1 — toMatchObject with expect.any() for full response shape
+it('response body matches the expected shape', () => {
+  // write your code here
+});
+
+// Exercise 2 — toBeTypeOf on statusCode, toBeTruthy on message
+it('statusCode is type number and message is truthy', () => {
+  // write your code here
+});
+
+// Exercise 3 — toMatch(/regex/) on message
+it('message matches non-empty string regex', () => {
+  // write your code here
+});
+
+// Exercise 4 — expect.arrayContaining on GET /post/all/1 posts array
+it('posts array contains objects with _id', async () => {
+  // write your code here
+});
+
+// Exercise 5 — toSatisfy: assert token has 3 dot-separated parts
+it('token passes JWT structure predicate', () => {
+  // write your code here
+});
+```
 
 #### Postman Exercises
 
@@ -2265,7 +2357,26 @@ Create a folder named "Chapter 5" inside your Postman collection. Work through t
 
 ---
 
+> **What is `x-test-secret` and `TEST_CLEANUP_SECRET`?**
+>
+> You will see these in the reference implementation below. They serve two purposes:
+>
+> 1. **In `beforeAll` signin calls** — bypasses the API rate limiter (5 req/min) so tests can sign in repeatedly without getting 429 errors. Only works for `vitest` usernames.
+> 2. **In `afterAll` cleanup calls** — authorizes the `DELETE /test/cleanup/user/:authId` endpoint to delete test users after a test run.
+>
+> `TEST_CLEANUP_SECRET` is hardcoded in `src/fixtures.ts` as `'chatty-test-cleanup-2026'` — no `.env` entry needed. Import it with:
+> ```ts
+> import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
+> ```
+
+---
+
 ## The Test File for This Chapter
+
+> **This is NOT the file you write for the exercises above.**
+> The Chapter Practice section has you create your own solution file with the exercises.
+> The code below is a **reference implementation** — a complete, commented example of the patterns in this chapter. Read it after you have attempted the exercises yourself.
+> After completing the exercises, your file will be much shorter than this — typically 5–7 `it()` blocks and 40–60 lines. That is correct and complete.
 
 > **Working example: SignIn: Authentication & Cookies**
 
@@ -2274,8 +2385,8 @@ Create a folder named "Chapter 5" inside your Postman collection. Work through t
 //
 // Endpoint: POST /api/v1/signin
 //
-// Lecture 1 tested the ERROR path — wrong credentials.
-// Lecture 2 tests the HAPPY PATH — successful authentication.
+// Chapter 4 tested the ERROR path — wrong credentials.
+// Chapter 5 tests the HAPPY PATH — successful authentication.
 //
 // New concepts introduced here:
 //   1. Positive test — testing that the correct response is returned for valid input
@@ -2507,7 +2618,7 @@ describe('4. User object', () => {
 // With the cookie    → 200 OK + current user data
 //
 // This is a CHAIN: signin → extract cookie → authenticated request.
-// This pattern is the foundation of all future lectures (L3 onwards).
+// This pattern is the foundation of all future chapters (Chapter 6 onwards).
 
 describe('5. Authenticated request', () => {
 
@@ -2542,8 +2653,8 @@ describe('5. Authenticated request', () => {
 
 // ─── 6. Negative tests ────────────────────────────────────────────────────────
 //
-// Even though we tested negatives in Lecture 1, here we include the key cases
-// to keep each lecture file self-contained and runnable on its own.
+// Even though we tested negatives in Chapter 4, here we include the key cases
+// to keep each chapter file self-contained and runnable on its own.
 // Note: these make individual requests — expectRejected handles 400 OR 429.
 
 describe('6. Negative tests', () => {
@@ -2712,7 +2823,6 @@ The signin endpoint is `POST /auth/signin`. It accepts a JSON body with `usernam
 The first question is: where does the test user come from? For an auth chapter test, you want a user who already exists — there is no point testing signup in a signin test. We have a dedicated test user `vitestAuthUser` seeded in the production test environment for this purpose. In your own environment, you would create the user in a `beforeAll` hook.
 
 ```typescript
-// tests/lecture-06/lecture.test.ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { client } from '../../src/client';
 import type { AxiosResponse } from 'axios';
@@ -2873,7 +2983,6 @@ This pattern — extract once, replay everywhere — is the foundation of all au
 The complete lifecycle of an authenticated test suite looks like this:
 
 ```typescript
-// tests/lecture-06/lecture.test.ts (full version)
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { client } from '../../src/client';
 import type { AxiosResponse } from 'axios';
@@ -3258,6 +3367,60 @@ Write these tests in your file before reading the next chapter:
 4. Add afterAll that calls POST /signout with the session cookie. After signout, call GET /currentuser — assert it returns 401.
 5. Use toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/) to assert the JWT format. Use toBeTypeOf('string') on the token.
 
+#### Starter Template
+
+Copy this to `tests/chapter-06/auth.test.ts` and fill in each `// write your code here` block:
+
+```ts
+import axios, { type AxiosResponse } from 'axios';
+import { config } from '../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const signinUrl = `${config.BASE_URL}/signin`;
+const currentUserUrl = `${config.BASE_URL}/currentuser`;
+const signoutUrl = `${config.BASE_URL}/signout`;
+
+let signInResponse!: AxiosResponse;
+let sessionCookie = '';
+
+beforeAll(async () => {
+  signInResponse = await axios.post(signinUrl, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
+  const raw = signInResponse.headers['set-cookie'];
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
+});
+
+afterAll(async () => {
+  await axios.post(signoutUrl, {}, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+});
+
+// Exercise 1 — status 200, message, token, user, password absent, set-cookie present
+it('successful signin returns status 200 with token and user', () => {
+  // write your code here
+});
+
+// Exercise 2 — use sessionCookie to call GET /currentuser, assert 200
+it('session cookie works for authenticated request', async () => {
+  // write your code here
+});
+
+// Exercise 3 — wrong password → 400, short username → 400/429, missing password → 400/429
+it('invalid signin attempts are rejected', async () => {
+  // write your code here
+});
+
+// Exercise 4 — afterAll signout already done above; add GET /currentuser after signout → 401
+it('after signout the session is invalidated', async () => {
+  // write your code here
+});
+
+// Exercise 5 — toMatch(JWT regex) and toBeTypeOf('string') on token
+it('token matches JWT regex and is a string', () => {
+  // write your code here
+});
+```
 
 #### Postman Exercises
 
@@ -3275,6 +3438,11 @@ Create a folder named "Chapter 6" inside your Postman collection. Work through t
 ---
 
 ## The Test File for This Chapter
+
+> **This is NOT the file you write for the exercises above.**
+> The Chapter Practice section has you create your own solution file with the exercises.
+> The code below is a **reference implementation** — a complete, commented example of the patterns in this chapter. Read it after you have attempted the exercises yourself.
+> After completing the exercises, your file will be much shorter than this — typically 5–7 `it()` blocks and 40–60 lines. That is correct and complete.
 
 > **Working example: SignUp: Creating & Cleaning Up Test Users**
 
@@ -3334,7 +3502,8 @@ beforeAll(async () => {
 
   // Capture session cookie
   const raw = signUpResponse.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 });
 
 afterAll(async () => {
@@ -3418,7 +3587,7 @@ describe('2. User object', () => {
 // ─── 3. Token and cookie ──────────────────────────────────────────────────────
 //
 // Signup sets a session cookie and returns a JWT — same as signin.
-// By Lecture 3 you know these patterns — the assertions are shorter.
+// By Chapter 6 you know these patterns — the assertions are shorter.
 
 describe('3. Token and cookie', () => {
 
@@ -3665,7 +3834,6 @@ This two-step pattern catches bugs that a simple status-code assertion cannot: t
 Here is the pattern applied to profile updates:
 
 ```typescript
-// tests/lecture-07/lecture.test.ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { client } from '../../src/client';
 import { signIn, cleanupUser, type AuthSession } from '../../src/helpers/auth';
@@ -4102,6 +4270,59 @@ Write these tests in your file before reading the next chapter:
 4. Use toBeGreaterThanOrEqual(0) to assert postsCount, followersCount, and followingCount are non-negative numbers.
 5. Use toBeTruthy() to assert the username and email fields are non-empty.
 
+#### Starter Template
+
+Copy this to `tests/chapter-07/state.test.ts` and fill in each `// write your code here` block:
+
+```ts
+import axios from 'axios';
+import { config } from '../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const basicInfoUrl = `${config.BASE_URL}/user/profile/basic-info`;
+let sessionCookie = '';
+
+beforeAll(async () => {
+  const loginRes = await axios.post(`${config.BASE_URL}/signin`, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
+});
+
+afterAll(async () => {
+  // Restore original values before signout
+  await axios.put(basicInfoUrl, { work: '', quote: '', school: '', location: '' },
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+  await axios.post(`${config.BASE_URL}/signout`, {}, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+});
+
+// Exercise 1 — PUT /user/profile/basic-info with work and school, assert 200
+it('PUT /user/profile/basic-info returns 200', async () => {
+  // write your code here
+});
+
+// Exercise 2 — GET /currentuser after PUT, assert work and school match what was sent
+it('GET /currentuser reflects the updated work and school fields', async () => {
+  // write your code here
+});
+
+// Exercise 3 — afterAll restores values (already in afterAll above); verify GET shows empty
+it('values are restored to empty after afterAll runs', async () => {
+  // write your code here — this test intentionally runs before afterAll
+});
+
+// Exercise 4 — toBeGreaterThanOrEqual(0) on postsCount, followersCount, followingCount
+it('profile counts are non-negative numbers', async () => {
+  // write your code here
+});
+
+// Exercise 5 — toBeTruthy() on username and email
+it('username and email are truthy (non-empty)', async () => {
+  // write your code here
+});
+```
 
 #### Postman Exercises
 
@@ -4119,6 +4340,11 @@ Create a folder named "Chapter 7" inside your Postman collection. Work through t
 ---
 
 ## The Test File for This Chapter
+
+> **This is NOT the file you write for the exercises above.**
+> The Chapter Practice section has you create your own solution file with the exercises.
+> The code below is a **reference implementation** — a complete, commented example of the patterns in this chapter. Read it after you have attempted the exercises yourself.
+> After completing the exercises, your file will be much shorter than this — typically 5–7 `it()` blocks and 40–60 lines. That is correct and complete.
 
 > **Working example: Current User, Profile & State Verification**
 
@@ -4173,7 +4399,8 @@ beforeAll(async () => {
     validateStatus: () => true,
   });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
   signInToken = loginRes.data.token ?? '';
 
   // Capture current profile state before any test modifies it.
@@ -4347,7 +4574,7 @@ describe('3. Update basic info', () => {
 
 // ─── 4. State verification ────────────────────────────────────────────────────
 //
-// This is the most important section of the lecture:
+// This is the most important section of the chapter:
 // After calling PUT, we call GET /currentuser to CONFIRM the change was saved.
 //
 // A 200 from PUT only tells you the server accepted the request.
@@ -4438,7 +4665,7 @@ describe('5. Update notification settings', () => {
 
 // ─── 6. Negative tests ────────────────────────────────────────────────────────
 //
-// All endpoints in this lecture require authentication.
+// All endpoints in this chapter require authentication.
 // Without the session cookie → 401 Unauthorized.
 
 describe('6. Negative tests — no cookie', () => {
@@ -4593,7 +4820,6 @@ The core idea: if you cannot get the ID from the creation response, create the r
 The uniqueness requirement is satisfied by including a timestamp in the content: `` `Vitest post ${Date.now()}` ``. The `Date.now()` function returns the current Unix timestamp in milliseconds, guaranteed to be unique within a single process. Even if tests run in parallel and two posts are created at the same millisecond (extremely unlikely), the test users creating them are different, so there is still no collision.
 
 ```typescript
-// tests/lecture-08/lecture.test.ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { client } from '../../src/client';
 import { signIn, cleanupUser, type AuthSession } from '../../src/helpers/auth';
@@ -5008,6 +5234,62 @@ Write these tests in your file before reading the next chapter:
 4. Try to create a post without the Cookie header. Assert status 401.
 5. In afterAll, delete the created post with DELETE /post/:postId. Assert status 200.
 
+#### Starter Template
+
+Copy this to `tests/chapter-08/create.test.ts` and fill in each `// write your code here` block:
+
+```ts
+import axios from 'axios';
+import { faker } from '@faker-js/faker';
+import { config } from '../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const postUrl = `${config.BASE_URL}/post`;
+const getAllUrl = `${config.BASE_URL}/post/all/1`;
+const UNIQUE_CONTENT = `Vitest chapter-08 ${faker.string.alphanumeric(8)}`;
+
+let sessionCookie = '';
+let postId = '';
+
+beforeAll(async () => {
+  const loginRes = await axios.post(`${config.BASE_URL}/signin`, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
+});
+
+afterAll(async () => {
+  if (postId) await axios.delete(`${config.BASE_URL}/post/${postId}`, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+  await axios.post(`${config.BASE_URL}/signout`, {}, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+});
+
+// Exercise 1 — POST /post with UNIQUE_CONTENT, assert 201 and message
+it('POST /post returns 201 Created', async () => {
+  // write your code here
+});
+
+// Exercise 2 — GET /post/all/1, find post by UNIQUE_CONTENT, capture postId
+it('created post appears in GET /post/all/1', async () => {
+  // write your code here
+});
+
+// Exercise 3 — toMatch(/^[a-f0-9]{24}$/) on postId
+it('postId is a valid MongoDB ObjectId', () => {
+  // write your code here
+});
+
+// Exercise 4 — POST /post without Cookie, assert 401
+it('creating a post without a cookie returns 401', async () => {
+  // write your code here
+});
+
+// Exercise 5 — DELETE /post/:postId, assert 200 (cleanup)
+it('DELETE /post/:postId returns 200', async () => {
+  // write your code here
+});
+```
 
 #### Postman Exercises
 
@@ -5025,6 +5307,11 @@ Create a folder named "Chapter 8" inside your Postman collection. Work through t
 ---
 
 ## The Test File for This Chapter
+
+> **This is NOT the file you write for the exercises above.**
+> The Chapter Practice section has you create your own solution file with the exercises.
+> The code below is a **reference implementation** — a complete, commented example of the patterns in this chapter. Read it after you have attempted the exercises yourself.
+> After completing the exercises, your file will be much shorter than this — typically 5–7 `it()` blocks and 40–60 lines. That is correct and complete.
 
 > **Working example: Posts: Full CRUD Flow**
 
@@ -5061,8 +5348,8 @@ const credentials = {
 };
 
 // Unique content so we can find our post in the list after creation
-const UNIQUE_CONTENT = `Vitest lecture-05 post ${Date.now()}`;
-const UPDATED_CONTENT = `Vitest lecture-05 UPDATED ${Date.now()}`;
+const UNIQUE_CONTENT = `Vitest test-post ${Date.now()}`;
+const UPDATED_CONTENT = `Vitest test-UPDATED ${Date.now()}`;
 
 // ─── File-level shared state ──────────────────────────────────────────────────
 
@@ -5076,7 +5363,8 @@ beforeAll(async () => {
     validateStatus: () => true,
   });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   // Create the test post
   await axios.post(postUrl, {
@@ -5431,7 +5719,6 @@ Fourth, they verify **pagination contracts**: list endpoints that return pages o
 `GET /currentuser` is the primary endpoint for reading the authenticated user's profile. It requires a valid session cookie and returns the current user object.
 
 ```typescript
-// tests/lecture-09/lecture.test.ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { client } from '../../src/client';
 import { signIn, cleanupUser, type AuthSession } from '../../src/helpers/auth';
@@ -5815,6 +6102,56 @@ Write these tests in your file before reading the next chapter:
 5. Call PATCH /post/not-an-objectid with a valid session. Assert status 400 — invalid ObjectId format.
 
 
+#### Starter Template
+
+Copy this to `tests/chapter-09/read.test.ts` and fill in each `// write your code here` block:
+
+```ts
+import axios from 'axios';
+import { config } from '../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+let sessionCookie = '';
+
+beforeAll(async () => {
+  const loginRes = await axios.post(`${config.BASE_URL}/signin`, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
+});
+
+afterAll(async () => {
+  await axios.post(`${config.BASE_URL}/signout`, {}, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+});
+
+// Exercise 1 — GET /post/all/1: assert 200, posts is array, totalPosts is number
+it('GET /post/all/1 returns posts array and totalPosts', async () => {
+  // write your code here
+});
+
+// Exercise 2 — expect.arrayContaining: assert every post has _id
+it('every post in the list has an _id field', async () => {
+  // write your code here
+});
+
+// Exercise 3 — toBeLessThanOrEqual(totalPosts): page size never exceeds total
+it('page 1 size is at most totalPosts', async () => {
+  // write your code here
+});
+
+// Exercise 4 — GET /post/all/1 WITHOUT cookie, assert 401
+it('GET /post/all/1 without cookie returns 401', async () => {
+  // write your code here
+});
+
+// Exercise 5 — PATCH /post/not-an-objectid with cookie, assert 400
+it('PATCH with invalid ObjectId returns 400', async () => {
+  // write your code here
+});
+```
+
 #### Postman Exercises
 
 Create a folder named "Chapter 9" inside your Postman collection. Work through these tasks:
@@ -5831,6 +6168,11 @@ Create a folder named "Chapter 9" inside your Postman collection. Work through t
 ---
 
 ## The Test File for This Chapter
+
+> **This is NOT the file you write for the exercises above.**
+> The Chapter Practice section has you create your own solution file with the exercises.
+> The code below is a **reference implementation** — a complete, commented example of the patterns in this chapter. Read it after you have attempted the exercises yourself.
+> After completing the exercises, your file will be much shorter than this — typically 5–7 `it()` blocks and 40–60 lines. That is correct and complete.
 
 > **Working example: Reactions**
 
@@ -5871,7 +6213,7 @@ const credentials = {
   password: config.TEST_PASSWORD,
 };
 
-const POST_CONTENT = `Vitest lecture-06 post ${Date.now()}`;
+const POST_CONTENT = `Vitest test-post ${Date.now()}`;
 
 // ─── File-level shared state ──────────────────────────────────────────────────
 
@@ -5886,7 +6228,8 @@ beforeAll(async () => {
   // Sign in
   const loginRes = await axios.post(signinUrl, credentials, { validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   // Create a test post
   await axios.post(postUrl, { post: POST_CONTENT, bgColor: '#fff', privacy: 'Public', feelings: '' },
@@ -6015,7 +6358,7 @@ describe('3. Get single reaction by username', () => {
 //   - The reactions array is non-empty
 //   - At least one reaction has type 'like'
 //
-// This mirrors the state verification pattern from Lectures 4 and 5.
+// This mirrors the state verification pattern from Chapter 7and 5.
 
 describe('4. State verification — reaction present in list', () => {
 
@@ -6167,7 +6510,6 @@ For PATCH operations, the complete test lifecycle is:
 5. **Restore**: PATCH the field back to its original value in `afterAll`.
 
 ```typescript
-// tests/lecture-10/lecture.test.ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { client } from '../../src/client';
 import { signIn, cleanupUser, type AuthSession } from '../../src/helpers/auth';
@@ -6521,6 +6863,66 @@ Write these tests in your file before reading the next chapter:
 5. Use toStrictEqual to assert that the bgColor field did not change after a PATCH that only modified the post text.
 
 
+#### Starter Template
+
+Copy this to `tests/chapter-10/update.test.ts` and fill in each `// write your code here` block:
+
+```ts
+import axios from 'axios';
+import { faker } from '@faker-js/faker';
+import { config } from '../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const CONTENT = `Vitest chapter-10 ${faker.string.alphanumeric(8)}`;
+const UPDATED_CONTENT = `Vitest chapter-10 UPDATED ${faker.string.alphanumeric(8)}`;
+let sessionCookie = '';
+let postId = '';
+
+beforeAll(async () => {
+  const loginRes = await axios.post(`${config.BASE_URL}/signin`, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
+  // Create a test post
+  await axios.post(`${config.BASE_URL}/post`, { post: CONTENT, bgColor: '#ffffff', privacy: 'Public', feelings: '' },
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+  const getRes = await axios.get(`${config.BASE_URL}/post/all/1`, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+  postId = getRes.data.posts?.find((p: any) => p.post === CONTENT)?._id ?? '';
+});
+
+afterAll(async () => {
+  if (postId) await axios.delete(`${config.BASE_URL}/post/${postId}`, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+  await axios.post(`${config.BASE_URL}/signout`, {}, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+});
+
+// Exercise 1 — PATCH /post/:postId with new content, assert 200
+it('PATCH /post/:postId returns 200', async () => {
+  // write your code here
+});
+
+// Exercise 2 — GET /post/all/1, find post by id, assert content matches UPDATED_CONTENT
+it('GET shows the updated content after PATCH', async () => {
+  // write your code here
+});
+
+// Exercise 3 — PATCH back to original, verify with GET
+it('content can be restored with another PATCH', async () => {
+  // write your code here
+});
+
+// Exercise 4 — PATCH without cookie, assert 401
+it('PATCH without cookie returns 401', async () => {
+  // write your code here
+});
+
+// Exercise 5 — toStrictEqual: bgColor field unchanged after content-only PATCH
+it('bgColor is unchanged after content-only PATCH', async () => {
+  // write your code here
+});
+```
+
 #### Postman Exercises
 
 Create a folder named "Chapter 10" inside your Postman collection. Work through these tasks:
@@ -6537,6 +6939,11 @@ Create a folder named "Chapter 10" inside your Postman collection. Work through 
 ---
 
 ## The Test File for This Chapter
+
+> **This is NOT the file you write for the exercises above.**
+> The Chapter Practice section has you create your own solution file with the exercises.
+> The code below is a **reference implementation** — a complete, commented example of the patterns in this chapter. Read it after you have attempted the exercises yourself.
+> After completing the exercises, your file will be much shorter than this — typically 5–7 `it()` blocks and 40–60 lines. That is correct and complete.
 
 > **Working example: Comments**
 
@@ -6562,7 +6969,7 @@ const commentById = (postId: string, commentId: string) =>
 
 const UNIQUE_COMMENT  = `Vitest comment ${Date.now()}`;
 const UPDATED_COMMENT = `Updated comment ${Date.now()}`;
-const POST_CONTENT    = `Vitest lecture-07 ${Date.now()}`;
+const POST_CONTENT    = `Vitest chapter-07 ${Date.now()}`;
 
 let sessionCookie: string = '';
 let postId: string = '';
@@ -6576,7 +6983,8 @@ beforeAll(async () => {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
   }, { validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   // Create test post
   await axios.post(postUrl, { post: POST_CONTENT, bgColor: '#fff', privacy: 'Public', feelings: '' },
@@ -6865,7 +7273,6 @@ On unauthenticated: 401.
 ### Basic Delete Testing
 
 ```typescript
-// tests/lecture-11/lecture.test.ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { client } from '../../src/client';
 import { signIn, cleanupUser, type AuthSession } from '../../src/helpers/auth';
@@ -7208,7 +7615,7 @@ Setting the flag before the assertion would cause `afterAll` to skip cleanup eve
 The culmination of Chapters 8 through 11 is the complete CRUD lifecycle test: a single test suite that creates, reads, updates, and deletes a resource, verifying the state at each step.
 
 ```typescript
-// tests/lecture-11/crud-lifecycle.test.ts
+// tests/chapter-11/crud-lifecycle.test.ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { client } from '../../src/client';
 import { signIn, cleanupUser, type AuthSession } from '../../src/helpers/auth';
@@ -7429,24 +7836,24 @@ The following file structure summarizes the recommended organization for all cha
 
 ```
 tests/
-  lecture-06/
-    lecture.test.ts          — Authentication flows (signin, cookie, signout)
+  chapter-06/
+    [chapter].test.ts          — Authentication flows (signin, cookie, signout)
     homework/
       [chapter].test.ts
-  lecture-07/
-    lecture.test.ts          — State and side effects (PUT → GET, postDeleted)
+  chapter-07/
+    [chapter].test.ts          — State and side effects (PUT → GET, postDeleted)
     homework/
-  lecture-08/
-    lecture.test.ts          — Create (find-by-content, Faker, duplicates)
+  chapter-08/
+    [chapter].test.ts          — Create (find-by-content, Faker, duplicates)
     homework/
-  lecture-09/
-    lecture.test.ts          — Read (pagination, arrayContaining, access control)
+  chapter-09/
+    [chapter].test.ts          — Read (pagination, arrayContaining, access control)
     homework/
-  lecture-10/
-    lecture.test.ts          — Update (PATCH semantics, owner-only, partial update)
+  chapter-10/
+    [chapter].test.ts          — Update (PATCH semantics, owner-only, partial update)
     homework/
-  lecture-11/
-    lecture.test.ts          — Delete (postDeleted flag, 403, verification)
+  chapter-11/
+    [chapter].test.ts          — Delete (postDeleted flag, 403, verification)
     crud-lifecycle.test.ts   — Complete CRUD lifecycle
     homework/
 
@@ -7484,6 +7891,65 @@ Write these tests in your file before reading the next chapter:
 5. Use toBeFalsy() to assert that the find() result after deletion is falsy (undefined or null).
 
 
+#### Starter Template
+
+Copy this to `tests/chapter-11/delete.test.ts` and fill in each `// write your code here` block:
+
+```ts
+import axios from 'axios';
+import { faker } from '@faker-js/faker';
+import { config } from '../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const CONTENT = `Vitest chapter-11 ${faker.string.alphanumeric(8)}`;
+let sessionCookie = '';
+let postId = '';
+let postDeleted = false;
+
+beforeAll(async () => {
+  const loginRes = await axios.post(`${config.BASE_URL}/signin`, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
+  await axios.post(`${config.BASE_URL}/post`, { post: CONTENT, bgColor: '#ffffff', privacy: 'Public', feelings: '' },
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+  const getRes = await axios.get(`${config.BASE_URL}/post/all/1`, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+  postId = getRes.data.posts?.find((p: any) => p.post === CONTENT)?._id ?? '';
+});
+
+afterAll(async () => {
+  if (!postDeleted && postId) await axios.delete(`${config.BASE_URL}/post/${postId}`, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+  await axios.post(`${config.BASE_URL}/signout`, {}, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+});
+
+// Exercise 1 — DELETE /post/:postId, assert 200, set postDeleted = true
+it('DELETE /post/:postId returns 200', async () => {
+  // write your code here
+});
+
+// Exercise 2 — GET /post/all/1 after deletion, find by _id → undefined
+it('deleted post no longer appears in the list', async () => {
+  // write your code here
+});
+
+// Exercise 3 — afterAll checks postDeleted flag (already wired above)
+it('postDeleted flag prevents double-delete in afterAll', () => {
+  expect(postDeleted).toBe(true); // passes if exercise 1 set the flag
+});
+
+// Exercise 4 — DELETE without cookie, assert 401
+it('DELETE without cookie returns 401', async () => {
+  // write your code here
+});
+
+// Exercise 5 — toBeFalsy() on the find() result after deletion
+it('find() result for deleted post is falsy', async () => {
+  // write your code here
+});
+```
+
 #### Postman Exercises
 
 Create a folder named "Chapter 11" inside your Postman collection. Work through these tasks:
@@ -7500,6 +7966,11 @@ Create a folder named "Chapter 11" inside your Postman collection. Work through 
 ---
 
 ## The Test File for This Chapter
+
+> **This is NOT the file you write for the exercises above.**
+> The Chapter Practice section has you create your own solution file with the exercises.
+> The code below is a **reference implementation** — a complete, commented example of the patterns in this chapter. Read it after you have attempted the exercises yourself.
+> After completing the exercises, your file will be much shorter than this — typically 5–7 `it()` blocks and 40–60 lines. That is correct and complete.
 
 > **Working example: User Profile & Search**
 
@@ -7526,7 +7997,8 @@ beforeAll(async () => {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
   }, { validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   // Capture original social links
   const currentRes = await axios.get(currentUserUrl, {
@@ -7793,7 +8265,6 @@ Through years of building and testing APIs, a consistent taxonomy of error categ
 The most basic form of invalid input: the client simply omitted something the server requires. A signup without a username. A login without a password. A post creation without body text.
 
 ```typescript
-// tests/lecture-12/lecture.test.ts
 import { describe, it, expect } from 'vitest';
 import axios from 'axios';
 
@@ -8218,7 +8689,7 @@ The Chatty API specifies the following constraints for user registration:
 These rules are enforced by Joi, a JavaScript schema validation library. Let us write comprehensive boundary tests for both.
 
 ```typescript
-// tests/lecture-12/boundary.test.ts
+// tests/chapter-12/boundary.test.ts
 import { describe, it, expect } from 'vitest';
 import axios from 'axios';
 
@@ -8428,7 +8899,7 @@ Why does this distinction matter for testing?
 Here is how you assert on each type:
 
 ```typescript
-// tests/lecture-12/validation-distinction.test.ts
+// tests/chapter-12/validation-distinction.test.ts
 import { describe, it, expect } from 'vitest';
 import axios from 'axios';
 
@@ -8512,7 +8983,7 @@ Testing rate limits presents a problem: to trigger a rate limit, you must send m
 The `expectRejected` pattern solves this by asserting that a response carries one of several acceptable error codes:
 
 ```typescript
-// tests/lecture-12/rate-limit.test.ts
+// tests/chapter-12/rate-limit.test.ts
 import { describe, it, expect } from 'vitest';
 import axios from 'axios';
 
@@ -8604,7 +9075,7 @@ A well-designed API always returns errors in a consistent shape. Chatty returns 
 You should assert this shape on every error response, not just the status code. The shape being consistent is what allows clients to handle errors programmatically with a single error handler.
 
 ```typescript
-// tests/lecture-12/error-shape.test.ts
+// tests/chapter-12/error-shape.test.ts
 import { describe, it, expect } from 'vitest';
 import axios from 'axios';
 
@@ -8679,7 +9150,7 @@ Error tests have a special security dimension: failing requests must not leak se
 **No token on failed authentication.** A failed login attempt should never return a token. If an error handler is written incorrectly, it might return partial data from a partially executed success path.
 
 ```typescript
-// tests/lecture-12/security-assertions.test.ts
+// tests/chapter-12/security-assertions.test.ts
 import { describe, it, expect } from 'vitest';
 import axios from 'axios';
 
@@ -8821,6 +9292,51 @@ Write these tests in your file before reading the next chapter:
 5. Use expect([400, 429]).toContain(res.status) on all boundary tests where the endpoint may be rate-limited.
 
 
+#### Starter Template
+
+Copy this to `tests/chapter-12/errors.test.ts` and fill in each `// write your code here` block:
+
+```ts
+import axios from 'axios';
+import { config } from '../../src/config';
+import { TEST_AVATAR_IMAGE, TEST_AVATAR_COLOR, TEST_PASSWORD, TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+const signupUrl = `${config.BASE_URL}/signup`;
+const createdAuthIds: string[] = [];
+
+afterAll(async () => {
+  for (const authId of createdAuthIds) {
+    await axios.delete(`${config.BASE_URL}/test/cleanup/user/${authId}`,
+      { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
+  }
+});
+
+// Exercise 1 — username 3 chars → [400,429]; username 4 chars → 201; username 21 chars → [400,429]
+it('username boundaries: 3 chars rejected, 4 accepted, 21 rejected', async () => {
+  // write your code here
+});
+
+// Exercise 2 — password 11 chars → [400,429]; 12 chars w/ complexity → 201; no special char → [400,429]
+it('password boundaries: 11 chars rejected, 12 accepted, no special char rejected', async () => {
+  // write your code here
+});
+
+// Exercise 3 — error response shape: {message: any(String), status: 'error', statusCode: 400}
+it('400 error has correct shape', async () => {
+  // write your code here
+});
+
+// Exercise 4 — .not.toHaveProperty('token') on failed signin; .not.toHaveProperty('password') on success
+it('error response has no token; success response has no password', async () => {
+  // write your code here
+});
+
+// Exercise 5 — expect([400, 429]).toContain on all boundary tests
+it('rate-limited boundary tests accept both 400 and 429', async () => {
+  // write your code here — use expect([400, 429]).toContain(res.status)
+});
+```
+
 #### Postman Exercises
 
 Create a folder named "Chapter 12" inside your Postman collection. Work through these tasks:
@@ -8837,6 +9353,11 @@ Create a folder named "Chapter 12" inside your Postman collection. Work through 
 ---
 
 ## The Test File for This Chapter
+
+> **This is NOT the file you write for the exercises above.**
+> The Chapter Practice section has you create your own solution file with the exercises.
+> The code below is a **reference implementation** — a complete, commented example of the patterns in this chapter. Read it after you have attempted the exercises yourself.
+> After completing the exercises, your file will be much shorter than this — typically 5–7 `it()` blocks and 40–60 lines. That is correct and complete.
 
 > **Working example: Followers & Notifications**
 
@@ -8876,7 +9397,8 @@ beforeAll(async () => {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
   }, { validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   // Get user A's _id
   const curRes = await axios.get(currentUserUrl, {
@@ -9141,7 +9663,6 @@ In this chapter we build a complete multi-user test scenario using the Chatty AP
 Faker.js generates realistic random data. For our purposes, we need random usernames and email addresses that are unique on each test run, follow the Chatty API's naming constraints, and start with `vitest` so the cleanup endpoint can safely delete them.
 
 ```typescript
-// tests/lecture-13/lecture.test.ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import axios from 'axios';
 import { faker } from '@faker-js/faker';
@@ -9616,6 +10137,71 @@ Write these tests in your file before reading the next chapter:
 5. Use toBeTruthy() to assert userBId was captured successfully in beforeAll (non-empty string).
 
 
+#### Starter Template
+
+Copy this to `tests/chapter-13/multi-user.test.ts` and fill in each `// write your code here` block:
+
+```ts
+import axios from 'axios';
+import { faker } from '@faker-js/faker';
+import { config } from '../../src/config';
+import { TEST_AVATAR_IMAGE, TEST_AVATAR_COLOR, TEST_PASSWORD, TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+let sessionCookie = '';
+let userBId = '';
+let userBAuthId = '';
+
+beforeAll(async () => {
+  const loginRes = await axios.post(`${config.BASE_URL}/signin`, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
+  // Create user B
+  const signupRes = await axios.post(`${config.BASE_URL}/signup`, {
+    username: `vitest${faker.string.alphanumeric(8).toLowerCase()}`,
+    email: faker.internet.email().toLowerCase(),
+    password: TEST_PASSWORD,
+    avatarColor: TEST_AVATAR_COLOR,
+    avatarImage: TEST_AVATAR_IMAGE,
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
+  userBId = signupRes.data.user?._id ?? '';
+  userBAuthId = signupRes.data.user?.authId ?? '';
+});
+
+afterAll(async () => {
+  if (userBAuthId) await axios.delete(`${config.BASE_URL}/test/cleanup/user/${userBAuthId}`,
+    { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
+  await axios.post(`${config.BASE_URL}/signout`, {}, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+});
+
+// Exercise 1 — toBeTruthy() on userBId captured in beforeAll
+it('userBId was captured successfully', () => {
+  // write your code here — expect(userBId).toBeTruthy()
+});
+
+// Exercise 2 — PUT /user/follow/:userBId → 200; GET /user/following → user B in list
+it('user A can follow user B', async () => {
+  // write your code here
+});
+
+// Exercise 3 — DELETE /user/unfollow/:userBId → 200; GET /user/following → user B gone
+it('user A can unfollow user B', async () => {
+  // write your code here
+});
+
+// Exercise 4 — afterAll cleanup already wired; verify userBAuthId is not empty
+it('userBAuthId is available for cleanup', () => {
+  expect(userBAuthId).toBeTruthy();
+});
+
+// Exercise 5 — toBeTruthy() on userBId (same as 1, different assertion style)
+it('userBId is truthy — toBeTruthy', () => {
+  // write your code here
+});
+```
+
 #### Postman Exercises
 
 Create a folder named "Chapter 13" inside your Postman collection. Work through these tasks:
@@ -9632,6 +10218,11 @@ Create a folder named "Chapter 13" inside your Postman collection. Work through 
 ---
 
 ## The Test File for This Chapter
+
+> **This is NOT the file you write for the exercises above.**
+> The Chapter Practice section has you create your own solution file with the exercises.
+> The code below is a **reference implementation** — a complete, commented example of the patterns in this chapter. Read it after you have attempted the exercises yourself.
+> After completing the exercises, your file will be much shorter than this — typically 5–7 `it()` blocks and 40–60 lines. That is correct and complete.
 
 > **Working example: MongoDB Cross-Validation**
 
@@ -9887,7 +10478,6 @@ Database cross-validation tests close this gap. They verify not only that the AP
 The Chatty application stores data in MongoDB Atlas. To perform cross-validation, your tests need a direct connection to the database.
 
 ```typescript
-// tests/lecture-14/lecture.test.ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import axios from 'axios';
 import { MongoClient, Db, Collection } from 'mongodb';
@@ -10296,7 +10886,6 @@ export const TEST_AVATAR_IMAGE_RED =
 ### Testing Profile Image Uploads
 
 ```typescript
-// tests/lecture-15/lecture.test.ts
 import { describe, it, expect, beforeAll } from 'vitest';
 import axios from 'axios';
 import { TEST_AVATAR_IMAGE } from '../utils/test-images';
@@ -10571,6 +11160,59 @@ Write these tests in your file before reading the next chapter:
 5. If the images array is non-empty, use expect.arrayContaining([expect.objectContaining({ _id: expect.any(String) })]) to validate item shape.
 
 
+#### Starter Template
+
+Copy this to `tests/chapter-15/uploads.test.ts` and fill in each `// write your code here` block:
+
+```ts
+import axios from 'axios';
+import { config } from '../../src/config';
+import { TEST_AVATAR_IMAGE, TEST_CLEANUP_SECRET } from '../../src/fixtures';
+
+let sessionCookie = '';
+let userId = '';
+
+beforeAll(async () => {
+  const loginRes = await axios.post(`${config.BASE_URL}/signin`, {
+    username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
+  const raw = loginRes.headers['set-cookie'];
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
+  const cur = await axios.get(`${config.BASE_URL}/currentuser`, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+  userId = cur.data.user?._id ?? '';
+});
+
+afterAll(async () => {
+  await axios.post(`${config.BASE_URL}/signout`, {}, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
+});
+
+// Exercise 1 — POST /images/profile with TEST_AVATAR_IMAGE, assert 200 + message
+it('POST /images/profile returns 200 and success message', async () => {
+  // write your code here
+});
+
+// Exercise 2 — toMatch(/^https?:\/\//) on profilePicture URL
+it('profile picture URL starts with http/https', async () => {
+  // write your code here
+});
+
+// Exercise 3 — toSatisfy: URL contains 'cloudinary'
+it('profile picture URL is a Cloudinary URL', async () => {
+  // write your code here
+});
+
+// Exercise 4 — GET /images/:userId, assert 200 and images is array
+it('GET /images/:userId returns images array', async () => {
+  // write your code here
+});
+
+// Exercise 5 — expect.arrayContaining + toBeGreaterThanOrEqual(0) on images
+it('images array is non-negative and contains objects with _id', async () => {
+  // write your code here
+});
+```
+
 #### Postman Exercises
 
 Create a folder named "Chapter 15" inside your Postman collection. Work through these tasks:
@@ -10591,6 +11233,11 @@ Create a folder named "Chapter 15" inside your Postman collection. Work through 
 ---
 
 ## The Test File for This Chapter
+
+> **This is NOT the file you write for the exercises above.**
+> The Chapter Practice section has you create your own solution file with the exercises.
+> The code below is a **reference implementation** — a complete, commented example of the patterns in this chapter. Read it after you have attempted the exercises yourself.
+> After completing the exercises, your file will be much shorter than this — typically 5–7 `it()` blocks and 40–60 lines. That is correct and complete.
 
 > **Working example: Posts with Media (Image & Video Uploads)**
 
@@ -10621,7 +11268,8 @@ beforeAll(async () => {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
   }, { validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   // Create a plain post
   await axios.post(postUrl, {
@@ -10860,7 +11508,7 @@ on:
     # Optional inputs available when triggering manually
     inputs:
       test_suite:
-        description: 'Which test suite to run (e.g., tests/lecture-05/)'
+        description: 'Which test suite to run (e.g., tests/chapter-05/)'
         required: false
         default: 'all'
         type: string
@@ -11220,7 +11868,7 @@ Add this line near the top of `README.md`, replacing `YOUR_USERNAME` and `YOUR_R
 ## The Config Files for This Chapter
 
 > **Working example: CI/CD: GitHub Actions**
-> Copy `tests/lecture-11/workflow.yml` to `.github/workflows/tests.yml` in your project.
+> Copy `tests/chapter-11/workflow.yml` to `.github/workflows/tests.yml` in your project.
 
 ```yaml
 # .github/workflows/tests.yml
@@ -11236,8 +11884,8 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      lecture:
-        description: 'Lecture folder to run (e.g. lecture-02) — leave blank for all'
+      chapter:
+        description: 'Chapter folder to run (e.g. chapter-02) — leave blank for all'
         required: false
         default: ''
 
@@ -11269,8 +11917,8 @@ jobs:
 
       - name: Run tests
         run: |
-          if [ -n "${{ github.event.inputs.lecture }}" ]; then
-            npm test tests/${{ github.event.inputs.lecture }}/lecture.test.ts
+          if [ -n "${{ github.event.inputs.chapter }}" ]; then
+            npm test tests/${{ github.event.inputs.chapter }}/[chapter].test.ts
           else
             npm test
           fi
@@ -11417,7 +12065,7 @@ docker run --env-file .env chatty-tests
 
 # Run a specific test suite by overriding the CMD
 # Everything after the image name replaces the CMD directive
-docker run --env-file .env chatty-tests npm test tests/lecture-05/
+docker run --env-file .env chatty-tests npm test tests/chapter-05/
 
 # Run with individual environment variables (useful when .env file isn't available)
 docker run \
@@ -11428,7 +12076,7 @@ docker run \
 
 # Run interactively to debug a failing test
 docker run -it --env-file .env --entrypoint sh chatty-tests
-# Inside the container: npm test tests/lecture-12/ -- --reporter=verbose
+# Inside the container: npm test tests/chapter-12/ -- --reporter=verbose
 ```
 
 ---
@@ -11462,7 +12110,7 @@ services:
 
     # Override the default CMD to run specific tests
     # Remove this line to run all tests
-    # command: npm test tests/lecture-14/
+    # command: npm test tests/chapter-14/
 
     # Run tests once and exit (no restart)
     restart: 'no'
@@ -11699,7 +12347,7 @@ services:
 ## The Config Files for This Chapter
 
 > **Working example: Docker: Containerising the Test Runner**
-> These files live in `tests/lecture-12/` — copy them to your project root.
+> These files live in `tests/chapter-12/` — copy them to your project root.
 
 **Dockerfile**
 
@@ -11707,7 +12355,7 @@ services:
 # Dockerfile for the chatty-api-tests test runner
 # Build:  docker build -t chatty-tests .
 # Run:    docker run --env-file .env chatty-tests
-# Single: docker run --env-file .env chatty-tests npm test tests/lecture-02/lecture.test.ts
+# Single: docker run --env-file .env chatty-tests npm test tests/chapter-02/signin.test.ts
 
 FROM node:20-alpine
 
@@ -11956,12 +12604,12 @@ JUnit XML is the universal format for test results in CI systems. Understanding 
   >
     <!-- Each it() block becomes a <testcase> -->
     <testcase
-      classname="tests/lecture-05/lecture.test.ts"
+      classname="tests/chapter-05/posts.test.ts"
       name="signs in successfully with valid credentials"
       time="0.312"
     />
     <testcase
-      classname="tests/lecture-05/lecture.test.ts"
+      classname="tests/chapter-05/posts.test.ts"
       name="returns token with correct structure"
       time="0.287"
     />
@@ -11969,19 +12617,19 @@ JUnit XML is the universal format for test results in CI systems. Understanding 
 
   <testsuite name="Chapter 12: Error Testing" tests="15" failures="2" errors="0" time="3.891">
     <testcase
-      classname="tests/lecture-12/lecture.test.ts"
+      classname="tests/chapter-12/tests.test.ts"
       name="Category 3: Wrong Values returns 400 with Invalid credentials for wrong password"
       time="0.445"
     />
     <!-- Failed test includes a <failure> element -->
     <testcase
-      classname="tests/lecture-12/lecture.test.ts"
+      classname="tests/chapter-12/tests.test.ts"
       name="failed login does not return a token"
       time="0.312"
     >
       <failure message="expected 200 to equal 400" type="AssertionError">
         AssertionError: expected 200 to equal 400
-          at tests/lecture-12/security-assertions.test.ts:42:5
+          at tests/chapter-12/security-assertions.test.ts:42:5
       </failure>
     </testcase>
   </testsuite>
@@ -12197,7 +12845,7 @@ export default defineConfig({
     "test:ui": "vitest --ui",
     "coverage": "vitest run --coverage",
     "coverage:open": "vitest run --coverage && open coverage/index.html",
-    "test:lecture": "vitest run tests/lecture-",
+    "test:chapter": "vitest run tests/chapter-",
     "test:ci": "vitest run --reporter=verbose --reporter=junit --outputFile.junit=test-results/junit.xml"
   }
 }
@@ -12545,9 +13193,9 @@ chatty-api-tests/
 │       ├── test-images.ts              # Base64 image constants
 │       └── cleanup-helpers.ts          # Shared cleanup utilities
 ├── tests/
-│   ├── lecture-12/
+│   ├── chapter-12/
 │   │   ├── README.md
-│   │   ├── lecture.test.ts             # Error testing
+│   │   ├── errors.test.ts              # Error testing
 │   │   ├── boundary.test.ts            # Boundary value analysis
 │   │   ├── validation-distinction.test.ts
 │   │   ├── rate-limit.test.ts
@@ -12555,17 +13203,17 @@ chatty-api-tests/
 │   │   ├── security-assertions.test.ts
 │   │   └── homework/
 │   │       └── [chapter].test.ts
-│   ├── lecture-13/
+│   ├── chapter-13/
 │   │   ├── README.md
-│   │   ├── lecture.test.ts             # Multi-user scenarios
+│   │   ├── multi-user.test.ts          # Multi-user scenarios
 │   │   └── homework/
-│   ├── lecture-14/
+│   ├── chapter-14/
 │   │   ├── README.md
-│   │   ├── lecture.test.ts             # Database cross-validation
+│   │   ├── db-validation.test.ts       # Database cross-validation
 │   │   └── homework/
-│   ├── lecture-15/
+│   ├── chapter-15/
 │   │   ├── README.md
-│   │   ├── lecture.test.ts             # File uploads
+│   │   ├── uploads.test.ts             # File uploads
 │   │   └── homework/
 │   └── utils/
 │       └── test-images.ts
@@ -12587,7 +13235,7 @@ chatty-api-tests/
 └── vitest.config.ts
 ```
 
-This structure follows the conventions established throughout the book: test files in `tests/lecture-XX/`, shared utilities in `src/utils/`, generated output in gitignored directories, and infrastructure configuration at the project root.
+This structure follows the conventions established throughout the book: test files in `tests/chapter-XX/`, shared utilities in `src/utils/`, generated output in gitignored directories, and infrastructure configuration at the project root.
 
 ---
 
@@ -14739,11 +15387,11 @@ chatty-api-tests/
     setup.ts
     test-utils.ts
   tests/
-    lecture-01/
+    chapter-01/
       README.md
-      lecture.test.ts
+      first-test.test.ts
       homework/
-    lecture-02/
+    chapter-02/
       ...
   .env              (not committed)
   .gitignore
@@ -14782,13 +15430,13 @@ Failed tests in API testing require a different debugging approach than unit tes
 Vitest's default verbose output gives you several pieces of information:
 
 ```
-FAIL  tests/lecture-03/lecture.test.ts > POST /auth/signup > returns 201 for valid data
+FAIL  tests/chapter-03/signup.test.ts > POST /auth/signup > returns 201 for valid data
 AssertionError: expected 409 to be 201
 
 - Expected: 201
 + Received: 409
 
- tests/lecture-03/lecture.test.ts:28:27
+ tests/chapter-03/signup.test.ts:28:27
 ```
 
 **What each part tells you**:
@@ -14989,7 +15637,7 @@ it('failing test', async () => {
 Run a single test file to reduce noise:
 
 ```bash
-npx vitest run tests/lecture-03/lecture.test.ts
+npx vitest run tests/chapter-03/signup.test.ts
 ```
 
 Run a single test by name:
@@ -15001,7 +15649,7 @@ npx vitest run -t "POST /auth/signup"
 Run with increased timeout for debugging slow network calls:
 
 ```bash
-npx vitest run --test-timeout=60000 tests/lecture-03/lecture.test.ts
+npx vitest run --test-timeout=60000 tests/chapter-03/signup.test.ts
 ```
 
 ---
@@ -15050,7 +15698,7 @@ axios.interceptors.response.use(
 |---|---|
 | `npx vitest run` | Run all tests once |
 | `npx vitest` | Run in watch mode |
-| `npx vitest run tests/lecture-03/` | Run one folder |
+| `npx vitest run tests/chapter-03/` | Run one folder |
 | `npx vitest run -t "test name"` | Run tests matching name |
 | `npx vitest run --reporter=verbose` | Show each individual test result |
 | `npx vitest run --bail=1` | Stop after first failure |
@@ -15176,116 +15824,116 @@ An Axios option that tells the browser to include cookies in cross-origin reques
 # Index
 
 **A**
-- Asymmetric matchers — Appendix A.9, Lectures 6, 9
-- Authentication — Appendix C.1, Lectures 2, 3
-- Authorization — Appendix B (403 section), Lecture 7
-- Axios — Appendix D.3, Lectures 1, 2
+- Asymmetric matchers — Appendix A.9, Chapters 9, 12
+- Authentication — Appendix C.1, Chapters 5, 6
+- Authorization — Appendix B (403 section), Chapter 10
+- Axios — Appendix D.3, Chapters 4, 5
 - Axios interceptors — Appendix E.5
 
 **B**
-- Base64 — Appendix D.10, Lectures 11, 12
-- beforeAll — Appendix D.9, Lectures 2, 3
-- beforeEach — Appendix F, Lecture 8
-- Boundary value testing — Lectures 4, 5
+- Base64 — Appendix D.10, Chapters 16, 17
+- beforeAll — Appendix D.9, Chapters 5, 6
+- beforeEach — Appendix F, Chapter 11
+- Boundary value testing — Chapters 7, 8
 
 **C**
-- Cleanup endpoint — Appendix C.9, Lecture 2
+- Cleanup endpoint — Appendix C.9, Chapter 5
 - config.ts — Appendix D.8
-- Cookie handling — Appendix D.9, Appendix E.2, Lectures 2, 3
-- Coverage — Appendix F, Lecture 15
+- Cookie handling — Appendix D.9, Appendix E.2, Chapters 5, 6
+- Coverage — Appendix F, Chapter 15
 
 **D**
-- DELETE method — Appendix C, Lectures 9, 10
-- describe — Appendix F, Lectures 1, 2
-- dotenv — Appendix D.6, Lecture 1
+- DELETE method — Appendix C, Chapters 12, 13
+- describe — Appendix F, Chapters 4, 5
+- dotenv — Appendix D.6, Chapter 4
 - Debugging — Appendix E
 
 **E**
 - Environment variables — Appendix D.6, Appendix D.8
-- Error handling — Appendix E.2, Lectures 3, 4
-- expect.any — Appendix A.7, Lectures 5, 6
-- expect.arrayContaining — Appendix A.5, Lecture 9
-- expect.objectContaining — Appendix A.6, Lectures 5, 7
-- expect.stringContaining — Appendix A.9, Lecture 6
-- expect.stringMatching — Appendix A.9, Lecture 6
+- Error handling — Appendix E.2, Chapters 6, 7
+- expect.any — Appendix A.7, Chapters 8, 9
+- expect.arrayContaining — Appendix A.5, Chapter 12
+- expect.objectContaining — Appendix A.6, Chapters 8, 10
+- expect.stringContaining — Appendix A.9, Chapter 9
+- expect.stringMatching — Appendix A.9, Chapter 9
 
 **F**
-- Faker.js — Appendix D.3, Lecture 2
-- Fixtures — Appendix D.10, Lectures 2, 11
-- generateUser — Appendix D.10, Lecture 2
+- Faker.js — Appendix D.3, Chapter 5
+- Fixtures — Appendix D.10, Chapters 5, 16
+- generateUser — Appendix D.10, Chapter 5
 
 **G**
-- generatePost — Appendix D.10, Lecture 8
+- generatePost — Appendix D.10, Chapter 11
 - Glossary — Appendix F
 
 **H**
-- HTTP methods — Appendix C, Lecture 1
-- HTTP status codes — Appendix B, Lectures 3, 4, 5
+- HTTP methods — Appendix C, Chapter 4
+- HTTP status codes — Appendix B, Chapters 6, 7, 8
 
 **I**
-- Integration tests — Appendix F, Lecture 1
-- Idempotency — Appendix F, Lectures 9, 10
+- Integration tests — Appendix F, Chapter 4
+- Idempotency — Appendix F, Chapters 12, 13
 
 **J**
-- JWT — Appendix F, Appendix C.1, Lecture 2
+- JWT — Appendix F, Appendix C.1, Chapter 5
 
 **M**
-- MongoDB — Appendix F, Lectures 1, 10
-- toMatchObject — Appendix A.6, Lectures 5, 6, 7
+- MongoDB — Appendix F, Chapters 4, 13
+- toMatchObject — Appendix A.6, Chapters 8, 9, 10
 
 **N**
-- .not negation — Appendix A.10, Lectures 4, 7
-- Notifications — Appendix C.7, Lecture 13
+- .not negation — Appendix A.10, Chapters 7, 10
+- Notifications — Appendix C.7, Chapter 18
 
 **O**
-- ObjectId — Appendix A.8, Appendix F, Lecture 5
+- ObjectId — Appendix A.8, Appendix F, Chapter 8
 
 **P**
-- Pagination — Appendix C.3, Appendix F, Lecture 8
-- Password complexity — Appendix C.1, Lecture 3
-- Posts API — Appendix C.3, Lectures 8, 9, 10
+- Pagination — Appendix C.3, Appendix F, Chapter 11
+- Password complexity — Appendix C.1, Chapter 6
+- Posts API — Appendix C.3, Chapters 11, 12, 13
 
 **R**
-- Rate limiting — Appendix B (429 section), Appendix E.2, Lectures 14, 15
-- Reactions — Appendix C.5, Lecture 10
-- Redis — Appendix F, Lecture 14
-- REST — Appendix F, Lecture 1
+- Rate limiting — Appendix B (429 section), Appendix E.2, Chapters 17, 15
+- Reactions — Appendix C.5, Chapter 13
+- Redis — Appendix F, Chapter 17
+- REST — Appendix F, Chapter 4
 
 **S**
 - Session cookies — Appendix D.9, Appendix E.2
 - Setup checklist — Appendix D
-- signupUser — Appendix D.9, Lecture 2
-- signinUser — Appendix D.9, Lecture 3
+- signupUser — Appendix D.9, Chapter 5
+- signinUser — Appendix D.9, Chapter 6
 - Status codes — Appendix B
 
 **T**
 - test-utils.ts — Appendix D.9
 - TEST_AVATAR_IMAGE — Appendix D.10
-- toBeGreaterThan — Appendix A.3, Lecture 8
-- toBe — Appendix A.1, Lectures 2, 3
-- toBeDefined — Appendix A.2, Lectures 4, 5
-- toBeFalsy — Appendix A.2, Lecture 4
-- toBeNull — Appendix A.2, Lecture 7
-- toBeTruthy — Appendix A.2, Lecture 4
-- toBeTypeOf — Appendix A.7, Lecture 5
-- toBeUndefined — Appendix A.2, Lectures 4, 7
-- toContain — Appendix A.4, Lectures 4, 6
-- toEqual — Appendix A.1, Lectures 5, 6
-- toHaveLength — Appendix A.5, Lectures 8, 9
-- toHaveProperty — Appendix A.6, Lecture 5
-- toMatch — Appendix A.4, Lectures 5, 6
-- toMatchObject — Appendix A.6, Lectures 5, 6, 7
-- toSatisfy — Appendix A.8, Lecture 6
-- toStrictEqual — Appendix A.1, Lecture 5
-- TypeScript — Appendix D.4, Lecture 1
+- toBeGreaterThan — Appendix A.3, Chapter 11
+- toBe — Appendix A.1, Chapters 5, 6
+- toBeDefined — Appendix A.2, Chapters 7, 8
+- toBeFalsy — Appendix A.2, Chapter 7
+- toBeNull — Appendix A.2, Chapter 10
+- toBeTruthy — Appendix A.2, Chapter 7
+- toBeTypeOf — Appendix A.7, Chapter 8
+- toBeUndefined — Appendix A.2, Chapters 7, 10
+- toContain — Appendix A.4, Chapters 7, 9
+- toEqual — Appendix A.1, Chapters 8, 9
+- toHaveLength — Appendix A.5, Chapters 11, 12
+- toHaveProperty — Appendix A.6, Chapter 8
+- toMatch — Appendix A.4, Chapters 8, 9
+- toMatchObject — Appendix A.6, Chapters 8, 9, 10
+- toSatisfy — Appendix A.8, Chapter 9
+- toStrictEqual — Appendix A.1, Chapter 8
+- TypeScript — Appendix D.4, Chapter 4
 
 **U**
-- Unit tests vs integration tests — Appendix F, Lecture 1
+- Unit tests vs integration tests — Appendix F, Chapter 4
 
 **V**
 - Vitest config — Appendix D.5
 - Vitest commands — Appendix E.6
-- vitest username prefix — Appendix C.9, Lecture 2
+- vitest username prefix — Appendix C.9, Chapter 5
 
 **W**
 - withCredentials — Appendix E.2, Appendix F
@@ -15747,7 +16395,7 @@ export function expectSuccess(status: number): void {
 
 **`src/fixtures.ts`**
 ```ts
-// Shared test fixtures — constants used across multiple lectures.
+// Shared test fixtures — constants used across multiple chapters.
 // Import from here instead of redefining in each test file.
 
 /**
@@ -16365,7 +17013,8 @@ beforeAll(async () => {
     { validateStatus: () => true },
   );
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   postsRes = await axios.get(postsUrl, {
     headers: { Cookie: sessionCookie },
@@ -16532,7 +17181,8 @@ beforeAll(async () => {
   }, { validateStatus: () => true });
 
   const raw = res.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
   jwt = res.data.token ?? '';
 });
 
@@ -16780,7 +17430,8 @@ beforeAll(async () => {
   }, { validateStatus: () => true });
 
   const raw = res.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   // Capture original values before mutating
   const curRes = await axios.get(currentUserUrl, {
@@ -17018,7 +17669,8 @@ beforeAll(async () => {
   }, { validateStatus: () => true });
 
   const raw = res.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 });
 
 afterAll(async () => {
@@ -17231,7 +17883,8 @@ beforeAll(async () => {
   }, { validateStatus: () => true });
 
   const raw = res.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 });
 
 afterAll(async () => {
@@ -17447,7 +18100,8 @@ beforeAll(async () => {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
   }, { validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   // Create the post we will PATCH in the tests
   await axios.post(postUrl, {
@@ -17660,7 +18314,8 @@ beforeAll(async () => {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
   }, { validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   // Create the post that will be deleted in the tests
   await axios.post(postUrl, {
@@ -17744,7 +18399,7 @@ afterAll(async () => {
 });
 ```
 
-> **WHY:** Without the flag, `afterAll` would always try to delete the post — even when the test already deleted it. That second delete would return a 404 (or validation error), and though `validateStatus: () => true` suppresses the exception, it is wasted network traffic and misleading in logs. The flag pattern is idiomatic in this codebase (see `lecture-07/lecture.test.ts`).
+> **WHY:** Without the flag, `afterAll` would always try to delete the post — even when the test already deleted it. That second delete would return a 404 (or validation error), and though `validateStatus: () => true` suppresses the exception, it is wasted network traffic and misleading in logs. The flag pattern is idiomatic in this codebase (see `chapter-07/posts.test.ts`).
 
 ---
 
@@ -18578,7 +19233,8 @@ beforeAll(async () => {
     { validateStatus: () => true },
   );
   const raw = r.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   const cur = await axios.get(currentUserUrl,
     { headers: { Cookie: sessionCookie }, validateStatus: () => true },
@@ -18763,7 +19419,7 @@ Chapter 17 covers Docker infrastructure. There is no Vitest test code to write.
 **Exercise 2** — JUnit XML structure:
 ```xml
 <testsuites>
-  <testsuite name="lecture-01/lecture.test.ts" tests="8" failures="0" time="1.234">
+  <testsuite name="chapter-01/first-test.test.ts" tests="8" failures="0" time="1.234">
     <testcase name="returns status 400 for wrong credentials" time="0.312" />
     <testcase name="response body has a message field" time="0.001" />
   </testsuite>
@@ -19149,18 +19805,18 @@ This is the standard pattern throughout this course.
 
 The course builds from simple to complex:
 
-| Lectures | Topic | New concepts |
+| Chapters | Topic | New concepts |
 |----------|-------|-------------|
-| 01–02 | Tooling + first signin test | Axios, Vitest, `validateStatus` |
-| 03 | Signup + cleanup | Cookies, `beforeAll`/`afterAll`, test isolation |
-| 04 | Current user + session | Cookie forwarding, `GET` assertions |
-| 05 | Posts CRUD | `POST`/`PATCH`/`DELETE`, 201 vs 200 |
-| 06 | Reactions | Complex request bodies |
-| 07 | Comments | Nested resource IDs |
-| 08 | User profile | `PUT`, boundary tests |
-| 09 | Followers | Multi-user setup, relational assertions |
+| 4–5 | Tooling + first signin test | Axios, Vitest, `validateStatus` |
+| 6 | Signup + cleanup | Cookies, `beforeAll`/`afterAll`, test isolation |
+| 7 | Current user + session | Cookie forwarding, `GET` assertions |
+| 8 | Posts CRUD | `POST`/`PATCH`/`DELETE`, 201 vs 200 |
+| 9 | Reactions | Complex request bodies |
+| 10 | Comments | Nested resource IDs |
+| 11 | User profile | `PUT`, boundary tests |
+| 12 | Followers | Multi-user setup, relational assertions |
 
-Each lecture introduces new HTTP concepts, new assertion patterns, and new edge cases. The reference files in this `topics/` directory give you the theory you need to understand what you are doing and why.
+Each chapter introduces new HTTP concepts, new assertion patterns, and new edge cases. The reference files in this `topics/` directory give you the theory you need to understand what you are doing and why.
 
 ---
 
@@ -24844,7 +25500,6 @@ export default defineConfig(({ mode }) => ({
 Because Vitest loads `.env` before running tests, you can access `process.env.BASE_URL` directly in any test file without any import:
 
 ```typescript
-// tests/lecture-01/lecture.test.ts
 // No `import 'dotenv/config'` needed — Vitest handles it
 
 describe('Health check', () => {
@@ -24943,7 +25598,7 @@ npm test
 | `TEST_USERNAME` | string | Username for a pre-existing persistent test account used in sign-in tests |
 | `TEST_PASSWORD` | string | Password for the persistent test account |
 | `TEST_SECRET` | string | Value for the `x-test-secret` header on the cleanup endpoint |
-| `DATABASE_URL` | MongoDB URI | Direct database connection for seeding or inspection (advanced lectures) |
+| `DATABASE_URL` | MongoDB URI | Direct database connection for seeding or inspection (advanced chapters) |
 
 #### How each variable is used in test code
 
@@ -26027,11 +26682,11 @@ npm install --save-dev vitest
 ```
 chatty-api-tests/
   tests/
-    lecture-01/
-      lecture.test.ts
+    chapter-01/
+      [chapter].test.ts
       homework/
-    lecture-02/
-      lecture.test.ts
+    chapter-02/
+      [chapter].test.ts
       homework/
   src/
     config.ts
@@ -26455,20 +27110,20 @@ npx vitest run
 #### Run a specific file
 
 ```bash
-npx vitest run tests/lecture-01/lecture.test.ts
+npx vitest run tests/chapter-01/first-test.test.ts
 ```
 
 #### Run files matching a pattern
 
 ```bash
-## All lecture files
-npx vitest run tests/lecture-*/lecture.test.ts
+## All chapter files
+npx vitest run tests/chapter-*/*.test.ts
 
 ## All homework solution files
 npx vitest run tests/**/homework/[chapter].test.ts
 
 ## Files matching a string
-npx vitest run lecture-03
+npx vitest run chapter-03
 ```
 
 #### Run a specific test by name
@@ -26478,7 +27133,7 @@ npx vitest run lecture-03
 npx vitest run -t "returns 401"
 
 ## Run tests in a specific file AND matching a name
-npx vitest run tests/lecture-02/lecture.test.ts -t "POST /auth"
+npx vitest run tests/chapter-02/signin.test.ts -t "POST /auth"
 ```
 
 #### Watch mode
@@ -28946,7 +29601,8 @@ beforeAll(async () => {
   // set-cookie is always an array — one element per Set-Cookie header the
   // server sent. Chatty sends exactly one, so we take index [0].
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 });
 ```
 
@@ -29010,7 +29666,7 @@ Chatty does not store session state in a database or Redis — the session IS th
 
 ### Asserting Cookie Properties in Tests
 
-From Lecture 2:
+From Chapter 5:
 
 ```typescript
 describe('Session cookie', () => {
@@ -29094,7 +29750,8 @@ beforeAll(async () => {
   }, { validateStatus: () => true });
 
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 });
 
 // 2. Clean up after all tests
@@ -29274,7 +29931,7 @@ The `User` collection does **not** have a `password` field. Passwords live only 
 
 ### What the Tests Can and Cannot Assert About Passwords
 
-In Lecture 10, when you cross-validate the API against MongoDB, you can confirm the password was hashed correctly:
+In Chapters 13when you cross-validate the API against MongoDB, you can confirm the password was hashed correctly:
 
 ```typescript
 it('DB password is hashed — not the plain-text password', () => {
@@ -29442,9 +30099,9 @@ Other endpoints (profile updates, posts, reactions) have more generous limits an
 
 Consider a test suite that runs these test files sequentially:
 
-- Lecture 1: makes 7 individual signin requests in its boundary value tests
-- Lecture 2: makes 3 individual signin requests in its negative tests
-- Lecture 6: makes 4 individual signin requests in its negative tests
+- Chapter 4: makes 7 individual signin requests in its boundary value tests
+- Chapter 5: makes 3 individual signin requests in its negative tests
+- Chapter 9: makes 4 individual signin requests in its negative tests
 
 Within a few test runs against the production server, you have exhausted the 20-requests-per-15-minutes limit on `/signin`. The 16th request returns 429 instead of 400.
 
@@ -29554,7 +30211,8 @@ let sessionCookie = '';
 beforeAll(async () => {
   const loginRes = await axios.post(signinUrl, credentials, { validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 });
 
 describe('Tests', () => {
@@ -29575,7 +30233,7 @@ describe('Tests', () => {
 });
 ```
 
-This is the pattern established in Lecture 1 and used throughout the entire course.
+This is the pattern established in Chapter 4 and used throughout the entire course.
 
 #### 3. Add Delays Between Requests (Last Resort)
 
@@ -29656,7 +30314,7 @@ Rate limiting is concentrated on auth-flow endpoints that could be used for brut
 |---------|---------|-----|
 | `expect(status).toBe(400)` on signin negative tests | Flaky — fails when rate limited | Use `expectRejected(status)` |
 | Asserting specific message without status guard | Fails with wrong message when 429 | Add `if (res.status === 400)` guard |
-| Running all lecture files in parallel | Immediate 429 on all auth endpoints | Set `fileParallelism: false` |
+| Running all chapter files in parallel | Immediate 429 on all auth endpoints | Set `fileParallelism: false` |
 | Re-signing in per test | Exhausts rate limit quickly | Sign in once in `beforeAll`, share cookie |
 | Not accounting for rate limits in CI pipelines | Tests pass locally, fail in CI | Same fixes apply; CI runs fast and hits limits sooner |
 
@@ -29747,7 +30405,7 @@ Additionally, the response includes a `set-cookie` header containing the new ses
 
 ### Testing SSO: The Full Flow
 
-From Lecture 14:
+From Chapter 17:
 
 ```typescript
 import axios from 'axios';
@@ -29772,7 +30430,8 @@ beforeAll(async () => {
   });
   jwt = loginRes.data.token ?? '';
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 });
 
 afterAll(async () => {
@@ -30012,7 +30671,7 @@ When you get this back from the Node.js MongoDB driver, the `_id` is not a strin
 
 ### Connecting with MongoClient
 
-From Lecture 10:
+From Chapter 13:
 
 ```typescript
 import { MongoClient } from 'mongodb';
@@ -30140,7 +30799,7 @@ GET /currentuser              → returns updated work field (from Redis cache)
 
 This proves Redis was updated. It does not prove MongoDB was updated. The only way to know MongoDB has the right data is to query it directly.
 
-Cross-validation tests (Lecture 10) do this:
+Cross-validation tests (Chapter 13) do this:
 
 ```typescript
 it('DB email matches API email', () => {
@@ -30162,7 +30821,7 @@ it('DB password is a bcrypt hash', () => {
 
 ---
 
-### Full Example from Lecture 10
+### Full Example from Chapter 13
 
 ```typescript
 import axios from 'axios';
@@ -30374,7 +31033,7 @@ It does NOT tell you:
 A subsequent `GET /currentuser` that returns the updated value confirms:
 - Redis has the correct data (since `GET /currentuser` reads Redis)
 
-To confirm MongoDB has the correct data, you must query MongoDB directly (as done in Lecture 10).
+To confirm MongoDB has the correct data, you must query MongoDB directly (as done in Chapter 13).
 
 **The implication:**
 
@@ -30395,7 +31054,7 @@ it('GET /currentuser reflects the updated work field', async () => {
   expect(res.data.user.work).toBe('QA Automation Engineer');
 });
 
-// This test proves MongoDB was updated (requires direct DB access — Lecture 10)
+// This test proves MongoDB was updated (requires direct DB access — Chapter 13)
 it('MongoDB reflects the updated work field', async () => {
   // Wait briefly for the async Bull job to run (fragile — avoid this pattern)
   // Better: use the test cleanup endpoint to verify or accept the Redis-only check
@@ -30405,7 +31064,7 @@ it('MongoDB reflects the updated work field', async () => {
 });
 ```
 
-In practice, for this course, the `GET /currentuser` check is sufficient because the Bull queue on the production server processes jobs within milliseconds. Direct MongoDB verification is covered in Lecture 10 for learning purposes.
+In practice, for this course, the `GET /currentuser` check is sufficient because the Bull queue on the production server processes jobs within milliseconds. Direct MongoDB verification is covered in Chapter 13 for learning purposes.
 
 ---
 
@@ -30785,7 +31444,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
 7. [Testing Image Uploads — Why the TEST_AVATAR_IMAGE Works](#7-testing-image-uploads--why-the-test_avatar_image-works)
 8. [What to Assert in Tests](#8-what-to-assert-in-tests)
 9. [Why You Cannot Assert the Exact Cloudinary URL](#9-why-you-cannot-assert-the-exact-cloudinary-url)
-10. [Real Code Examples from Lecture 15](#10-real-code-examples-from-lecture-15)
+10. [Real Code Examples from Chapter 15](#10-real-code-examples-from-chapter-15)
 11. [Common Mistakes](#11-common-mistakes)
 12. [Quick Reference](#12-quick-reference)
 13. [Related Topics](#related-topics)
@@ -31224,7 +31883,7 @@ expect(response.data.user.imgVersion).toBeTruthy();
 
 ---
 
-### 10. Real Code Examples from Lecture 15
+### 10. Real Code Examples from Chapter 15
 
 #### Test: Signup with a profile picture uploads to Cloudinary
 
@@ -31873,7 +32532,7 @@ Authorization: Bearer <token>
 
 HTTP DELETE requests can include a body, but some HTTP servers and proxies strip the body from DELETE requests. Using a query parameter is a safer approach for small amounts of data. The query parameter technique with URL-encoded JSON is how Chatty passes structured data on a DELETE request.
 
-#### Full test from Lecture 7
+#### Full test from Chapter 10
 
 ```typescript
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -33364,7 +34023,7 @@ These are the collection endpoints in Chatty that return paginated results.
 | `GET /notifications` | Query | `?page=1` (1-based) | 10 | `notifications` |
 | `GET /messages/:conversationId` | Query | `?page=1` (1-based) | ~12 | `messages` |
 
-Note that the notifications and messages endpoints use 1-based page numbers in query parameters, while the path-based endpoints use 0-based page numbers. Always check the specific endpoint's behavior in the course lecture materials.
+Note that the notifications and messages endpoints use 1-based page numbers in query parameters, while the path-based endpoints use 0-based page numbers. Always check the specific endpoint's behavior in the course chapter materials.
 
 #### Making requests to each endpoint type
 
@@ -33529,7 +34188,7 @@ Chatty uses offset-based pagination (simpler and sufficient for a course API), s
 
 ### 12. Real Axios Code Examples
 
-#### Complete pagination test suite from Lectures 5-9
+#### Complete pagination test suite from Chapter 8-9
 
 ```typescript
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -33918,7 +34577,7 @@ Hooks defined at the top level of a file (outside any `describe`) apply to the e
 Hooks defined inside a `describe` block apply only to that block.
 
 ```typescript
-// File: tests/lecture-04/lecture.test.ts
+// File: tests/chapter-04/profile.test.ts
 
 // ── FILE-LEVEL HOOK ─────────────────────────────────────────────────────────
 // Runs ONCE before any test in the entire file
@@ -33927,7 +34586,8 @@ beforeAll(async () => {
     validateStatus: () => true,
   });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 });
 
 // ── DESCRIBE-LEVEL HOOK ──────────────────────────────────────────────────────
@@ -34082,7 +34742,7 @@ Why not call `axios.get(currentUserUrl)` inside each `it` test?
 `afterAll` runs after all tests in its scope complete, regardless of whether any of them failed. This makes it the right place to clean up resources created during the test run.
 
 ```typescript
-// From tests/lecture-09/lecture.test.ts
+// From tests/chapter-09/followers.test.ts
 
 let userBAuthId = '';
 
@@ -34298,7 +34958,7 @@ Safe patterns for shared state in this course:
 3. **Variables declared with `let` at file level, not reassigned inside `it` blocks.**
 
 ```typescript
-// Safe pattern from lecture-09
+// Safe pattern from chapter-09
 let sessionCookie = '';
 let userAId = '';
 let userBId = '';
@@ -34326,7 +34986,7 @@ beforeAll(async () => {
 
 ### The Course Pattern Explained
 
-The course consistently uses this pattern across all lectures:
+The course consistently uses this pattern across all chapters:
 
 ```typescript
 // 1. Declare shared variables at file level with safe initial values
@@ -34923,10 +35583,10 @@ If cleanup consistently fails (every run leaves data), investigate before runnin
 
 ### The Two-User Cleanup Pattern
 
-Many lectures create a secondary test user (User B). Each user requires its own cleanup call.
+Many chapters create a secondary test user (User B). Each user requires its own cleanup call.
 
 ```typescript
-// From tests/lecture-09/lecture.test.ts
+// From tests/chapter-09/followers.test.ts
 
 let sessionCookie = '';     // for user A
 let userBAuthId = '';       // for cleanup
@@ -34963,7 +35623,7 @@ afterAll(async () => {
 });
 ```
 
-User A (your permanent `TEST_USERNAME` account from `.env`) is never deleted — it is the account you use across all lectures. Only ephemeral User B accounts (created with `vitest` prefix) are deleted after each test file.
+User A (your permanent `TEST_USERNAME` account from `.env`) is never deleted — it is the account you use across all chapters. Only ephemeral User B accounts (created with `vitest` prefix) are deleted after each test file.
 
 If a test file creates three secondary users:
 
@@ -35092,7 +35752,7 @@ afterAll(async () => {
 - [The Two-Step Test Structure](#the-two-step-test-structure)
 - [When GET Can Fail After a Successful PUT](#when-get-can-fail-after-a-successful-put)
 - [Making State Verification Tests Reliable](#making-state-verification-tests-reliable)
-- [Real Examples from Lecture 4](#real-examples-from-lecture-4)
+- [Real Examples from Chapter 7](#real-examples-from-chapter-7)
 - [Extending the Pattern to Other Endpoints](#extending-the-pattern-to-other-endpoints)
 - [What Happens When State Verification Fails](#what-happens-when-state-verification-fails)
 - [Common Mistakes](#common-mistakes)
@@ -35262,7 +35922,7 @@ it('GET /currentuser reflects the updated work field', async () => {
 
 Both types of tests have value. Contract tests catch broken endpoints. Persistence tests catch broken writes. A comprehensive test suite includes both.
 
-In Lecture 4, Section 4 of the course is dedicated to persistence testing (state verification), while Sections 3 and 5 test the API contract.
+In Chapters 7Section 4 of the course is dedicated to persistence testing (state verification), while Sections 3 and 5 test the API contract.
 
 ---
 
@@ -35369,7 +36029,7 @@ In the chatty-api-tests context:
 - PUT /user/profile/* writes to Redis synchronously.
 - The GET immediately after a PUT will always return the new value.
 
-State verification tests are reliable for the profile update endpoints specifically tested in Lecture 4.
+State verification tests are reliable for the profile update endpoints specifically tested in Chapter 7.
 
 ---
 
@@ -35408,7 +36068,7 @@ const testWork = `QA Automation Engineer (test-${Date.now()})`;
 
 #### 3. Save the original value and restore it
 
-Lecture 4's `beforeAll` captures the original values before any test modifies them, and `afterAll` restores them. This prevents test state from leaking into the user's actual profile.
+Chapter 7's `beforeAll` captures the original values before any test modifies them, and `afterAll` restores them. This prevents test state from leaking into the user's actual profile.
 
 ```typescript
 let originalWork = '';
@@ -35453,9 +36113,9 @@ If the GET returns 401 or 500, the `res.data.user.work` assertion fails with `Ca
 
 ---
 
-### Real Examples from Lecture 4
+### Real Examples from Chapter 7
 
-The full state verification section from `tests/lecture-04/lecture.test.ts`:
+The full state verification section from `tests/chapter-04/profile.test.ts`:
 
 ```typescript
 // ─── 4. State verification ────────────────────────────────────────────────────
@@ -35547,7 +36207,7 @@ If `expect(res.data.user.work).toBe('QA Automation Engineer')` fails, what does 
 **Possibility 4: Test data collision.** Another test (running concurrently, or a previous test that did not clean up) modified the same field. Since `fileParallelism: false` prevents concurrent test files, and the file-level `beforeAll` captures and restores the original value, this should not happen in correctly written tests.
 
 When a state verification test fails, the debugging approach is:
-1. Run the test in isolation: `npm test tests/lecture-04/lecture.test.ts`.
+1. Run the test in isolation: `npm test tests/chapter-04/profile.test.ts`.
 2. Add `console.log(res.data.user)` to inspect what was actually returned.
 3. Check whether the PUT response itself indicated success.
 4. Check the API manually using curl or Postman to see the current state of the field.
@@ -35624,8 +36284,8 @@ Use distinctive values or capture and compare against a known previous state.
 - [Testing Social Interactions](#testing-social-interactions)
 - [afterAll Cleanup for Both Users](#afterall-cleanup-for-both-users)
 - [Common Pitfalls](#common-pitfalls)
-- [The Full Pattern from Lecture 9](#the-full-pattern-from-lecture-9)
-- [The Full Pattern from Lecture 17 (Messaging)](#the-full-pattern-from-lecture-17-messaging)
+- [The Full Pattern from Chapter 12](#the-full-pattern-from-chapter-12)
+- [The Full Pattern from Chapter 17 (Messaging)](#the-full-pattern-from-chapter-17-messaging)
 - [Structuring Credentials for User B](#structuring-credentials-for-user-b)
 - [Signing In as User B](#signing-in-as-user-b)
 - [Related Topics](#related-topics)
@@ -36047,10 +36707,9 @@ afterAll(async () => {
 
 ---
 
-### The Full Pattern from Lecture 9
+### The Full Pattern from Chapter 12
 
 ```typescript
-// tests/lecture-09/lecture.test.ts (abbreviated)
 
 import axios from 'axios';
 import { faker } from '@faker-js/faker';
@@ -36082,7 +36741,8 @@ beforeAll(async () => {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
   }, { validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   // Get User A's _id
   const curRes = await axios.get(currentUserUrl, {
@@ -36127,12 +36787,12 @@ afterAll(async () => {
 
 ---
 
-### The Full Pattern from Lecture 17 (Messaging)
+### The Full Pattern from Chapter 17 (Messaging)
 
 Messaging tests require more fields from User B because the send-message endpoint needs the receiver's username and avatar color:
 
 ```typescript
-// From tests/lecture-17/lecture.test.ts
+// From tests/chapter-17/tests.test.ts
 
 let cookieA          = '';
 let userAId          = '';
@@ -36176,7 +36836,7 @@ const res = await axios.post(chatUrl, {
   receiverUsername: userBUsername,         // ← needed from signup response
   receiverAvatarColor: userBAvatarColor,   // ← needed from signup response
   receiverProfilePicture: '',
-  body: 'Hello from Lecture 17!',
+  body: 'Hello from Chapter 17!',
 }, { headers: { Cookie: cookieA }, validateStatus: () => true });
 ```
 
@@ -36611,7 +37271,7 @@ If you change this value without changing the backend, cleanup will always retur
 ### The One-Account-per-Student Rule
 
 Each student creates one permanent account — the `TEST_USERNAME` in their `.env` file. This account:
-- Is used across all lectures for sign-in tests.
+- Is used across all chapters for sign-in tests.
 - Is never deleted by the tests (only User B accounts are deleted).
 - Has a unique username chosen by the student.
 
@@ -38024,8 +38684,8 @@ The `CMD` in the Dockerfile is the default command. You can override it by passi
 ## Instead of 'npm test', run a shell for debugging
 docker run -it --env-file .env chatty-tests sh
 
-## Run only a specific lecture's tests
-docker run --env-file .env chatty-tests npm test tests/lecture-04/
+## Run only a specific chapter's tests
+docker run --env-file .env chatty-tests npm test tests/chapter-04/
 
 ## Run tests with coverage
 docker run --env-file .env chatty-tests npm run test:coverage
@@ -38548,8 +39208,8 @@ Terminal output:
 ```
  RUN  v1.6.0 /Users/student/chatty-api-tests
 
- ✓ tests/lecture-01/lecture.test.ts (8 tests) 843ms
- ✓ tests/lecture-04/lecture.test.ts (14 tests) 2341ms
+ ✓ tests/chapter-01/first-test.test.ts (8 tests) 843ms
+ ✓ tests/chapter-04/profile.test.ts (14 tests) 2341ms
 
  Test Files  2 passed (2)
       Tests  22 passed (22)
@@ -38698,7 +39358,7 @@ coverage: {
 
 An uncovered branch means one of the possible outcomes of a conditional was never exercised by any test.
 
-In `lecture-01/lecture.test.ts`:
+In `chapter-01/first-test.test.ts`:
 
 ```typescript
 // From src/test-utils.ts
@@ -38710,9 +39370,10 @@ export function expectRejected(status: number): void {
 There are no branches in this function. But consider:
 
 ```typescript
-// In lecture-09, beforeAll builds sessionCookie like this:
+// In chapter-09, beforeAll builds sessionCookie like this:
 const raw = loginRes.headers['set-cookie'];
-sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 ```
 
 This ternary has two branches:
@@ -38891,7 +39552,7 @@ An absolute path starts from the root of the filesystem (`/` on macOS/Linux). It
 A relative path is relative to your current directory. If you are already inside `chatty-api-tests/`, you can refer to the tests folder simply as:
 
 ```
-tests/lecture-02
+tests/chapter-02
 ```
 
 instead of the full absolute path.
@@ -38986,11 +39647,11 @@ $ pwd
 
 $ cd tests
 $ ls
-lecture-01  lecture-02  lecture-03
+chapter-01  chapter-02  chapter-03
 
-$ cd lecture-02
+$ cd chapter-02
 $ ls
-README.md  lecture.test.ts  homework
+README.md  [chapter].test.ts  homework
 
 $ cd ..   # back to tests/
 $ cd ..   # back to chatty-api-tests/
@@ -39007,18 +39668,18 @@ Creates a new directory.
 $ mkdir reports
 
 ## Create nested directories (all at once)
-$ mkdir -p tests/lecture-05/homework
+$ mkdir -p tests/chapter-05/homework
 ```
 
-The `-p` flag creates all intermediate directories that do not exist yet. Without `-p`, if `tests/lecture-05` does not exist, the command fails.
+The `-p` flag creates all intermediate directories that do not exist yet. Without `-p`, if `tests/chapter-05` does not exist, the command fails.
 
 ```bash
-## Without -p — fails if lecture-05 does not exist
-$ mkdir tests/lecture-05/homework
-mkdir: tests/lecture-05: No such file or directory
+## Without -p — fails if chapter-05 does not exist
+$ mkdir tests/chapter-05/homework
+mkdir: tests/chapter-05: No such file or directory
 
 ## With -p — succeeds regardless
-$ mkdir -p tests/lecture-05/homework
+$ mkdir -p tests/chapter-05/homework
 ```
 
 ---
@@ -39029,10 +39690,10 @@ Creates an empty file if it does not exist. If the file already exists, it updat
 
 ```bash
 ## Create a new empty file
-$ touch tests/lecture-05/lecture.test.ts
+$ touch tests/chapter-05/posts.test.ts
 
 ## Create multiple files at once
-$ touch tests/lecture-05/lecture.test.ts tests/lecture-05/README.md
+$ touch tests/chapter-05/posts.test.ts tests/chapter-05/README.md
 ```
 
 ---
@@ -39063,10 +39724,10 @@ Copies a file from source to destination.
 
 ```bash
 ## Copy a file
-$ cp tests/lecture-02/homework/[chapter].test.ts tests/lecture-03/homework/[chapter].test.ts
+$ cp tests/chapter-02/homework/[chapter].test.ts tests/chapter-03/homework/[chapter].test.ts
 
 ## Copy a directory and all its contents (recursive)
-$ cp -r tests/lecture-02 tests/lecture-02-backup
+$ cp -r tests/chapter-02 tests/chapter-02-backup
 ```
 
 The `-r` flag is required when copying directories.
@@ -39079,13 +39740,13 @@ Moves a file to a new location, or renames it.
 
 ```bash
 ## Rename a file
-$ mv lecture.test.old.ts lecture.test.ts
+$ mv [chapter].test.old.ts [chapter].test.ts
 
 ## Move a file to a different directory
-$ mv lecture.test.ts tests/lecture-04/
+$ mv [chapter].test.ts tests/chapter-04/
 
 ## Move and rename at the same time
-$ mv old-name.ts tests/lecture-04/new-name.ts
+$ mv old-name.ts tests/chapter-04/new-name.ts
 ```
 
 ---
@@ -39096,13 +39757,13 @@ Permanently deletes files. There is no Trash/Recycle Bin — deletion is immedia
 
 ```bash
 ## Delete a single file
-$ rm tests/lecture-01/temp.ts
+$ rm tests/chapter-01/temp.ts
 ```
 
 ##### rm -rf — Delete a Directory and All Its Contents
 
 ```bash
-$ rm -rf tests/lecture-01-old
+$ rm -rf tests/chapter-01-old
 ```
 
 **Warning about `rm -rf`:** This command deletes everything inside the target directory recursively and forcefully, with no confirmation and no undo. Do not run `rm -rf /` or `rm -rf ~` or any path that points to something important. Double-check the path before pressing Enter.
@@ -39177,7 +39838,7 @@ If `which` returns nothing, the command is not installed or not on your PATH.
 Press the **up arrow** to scroll backward through your command history. Press the **down arrow** to go forward again. You can edit the recalled command before pressing Enter.
 
 ```
-Press up arrow: npm run test tests/lecture-02/lecture.test.ts
+Press up arrow: npm run test tests/chapter-02/signin.test.ts
 Press up arrow: npm install axios
 Press up arrow: cd tests
 ```
@@ -39199,9 +39860,9 @@ Press **Tab** to auto-complete file names, directory names, and command names. P
 ```bash
 $ cd tests/lec<Tab>
 ## Completes to:
-$ cd tests/lecture-
+$ cd tests/chapter-
 
-$ cd tests/lecture-02<Tab>
+$ cd tests/chapter-02<Tab>
 ## Shows nothing more to complete (exact match)
 ```
 
@@ -39229,28 +39890,28 @@ Tab completion works for:
 
 ### Real Examples: Navigating the chatty-api-tests Project
 
-#### Starting a new lecture
+#### Starting a new chapter
 
 ```bash
 ## Go to the project root
 $ cd ~/WebstormProjects/fullStack/theProject/chatty-api-tests
 
-## Create the lecture directory with homework subdirectory
-$ mkdir -p tests/lecture-06/homework
+## Create the chapter directory with homework subdirectory
+$ mkdir -p tests/chapter-06/homework
 
 ## Create the test files
-$ touch tests/lecture-06/lecture.test.ts
-$ touch tests/lecture-06/README.md
-$ touch tests/lecture-06/homework/[chapter].test.ts
-$ touch tests/lecture-06/homework/[chapter].test.ts
+$ touch tests/chapter-06/reactions.test.ts
+$ touch tests/chapter-06/README.md
+$ touch tests/chapter-06/homework/[chapter].test.ts
+$ touch tests/chapter-06/homework/[chapter].test.ts
 
 ## Verify the structure
-$ ls -la tests/lecture-06/
+$ ls -la tests/chapter-06/
 total 8
 drwxr-xr-x  6 michael120288  staff  192 Apr 18 11:00 .
 drwxr-xr-x  8 michael120288  staff  256 Apr 18 11:00 ..
 drwxr-xr-x  4 michael120288  staff  128 Apr 18 11:00 homework
--rw-r--r--  1 michael120288  staff    0 Apr 18 11:00 lecture.test.ts
+-rw-r--r--  1 michael120288  staff    0 Apr 18 11:00 [chapter].test.ts
 -rw-r--r--  1 michael120288  staff    0 Apr 18 11:00 README.md
 ```
 
@@ -39264,8 +39925,8 @@ $ pwd
 ## Run all tests
 $ npm test
 
-## Run a specific lecture file
-$ npm test tests/lecture-02/lecture.test.ts
+## Run a specific chapter file
+$ npm test tests/chapter-02/signin.test.ts
 ```
 
 #### Checking if a package is installed
@@ -39583,14 +40244,14 @@ $ npm test
 You can pass a file path as an argument to `npm test` and Vitest will only run that file.
 
 ```bash
-## Run only lecture 02 tests
-$ npm test tests/lecture-02/lecture.test.ts
+## Run only chapter 05 tests
+$ npm test tests/chapter-02/signin.test.ts
 
 ## Run only the homework solution
-$ npm test tests/lecture-02/homework/[chapter].test.ts
+$ npm test tests/chapter-02/homework/[chapter].test.ts
 
-## Run all files in a lecture directory (glob)
-$ npm test tests/lecture-02/
+## Run all files in a chapter directory (glob)
+$ npm test tests/chapter-02/
 ```
 
 This uses Vitest's file filtering. The path is passed through to the `vitest run` command.
@@ -39686,13 +40347,13 @@ The `^` (caret) is the default range when you run `npm install`. It allows minor
 
 ---
 
-### What Happens When You Run npm test tests/lecture-02/lecture.test.ts
+### What Happens When You Run npm test tests/chapter-02/signin.test.ts
 
 Let's trace exactly what happens step by step:
 
 1. npm reads `package.json` and finds the `"test"` script: `"vitest run"`
 2. npm prepends `node_modules/.bin` to the PATH, so the locally installed `vitest` binary is found
-3. npm executes: `vitest run tests/lecture-02/lecture.test.ts`
+3. npm executes: `vitest run tests/chapter-02/signin.test.ts`
 4. Vitest finds the test file, reads `vitest.config.ts` (or infers config from `package.json`)
 5. Vitest loads your test file, imports the `describe`, `it`, `expect` functions
 6. Vitest runs each `describe` block, executes each `it` / `test` callback
@@ -39824,16 +40485,16 @@ Shows the current state of your working directory and staging area. Run this con
 
 ```bash
 $ git status
-On branch lecture-02-setup
-Your branch is up to date with 'origin/lecture-02-setup'.
+On branch feature/auth-tests
+Your branch is up to date with 'origin/feature/auth-tests'.
 
 Changes not staged for commit:
   (use "git add <file>..." to update what will be committed)
-        modified:   tests/lecture-02/lecture.test.ts
+        modified:   tests/chapter-02/signin.test.ts
 
 Untracked files:
   (use "git add <file>..." to include in what will be committed)
-        tests/lecture-02/homework/[chapter].test.ts
+        tests/chapter-02/homework/[chapter].test.ts
 
 nothing added to commit but untracked files present (use "git add" to track)
 ```
@@ -39855,13 +40516,13 @@ Moves changes from the working directory to the staging area.
 
 ```bash
 ## Stage a specific file
-$ git add tests/lecture-02/lecture.test.ts
+$ git add src/auth.test.ts
 
 ## Stage multiple specific files
-$ git add tests/lecture-02/lecture.test.ts tests/lecture-02/README.md
+$ git add src/auth.test.ts src/config.ts
 
 ## Stage all changes in a directory
-$ git add tests/lecture-02/
+$ git add src/
 
 ## Stage all changes in the entire project
 $ git add .
@@ -39876,7 +40537,7 @@ $ git add .
 Creates a new commit with everything in the staging area. The `-m` flag lets you provide the message inline.
 
 ```bash
-$ git commit -m "add lecture-02 signup and signin tests"
+$ git commit -m "add chapter-02 signup and signin tests"
 ```
 
 If you forget `-m`, git opens your default text editor for you to write the message. Press `Ctrl+X` (nano) or `:wq` (vim) to save and exit.
@@ -39896,9 +40557,9 @@ A good commit message answers: *what did you do, and why?*
 
 ```bash
 ## Good
-git commit -m "add lecture-02 auth tests for signup and signin"
+git commit -m "add chapter-02 auth tests for signup and signin"
 git commit -m "fix cleanup test to use correct authId from signup response"
-git commit -m "add homework starter with TODO comments for lecture-03"
+git commit -m "add homework starter with TODO comments for chapter-03"
 git commit -m "update BASE_URL env variable name to match course config"
 
 ## Bad
@@ -39919,17 +40580,17 @@ Sends your local commits to the remote repository (GitHub).
 $ git push
 
 ## Push and set the upstream tracking reference (use when pushing a new branch for the first time)
-$ git push -u origin lecture-02-setup
+$ git push -u origin feature/auth-tests
 
 ## Push a specific branch
-$ git push origin lecture-02-setup
+$ git push origin feature/auth-tests
 ```
 
 **`-u` flag:** Sets the upstream so that future `git push` and `git pull` commands on this branch work without specifying the remote name and branch name.
 
 ```bash
 ## First push of a new branch
-$ git push -u origin lecture-03-posts
+$ git push -u origin feature/post-tests
 
 ## Subsequent pushes — just this
 $ git push
@@ -39958,11 +40619,11 @@ Run `git pull origin main` to bring your branch up to date with the main branch 
 Creates a new branch and switches to it in one command. The `-b` flag means "create".
 
 ```bash
-$ git checkout -b lecture-03-posts
-Switched to a new branch 'lecture-03-posts'
+$ git checkout -b feature/post-tests
+Switched to a new branch 'feature/post-tests'
 ```
 
-**Always create a new branch for each lecture.** Never do your lecture work directly on `main`.
+**Always create a new branch for each chapter.** Never do your chapter work directly on `main`.
 
 ---
 
@@ -39975,8 +40636,8 @@ $ git checkout main
 Switched to branch 'main'
 Your branch is up to date with 'origin/main'.
 
-$ git checkout lecture-02-setup
-Switched to branch 'lecture-02-setup'
+$ git checkout feature/auth-tests
+Switched to branch 'feature/auth-tests'
 ```
 
 If you have uncommitted changes in the working directory that conflict with the branch you are switching to, git will warn you or refuse to switch. Commit or stash your changes first.
@@ -39990,9 +40651,9 @@ Lists all local branches. The current branch is marked with `*`.
 ```bash
 $ git branch
   main
-* lecture-03-posts
-  lecture-02-setup
-  lecture-01-setup
+* feature/post-tests
+  feature/auth-tests
+  feature/initial-setup
 ```
 
 #### git branch -d branchname
@@ -40001,10 +40662,10 @@ Deletes a local branch. The `-d` flag is safe — it refuses to delete a branch 
 
 ```bash
 ## Safe delete (refuses if unmerged)
-$ git branch -d lecture-01-setup
+$ git branch -d feature/initial-setup
 
 ## Force delete
-$ git branch -D lecture-01-setup-wip
+$ git branch -D feature/initial-setup-wip
 ```
 
 ---
@@ -40014,9 +40675,9 @@ $ git branch -D lecture-01-setup-wip
 Merges the named branch into your current branch.
 
 ```bash
-## Merge lecture-02-setup into main
+## Merge feature/auth-tests into main
 $ git checkout main
-$ git merge lecture-02-setup
+$ git merge feature/auth-tests
 ```
 
 In this course, you will rarely merge locally. Instead you push your branch and open a Pull Request on GitHub. The merge happens on GitHub after review.
@@ -40029,10 +40690,10 @@ Shows commit history, one line per commit. Most recent commit is at the top.
 
 ```bash
 $ git log --oneline
-f3a1c7d (HEAD -> lecture-03-posts, origin/lecture-03-posts) add GET all posts test
+f3a1c7d (HEAD -> feature/post-tests, origin/feature/post-tests) add GET all posts test
 a2e9b44 add POST create post test with cleanup
-7c8d2f1 (origin/lecture-02-setup) add lecture-02 auth tests
-3b6f5e0 add lecture-01 project setup and health check test
+7c8d2f1 (origin/feature/auth-tests) add chapter-02 auth tests
+3b6f5e0 add chapter-01 project setup and health check test
 0a1d4c2 (origin/main, main) initial project scaffold
 ```
 
@@ -40041,8 +40702,8 @@ Reading the output:
 | Part | Meaning |
 |---|---|
 | `f3a1c7d` | Short hash (first 7 characters of the full 40-char hash) |
-| `(HEAD -> lecture-03-posts)` | Where HEAD is pointing — your current branch and commit |
-| `(origin/lecture-03-posts)` | Where the remote branch is — last time you pushed/fetched |
+| `(HEAD -> feature/post-tests)` | Where HEAD is pointing — your current branch and commit |
+| `(origin/feature/post-tests)` | Where the remote branch is — last time you pushed/fetched |
 | The message | Your commit message |
 
 ---
@@ -40053,10 +40714,10 @@ Shows what has changed but not yet staged.
 
 ```bash
 $ git diff
-diff --git a/tests/lecture-02/lecture.test.ts b/tests/lecture-02/lecture.test.ts
+diff --git a/tests/chapter-02/signin.test.ts b/tests/chapter-02/signin.test.ts
 index 3b4f5a0..7c9d2e1 100644
---- a/tests/lecture-02/lecture.test.ts
-+++ b/tests/lecture-02/lecture.test.ts
+--- a/tests/chapter-02/signin.test.ts
++++ b/tests/chapter-02/signin.test.ts
 @@ -15,6 +15,10 @@ describe('Auth', () => {
    it('should return 401 for invalid credentials', async () => {
      const response = await axios.post(`${BASE_URL}/auth/signin`, { ... });
@@ -40093,7 +40754,7 @@ nothing to commit, working tree clean
 $ git checkout main
 
 ## Come back and restore your stashed work
-$ git checkout lecture-03-posts
+$ git checkout feature/post-tests
 $ git stash pop
 ```
 
@@ -40115,36 +40776,36 @@ origin  https://github.com/your-org/chatty-api-tests.git (push)
 
 ---
 
-### The Lecture Branch Naming Convention
+### The Chapter Branch Naming Convention
 
 In this course, branches follow a consistent naming pattern so it is clear what work each branch contains.
 
 #### Format
 
 ```
-lecture-NN-short-description
+chapter-NN-short-description
 ```
 
-Where `NN` is a zero-padded lecture number.
+Where `NN` is a zero-padded chapter number.
 
 #### Examples
 
 ```
-lecture-01-setup
-lecture-01-setup-homework
-lecture-02-auth-tests
-lecture-02-auth-tests-homework
-lecture-03-posts
-lecture-03-posts-homework
-lecture-04-comments
-lecture-04-comments-homework
+feature/initial-setup
+feature/initial-setup-homework
+chapter-02-auth-tests
+chapter-02-auth-tests-homework
+feature/post-tests
+feature/post-tests-homework
+chapter-04-comments
+chapter-04-comments-homework
 ```
 
 #### Why this pattern matters
 
-- You can see all lecture branches grouped together in `git branch` output
+- You can see all chapter branches grouped together in `git branch` output
 - It is immediately clear what each branch contains
-- Homework branches are separate from the main lecture branch, so you can PR them independently
+- Homework branches are separate from the main chapter branch, so you can PR them independently
 
 ---
 
@@ -40162,7 +40823,7 @@ $ git pull origin main
 #### Step 2: Create a feature branch
 
 ```bash
-$ git checkout -b lecture-03-posts
+$ git checkout -b feature/post-tests
 ```
 
 #### Step 3: Do your work
@@ -40170,26 +40831,26 @@ $ git checkout -b lecture-03-posts
 Write code, run tests, make sure everything passes.
 
 ```bash
-$ npm test tests/lecture-03/lecture.test.ts
+$ npm test tests/chapter-03/signup.test.ts
 ```
 
 #### Step 4: Stage and commit
 
 ```bash
-$ git add tests/lecture-03/
+$ git add tests/chapter-03/
 $ git status        # review what you are about to commit
-$ git commit -m "add lecture-03 GET and POST posts tests"
+$ git commit -m "add chapter-03 GET and POST posts tests"
 ```
 
 #### Step 5: Push the branch to GitHub
 
 ```bash
-$ git push -u origin lecture-03-posts
+$ git push -u origin feature/post-tests
 ```
 
 #### Step 6: Open a Pull Request on GitHub
 
-Go to github.com, navigate to your repository. GitHub will show a banner: "lecture-03-posts recently pushed — Compare & pull request". Click it.
+Go to github.com, navigate to your repository. GitHub will show a banner: "feature/post-tests recently pushed — Compare & pull request". Click it.
 
 Write a description, assign a reviewer if applicable, and click **Create pull request**.
 
@@ -40198,7 +40859,7 @@ Write a description, assign a reviewer if applicable, and click **Create pull re
 ```bash
 $ git checkout main
 $ git pull origin main       # get the merge commit from GitHub
-$ git checkout -b lecture-04-comments
+$ git checkout -b chapter-04-comments
 ```
 
 ---
@@ -40236,8 +40897,8 @@ Check whether your branch is ahead of the remote:
 
 ```bash
 $ git status
-On branch lecture-03-posts
-Your branch is ahead of 'origin/lecture-03-posts' by 2 commits.
+On branch feature/post-tests
+Your branch is ahead of 'origin/feature/post-tests' by 2 commits.
   (use "git push" to publish your local commits)
 ```
 
@@ -40251,16 +40912,16 @@ Option 1 — if you have not committed yet, stash and move:
 
 ```bash
 $ git stash
-$ git checkout -b lecture-03-posts
+$ git checkout -b feature/post-tests
 $ git stash pop
 ```
 
 Option 2 — if you have already committed to main (and not pushed), use git reset to move the commit to a branch:
 
 ```bash
-$ git branch lecture-03-posts     # create branch at current position
+$ git branch feature/post-tests     # create branch at current position
 $ git reset --hard HEAD~1         # move main back one commit
-$ git checkout lecture-03-posts   # switch to the branch with your work
+$ git checkout feature/post-tests   # switch to the branch with your work
 ```
 
 Only do this if the commit has NOT been pushed to origin.
@@ -40274,14 +40935,14 @@ A merge conflict happens when two branches modify the same lines of the same fil
   expect(response.status).toBe(200);
 =======
   expect(response.status).toBe(201);
->>>>>>> lecture-03-posts
+>>>>>>> feature/post-tests
 ```
 
 Resolve by editing the file to keep the correct version (remove the `<<<<<<<`, `=======`, `>>>>>>>` markers). Then:
 
 ```bash
-$ git add tests/lecture-03/lecture.test.ts
-$ git commit -m "resolve merge conflict in lecture-03 test"
+$ git add tests/chapter-03/signup.test.ts
+$ git commit -m "resolve merge conflict in chapter-03 test"
 ```
 
 #### Pushing to main directly
@@ -40305,21 +40966,21 @@ $ git push
 ### Quick Reference Card
 
 ```bash
-## Start new lecture work
+## Start new chapter work
 git checkout main
 git pull origin main
-git checkout -b lecture-05-reactions
+git checkout -b chapter-05-reactions
 
 ## Check what you've changed
 git status
 git diff
 
 ## Stage and commit
-git add tests/lecture-05/
-git commit -m "add lecture-05 reaction tests"
+git add tests/chapter-05/
+git commit -m "add chapter-05 reaction tests"
 
 ## Push and create PR
-git push -u origin lecture-05-reactions
+git push -u origin chapter-05-reactions
 
 ## See history
 git log --oneline
@@ -40328,13 +40989,13 @@ git log --oneline
 git stash
 git checkout main
 ## ... do other work ...
-git checkout lecture-05-reactions
+git checkout chapter-05-reactions
 git stash pop
 
 ## After PR is merged on GitHub
 git checkout main
 git pull origin main
-git branch -d lecture-05-reactions
+git branch -d chapter-05-reactions
 ```
 
 ---
@@ -40361,7 +41022,7 @@ git branch -d lecture-05-reactions
 **Authentication:** Session cookie (`session=eyJ...`) — send in every authenticated request as `Cookie: session=eyJ...`
 **Content-Type:** `application/json` on all POST/PUT/PATCH requests
 
-**Legend:** 🔒 = requires auth cookie · 🎓 = first covered in lecture · ⚠️ = gotcha
+**Legend:** 🔒 = requires auth cookie · 🎓 = first covered in chapter · ⚠️ = gotcha
 
 **Interactive docs (Swagger UI):** `https://api.codeandtest.com/api-docs`
 **Validation rules as JSON:** `GET https://api.codeandtest.com/api/v1/schema`
@@ -40433,7 +41094,7 @@ Returns every endpoint with its accepted fields, validation constraints, success
 ---
 
 #### `POST /signup` — Create a new user
-🎓 **Lecture 03** | Public (no cookie needed)
+🎓 **Chapter 6** | Public (no cookie needed)
 
 **TypeScript:**
 ```ts
@@ -40503,7 +41164,7 @@ interface SignUpResponse {
 ---
 
 #### `POST /signin` — Sign in
-🎓 **Lecture 02** | Public
+🎓 **Chapter 5** | Public
 
 **TypeScript:**
 ```ts
@@ -40564,7 +41225,7 @@ interface SignInResponse {
 ---
 
 #### `POST /signout` 🔒 — Sign out
-🎓 **Lecture 02**
+🎓 **Chapter 5**
 
 No body required.
 
@@ -40621,7 +41282,7 @@ interface ResetPasswordBody {
 ---
 
 #### `GET /currentuser` 🔒 — Get authenticated user
-🎓 **Lecture 04**
+🎓 **Chapter 7**
 
 No body. Reads from Redis cache (always fresh after login).
 
@@ -40662,7 +41323,7 @@ interface CurrentUserResponse {
 ---
 
 #### `GET /session-token` 🔒 — Get JWT from current session
-🎓 **Lecture 04**
+🎓 **Chapter 7**
 
 No body.
 
@@ -40682,7 +41343,7 @@ interface SessionTokenResponse { token: string; }
 ---
 
 #### `GET /post/all/:page` 🔒 — Get all posts (paginated)
-🎓 **Lecture 05**
+🎓 **Chapter 8**
 
 No body. Page size: **10**. Returns newest first (sorted by `createdAt` descending).
 
@@ -40728,7 +41389,7 @@ interface GetPostsResponse {
 ---
 
 #### `POST /post` 🔒 — Create a plain post
-🎓 **Lecture 05**
+🎓 **Chapter 8**
 
 **TypeScript:**
 ```ts
@@ -40761,7 +41422,7 @@ interface CreatePostResponse {
 ---
 
 #### `PATCH /post/:postId` 🔒 — Update post
-🎓 **Lecture 05**
+🎓 **Chapter 8**
 
 Same body fields as `POST /post`. `:postId` must be a valid MongoDB ObjectId.
 
@@ -40774,7 +41435,7 @@ Same body fields as `POST /post`. `:postId` must be a valid MongoDB ObjectId.
 ---
 
 #### `DELETE /post/:postId` 🔒 — Delete post
-🎓 **Lecture 05**
+🎓 **Chapter 8**
 
 No body.
 
@@ -40789,7 +41450,7 @@ No body.
 ---
 
 #### `POST /post/reaction` 🔒 — Add or switch reaction
-🎓 **Lecture 06**
+🎓 **Chapter 9**
 
 **TypeScript:**
 ```ts
@@ -40840,7 +41501,7 @@ interface AddReactionBody {
 ---
 
 #### `GET /post/reactions/:postId` 🔒 — Get all reactions for a post
-🎓 **Lecture 06**
+🎓 **Chapter 9**
 
 **TypeScript:**
 ```ts
@@ -40871,7 +41532,7 @@ interface GetReactionsResponse {
 ---
 
 #### `DELETE /post/reaction/:postId/:previousReaction/:postReactions` 🔒 — Remove reaction
-🎓 **Lecture 06**
+🎓 **Chapter 9**
 
 All three are URL path params. `:postReactions` is URL-encoded JSON.
 
@@ -40899,7 +41560,7 @@ DELETE /post/reaction/507f1f77.../like/%7B%22like%22%3A1%2C%22love%22%3A0%2C%22h
 ---
 
 #### `POST /post/comment` 🔒 — Add comment
-🎓 **Lecture 07**
+🎓 **Chapter 10**
 
 **TypeScript:**
 ```ts
@@ -40934,7 +41595,7 @@ interface AddCommentResponse {
 ---
 
 #### `GET /post/comments/:postId` 🔒 — Get all comments for a post
-🎓 **Lecture 07**
+🎓 **Chapter 10**
 
 **TypeScript:**
 ```ts
@@ -40973,7 +41634,7 @@ interface CommentDocument {
 ---
 
 #### `GET /post/single/comment/:postId/:commentId` 🔒 — Get one comment
-🎓 **Lecture 07**
+🎓 **Chapter 10**
 
 **Response (200):**
 ```json
@@ -40985,7 +41646,7 @@ interface CommentDocument {
 ---
 
 #### `PATCH /post/comment/:postId/:commentId` 🔒 — Update comment
-🎓 **Lecture 07**
+🎓 **Chapter 10**
 
 **TypeScript:**
 ```ts
@@ -41001,7 +41662,7 @@ interface UpdateCommentBody { comment: string; }  // required
 ---
 
 #### `DELETE /post/comment/:postId/:commentId` 🔒 — Delete comment
-🎓 **Lecture 07**
+🎓 **Chapter 10**
 
 No body.
 
@@ -41014,7 +41675,7 @@ No body.
 ---
 
 #### `GET /user/all/:page` 🔒 — Get all users (paginated)
-🎓 **Lecture 08**
+🎓 **Chapter 11**
 
 Page size: **12** (different from posts which uses 10).
 
@@ -41033,7 +41694,7 @@ interface GetAllUsersResponse {
 ---
 
 #### `GET /user/profile/search/:query` 🔒 — Search users by username
-🎓 **Lecture 08**
+🎓 **Chapter 11**
 
 Case-insensitive regex search. Encode special characters with `encodeURIComponent()`.
 
@@ -41066,7 +41727,7 @@ interface SearchUsersResponse {
 ---
 
 #### `PUT /user/profile/basic-info` 🔒 — Update profile fields
-🎓 **Lecture 04** / **Lecture 08**
+🎓 **Chapter 7** / **Chapter 11**
 
 **TypeScript:**
 ```ts
@@ -41087,7 +41748,7 @@ interface UpdateBasicInfoBody {
 ---
 
 #### `PUT /user/profile/social-links` 🔒 — Update social links
-🎓 **Lecture 08**
+🎓 **Chapter 11**
 
 **TypeScript:**
 ```ts
@@ -41106,7 +41767,7 @@ interface UpdateSocialLinksBody {
 ---
 
 #### `PUT /user/profile/settings` 🔒 — Update notification settings
-🎓 **Lecture 04**
+🎓 **Chapter 7**
 
 **TypeScript:**
 ```ts
@@ -41131,7 +41792,7 @@ interface UpdateSettingsBody {
 ---
 
 #### `PUT /user/profile/change-password` 🔒 — Change password
-🎓 **Lecture 08**
+🎓 **Chapter 11**
 
 **TypeScript:**
 ```ts
@@ -41164,7 +41825,7 @@ interface ChangePasswordBody {
 ---
 
 #### `PUT /user/follow/:followerId` 🔒 — Follow a user
-🎓 **Lecture 09**
+🎓 **Chapter 12**
 
 `:followerId` = the **User `_id`** (from `user._id`) of who you want to follow.
 No body.
@@ -41177,7 +41838,7 @@ No body.
 ---
 
 #### `PUT /user/unfollow/:followeeId/:followerId` 🔒 — Unfollow a user
-🎓 **Lecture 09**
+🎓 **Chapter 12**
 
 `:followeeId` = who you are unfollowing (their `user._id`)
 `:followerId` = **your own** `user._id` (get from `GET /currentuser → user._id`)
@@ -41191,7 +41852,7 @@ No body.
 ---
 
 #### `GET /user/following` 🔒 — List users you follow
-🎓 **Lecture 09**
+🎓 **Chapter 12**
 
 **TypeScript:**
 ```ts
@@ -41212,7 +41873,7 @@ interface GetFollowingResponse {
 ---
 
 #### `GET /user/followers/:userId` 🔒 — List followers of a user
-🎓 **Lecture 09**
+🎓 **Chapter 12**
 
 `:userId` = the User `_id` whose followers you want.
 
@@ -41221,7 +41882,7 @@ interface GetFollowingResponse {
 ---
 
 #### `PUT /user/block/:followerId` 🔒 — Block a user
-🎓 **Lecture 09**
+🎓 **Chapter 12**
 
 No body. Adds user to your `blocked` array and you to their `blockedBy`.
 **Response (200):** `{ "message": "..." }`
@@ -41239,7 +41900,7 @@ No body. Reverses blocking.
 ---
 
 #### `GET /notifications` 🔒 — Get all notifications
-🎓 **Lecture 09**
+🎓 **Chapter 12**
 
 **TypeScript:**
 ```ts
@@ -41293,7 +41954,7 @@ interface AddImageBody {
 ---
 
 #### `POST /chat/message` 🔒 — Send a message
-🎓 **Not covered in course lectures — reference only**
+🎓 **Not covered in main chapters — reference only**
 
 **TypeScript:**
 ```ts
@@ -41355,7 +42016,7 @@ interface MessageReactionBody {
 ---
 
 #### `DELETE /test/cleanup/user/:authId` — Delete a test user
-🎓 **Lecture 03** (introduced)
+🎓 **Chapter 6** (introduced)
 
 **Header required:** `x-test-secret: chatty-test-cleanup-2026`
 

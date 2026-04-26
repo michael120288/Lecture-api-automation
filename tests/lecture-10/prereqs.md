@@ -57,5 +57,4 @@
 
 ---
 
-> **Required setup:** `DATABASE_URL` in `.env` + IP whitelisted in Atlas.
-> Verify: `node -e "new require('mongodb').MongoClient(process.env.DATABASE_URL)"`
+> **Note:** The `DATABASE_URL` connection string is provided in the lecture README — you don't need it before starting.

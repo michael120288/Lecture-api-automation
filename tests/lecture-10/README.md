@@ -76,8 +76,11 @@ npm install mongodb
 Add your MongoDB Atlas connection string:
 
 ```
-DATABASE_URL=mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/chattyapp-backend
+DATABASE_URL=mongodb+srv://testuserread:testuserread@cluster0.8zhnmva.mongodb.net/
 ```
+
+node -e "require('dotenv').config(); const {MongoClient}=require('mongodb'); new
+  MongoClient(process.env.DATABASE_URL).connect().then(c=>{console.log('Connected');c.close()}).catch(e=>console.error(e))"
 
 **IP Whitelisting — the most common stumbling block:**
 
@@ -101,12 +104,34 @@ env: {
 },
 ```
 
+**Why is `DATABASE_URL` in both `.env` AND `vitest.config.ts`?**
+
+`.env` stores the actual value. `vitest.config.ts` explicitly forwards it into the test sandbox.
+
+Vitest runs each test file in an isolated worker process. Not all `process.env` variables are automatically available inside tests — only the ones listed in the `env` block of `vitest.config.ts` are guaranteed to pass through. Without this forwarding, `process.env.DATABASE_URL` inside a test file returns `undefined` even when `.env` is loaded.
+
+Rule of thumb: every env var your tests read must appear in both places:
+- **`.env`** — the actual secret value (never committed)
+- **`vitest.config.ts` `env` block** — just the key name, forwarded at `''` as fallback
+
 And to `src/config.ts`:
 ```ts
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error('Missing env var: DATABASE_URL');
 export const config = { BASE_URL, TEST_USERNAME, TEST_PASSWORD, DATABASE_URL } as const;
 ```
+
+**Why add `DATABASE_URL` to `src/config.ts`?**
+
+`src/config.ts` is the single entry point for all environment configuration. Any env var a test needs should be read and validated here, not scattered across test files.
+
+The pattern has three parts:
+
+1. **Read** — `const DATABASE_URL = process.env.DATABASE_URL` reads the value (may be `undefined`)
+2. **Guard** — `if (!DATABASE_URL) throw new Error(...)` fails fast with a clear message if the var is missing, instead of letting tests fail with a confusing `MongoClient: invalid connection string` error deep inside the code
+3. **Export** — adding it to the `config` object makes it importable from any test: `import { config } from '../../src/config'`
+
+**`as const`** tells TypeScript to infer the narrowest possible types for all values in the object. Without it, `config.BASE_URL` would be typed as `string`. With it, TypeScript knows the exact shape — useful for catching typos at compile time.
 
 ---
 
@@ -128,6 +153,10 @@ afterAll(async () => {
   await client.close();
 });
 ```
+
+**Source:** [MongoDB Node.js Driver — MongoClient](https://www.mongodb.com/docs/drivers/node/current/fundamentals/connection/connect/)
+
+The `new MongoClient(url)` → `client.connect()` → `client.db()` pattern is from the official MongoDB Node.js driver docs.
 
 **`client.db()`** — uses the database name from the connection string URL.
 The Chatty connection string ends with `/chattyapp-backend`.
