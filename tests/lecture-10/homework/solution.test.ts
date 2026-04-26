@@ -28,6 +28,11 @@ beforeAll(async () => {
   apiUser   = res.data.user ?? {};
   apiAuthId = (res.data.user?.authId as string) ?? '';
   apiUserId = (res.data.user?._id as string) ?? '';
+
+  // Chatty writes to MongoDB via an async queue (Bull).
+  // Wait briefly to allow the queue to flush the Auth/User documents to MongoDB
+  // before the cross-validation tests query the database directly.
+  await new Promise(resolve => setTimeout(resolve, 2000));
 });
 
 afterAll(async () => {

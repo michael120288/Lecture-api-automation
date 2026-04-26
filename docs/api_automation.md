@@ -18940,10 +18940,17 @@ beforeAll(async () => {
   mongoClient = new MongoClient(process.env.DATABASE_URL!);
   await mongoClient.connect();
   db = mongoClient.db();
+
+  // Chatty writes to MongoDB asynchronously via a Bull queue.
+  // Wait 2 seconds to allow the queue to flush the Auth/User documents
+  // before the cross-validation tests query the database.
+  await new Promise(resolve => setTimeout(resolve, 2000));
 });
 ```
 
 > **WHY:** `DATABASE_URL` comes from `process.env` (loaded via `dotenv` in `vitest.config.ts`), not hardcoded here. Calling `mongoClient.connect()` in `beforeAll` opens exactly one connection that all tests in the file share, which is efficient and avoids connection-limit issues on Atlas.
+>
+> **WHY the 2-second delay?** Chatty writes to MongoDB via an async Bull queue — the API returns 201 before the document is persisted. Without the delay, `findOne` queries run before the document arrives and return `null`. Two seconds is enough for the queue to flush in normal conditions.
 
 ---
 
