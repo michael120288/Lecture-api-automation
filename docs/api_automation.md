@@ -1204,7 +1204,7 @@ The first tells you the sign-in success path is broken. The second tells you not
 
 **Exercises**
 
-Write a test file at `tests/lecture-04/lecture.test.ts` that tests `POST /auth/signin` at `https://api.codeandtest.com/api/v1`. Your file should:
+Write a test file at `tests/chapter-04/first-test.test.ts` that tests `POST /auth/signin` at `https://api.codeandtest.com/api/v1`. Your file should:
 
 1. Use the `beforeAll` pattern with one request shared across all tests.
 2. Assert the status code is 200.
@@ -1226,6 +1226,11 @@ Suggested project structure for this chapter's exercises:
 ```
 tests/chapter-04/
   first-test.test.ts
+```
+
+To run your tests:
+```bash
+npm test tests/chapter-04/first-test.test.ts
 ```
 
 Write these tests in your file before reading the next chapter:
@@ -1254,11 +1259,10 @@ Create a folder named "Chapter 4" inside your Postman collection. Work through t
 
 ## The Test File for This Chapter
 
-> **Lecture 01 — Setup & First API Test**
-> Run: `npm test tests/lecture-01/lecture.test.ts`
+> **Working example: Setup & First API Test**
 
 ```ts
-// Lecture 01 — Setup & First API Test
+// Working example: Setup & First API Test
 //
 // Endpoint tested: POST /api/v1/signin (with wrong/invalid credentials)
 //
@@ -1279,11 +1283,10 @@ Create a folder named "Chapter 4" inside your Postman collection. Work through t
 //   made in the top-level beforeAll below.
 //   Only section 6 (boundary tests) makes individual requests.
 //
-// Signin Joi schema (from chatty-backend/src/features/auth/schemas/signin.ts):
+// Signin Joi schema — validation rules for the /signin endpoint:
 //   username: string, required, min 4, max 32
 //   password: string, required, min 8, max 128
 //
-// Run: npm test tests/lecture-01/lecture.test.ts
 
 import axios, { type AxiosResponse } from 'axios';
 import { config } from '../../src/config';
@@ -1315,7 +1318,7 @@ beforeAll(async () => {
 
 // ─── Rate limit note ──────────────────────────────────────────────────────────
 //
-// expectRejected() is imported from src/test-utils.ts — see STANDARDS.md §5.
+// expectRejected() is imported from src/test-utils.ts — accepts 400 OR 429.
 // It accepts status 400 (validation error) OR 429 (rate limited) as valid rejections.
 
 // ─── 1. Basic assertions ──────────────────────────────────────────────────────
@@ -2233,6 +2236,11 @@ tests/chapter-05/
   assertions.test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-05/assertions.test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. Write a test that uses toMatchObject with expect.any(String) and expect.any(Number) to assert the full error response shape from POST /signin.
@@ -2259,11 +2267,10 @@ Create a folder named "Chapter 5" inside your Postman collection. Work through t
 
 ## The Test File for This Chapter
 
-> **Lecture 02 — SignIn: Authentication & Cookies**
-> Run: `npm test tests/lecture-02/lecture.test.ts`
+> **Working example: SignIn: Authentication & Cookies**
 
 ```ts
-// Lecture 02 — SignIn
+// Working example: SignIn
 //
 // Endpoint: POST /api/v1/signin
 //
@@ -2281,7 +2288,6 @@ Create a folder named "Chapter 5" inside your Postman collection. Work through t
 //   TEST_USERNAME and TEST_PASSWORD must be set in .env
 //   The account must already exist on the server
 //
-// Run: npm test tests/lecture-02/lecture.test.ts
 
 import axios, { type AxiosResponse } from 'axios';
 import { config } from '../../src/config';
@@ -2658,7 +2664,7 @@ The base URL for the Chatty production API is `https://api.codeandtest.com/api/v
 
 ### Project Setup
 
-Assuming you have already scaffolded the `chatty-api-tests` project as described in earlier chapters, create the file for this chapter's tests at `tests/lecture-06/lecture.test.ts`. You should have a shared HTTP client configured via Axios. Here is the standard setup used throughout this book:
+Assuming you have already scaffolded the `chatty-api-tests` project as described in earlier chapters, create the file for this chapter's tests at `tests/chapter-06/auth.test.ts`. You should have a shared HTTP client configured via Axios. Here is the standard setup used throughout this book:
 
 ```typescript
 // src/client.ts
@@ -3239,6 +3245,11 @@ tests/chapter-06/
   auth.test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-06/auth.test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. Write a full positive test for POST /signin: status 200, message exact value, token exists, JWT has 3 parts, set-cookie header present, password absent from user object.
@@ -3265,11 +3276,10 @@ Create a folder named "Chapter 6" inside your Postman collection. Work through t
 
 ## The Test File for This Chapter
 
-> **Lecture 03 — SignUp: Creating & Cleaning Up Test Users**
-> Run: `npm test tests/lecture-03/lecture.test.ts`
+> **Working example: SignUp: Creating & Cleaning Up Test Users**
 
 ```ts
-// Lecture 03 — SignUp: Creating & Cleaning Up Test Users
+// Working example: SignUp: Creating & Cleaning Up Test Users
 //
 // Endpoint: POST /api/v1/signup
 //
@@ -3285,7 +3295,6 @@ Create a folder named "Chapter 6" inside your Postman collection. Work through t
 //   No env vars beyond BASE_URL, TEST_USERNAME, TEST_PASSWORD.
 //   TEST_CLEANUP_SECRET is a hardcoded constant in src/fixtures.ts — no setup needed.
 //
-// Run: npm test tests/lecture-03/lecture.test.ts
 
 import axios, { type AxiosResponse } from 'axios';
 import { faker } from '@faker-js/faker';
@@ -4080,6 +4089,11 @@ tests/chapter-07/
   state.test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-07/state.test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. Sign in and capture the session cookie. Call PUT /user/profile with {work: "Software Engineer", school: "Test University"}. Assert status 200.
@@ -4106,11 +4120,10 @@ Create a folder named "Chapter 7" inside your Postman collection. Work through t
 
 ## The Test File for This Chapter
 
-> **Lecture 04 — Current User, Profile & State Verification**
-> Run: `npm test tests/lecture-04/lecture.test.ts`
+> **Working example: Current User, Profile & State Verification**
 
 ```ts
-// Lecture 04 — Current User, Profile Update & Signout
+// Working example: Current User, Profile Update & Signout
 //
 // Endpoints:
 //   GET  /api/v1/currentuser
@@ -4126,7 +4139,6 @@ Create a folder named "Chapter 7" inside your Postman collection. Work through t
 //   4. Restoring state in afterAll — save before, restore after
 //   5. Signout invalidates the session — subsequent requests return 401
 //
-// Run: npm test tests/lecture-04/lecture.test.ts
 
 import axios, { type AxiosResponse } from 'axios';
 import { config } from '../../src/config';
@@ -4983,6 +4995,11 @@ tests/chapter-08/
   create.test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-08/create.test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. Use faker.string.alphanumeric(8) to generate unique post content. Create a post with POST /post. Assert status 201 and message is "Post created successfully".
@@ -5009,11 +5026,10 @@ Create a folder named "Chapter 8" inside your Postman collection. Work through t
 
 ## The Test File for This Chapter
 
-> **Lecture 05 — Posts: Full CRUD Flow**
-> Run: `npm test tests/lecture-05/lecture.test.ts`
+> **Working example: Posts: Full CRUD Flow**
 
 ```ts
-// Lecture 05 — Posts: Full CRUD Flow
+// Working example: Posts: Full CRUD Flow
 //
 // Endpoints:
 //   POST   /api/v1/post
@@ -5028,7 +5044,6 @@ Create a folder named "Chapter 8" inside your Postman collection. Work through t
 //   4. ObjectId validation — invalid ID format → 400
 //   5. Cleanup flag — track deletion to avoid orphaned test data
 //
-// Run: npm test tests/lecture-05/lecture.test.ts
 
 import axios, { type AxiosResponse } from 'axios';
 import { config } from '../../src/config';
@@ -5786,6 +5801,11 @@ tests/chapter-09/
   read.test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-09/read.test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. Call GET /post/all/1 with a valid session cookie. Assert status 200, posts is an array, totalPosts is a number.
@@ -5812,11 +5832,10 @@ Create a folder named "Chapter 9" inside your Postman collection. Work through t
 
 ## The Test File for This Chapter
 
-> **Lecture 06 — Reactions**
-> Run: `npm test tests/lecture-06/lecture.test.ts`
+> **Working example: Reactions**
 
 ```ts
-// Lecture 06 — Reactions: All Types & State Transitions
+// Working example: Reactions: All Types & State Transitions
 //
 // Endpoints:
 //   POST   /api/v1/post/reaction
@@ -5831,7 +5850,6 @@ Create a folder named "Chapter 9" inside your Postman collection. Work through t
 //   3. State transitions: add → count+1, remove → count-1
 //   4. userTo — post owner's userId for notification routing
 //
-// Run: npm test tests/lecture-06/lecture.test.ts
 
 import axios from 'axios';
 import { config } from '../../src/config';
@@ -6489,6 +6507,11 @@ tests/chapter-10/
   update.test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-10/update.test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. Create a post in beforeAll. PATCH it with new content. Assert status 200 and message is "Post updated successfully".
@@ -6515,13 +6538,11 @@ Create a folder named "Chapter 10" inside your Postman collection. Work through 
 
 ## The Test File for This Chapter
 
-> **Lecture 07 — Comments**
-> Run: `npm test tests/lecture-07/lecture.test.ts`
+> **Working example: Comments**
 
 ```ts
-// Lecture 07 — Comments: Full CRUD + Nested Queries
+// Working example: Comments: Full CRUD + Nested Queries
 //
-// Run: npm test tests/lecture-07/lecture.test.ts
 
 import axios from 'axios';
 import { config } from '../../src/config';
@@ -7449,6 +7470,11 @@ tests/chapter-11/
   delete.test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-11/delete.test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. Create a post in beforeAll with unique content. DELETE it with DELETE /post/:postId. Assert status 200 and set postDeleted = true.
@@ -7475,13 +7501,11 @@ Create a folder named "Chapter 11" inside your Postman collection. Work through 
 
 ## The Test File for This Chapter
 
-> **Lecture 08 — User Profile & Search**
-> Run: `npm test tests/lecture-08/lecture.test.ts`
+> **Working example: User Profile & Search**
 
 ```ts
-// Lecture 08 — User Profile: Search, Social Links & Password
+// Working example: User Profile: Search, Social Links & Password
 //
-// Run: npm test tests/lecture-08/lecture.test.ts
 
 import axios from 'axios';
 import { config } from '../../src/config';
@@ -8783,6 +8807,11 @@ tests/chapter-12/
   errors.test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-12/errors.test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. Write boundary tests for POST /signup: username 3 chars (below min) → 400, username 4 chars (at min) → 201, username 21 chars (above max) → 400.
@@ -8809,13 +8838,11 @@ Create a folder named "Chapter 12" inside your Postman collection. Work through 
 
 ## The Test File for This Chapter
 
-> **Lecture 09 — Followers & Notifications**
-> Run: `npm test tests/lecture-09/lecture.test.ts`
+> **Working example: Followers & Notifications**
 
 ```ts
-// Lecture 09 — Followers, Blocking & Notifications
+// Working example: Followers, Blocking & Notifications
 //
-// Run: npm test tests/lecture-09/lecture.test.ts
 
 import axios from 'axios';
 import { faker } from '@faker-js/faker';
@@ -9575,6 +9602,11 @@ tests/chapter-13/
   multi-user.test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-13/multi-user.test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. In beforeAll: sign in as user A (TEST_USERNAME), create user B with faker (username starting with vitest). Capture both user IDs.
@@ -9601,17 +9633,15 @@ Create a folder named "Chapter 13" inside your Postman collection. Work through 
 
 ## The Test File for This Chapter
 
-> **Lecture 10 — MongoDB Cross-Validation**
-> Run: `npm test tests/lecture-10/lecture.test.ts`
+> **Working example: MongoDB Cross-Validation**
 
 ```ts
-// Lecture 10 — MongoDB: Cross-Validating API vs Database
+// Working example: MongoDB: Cross-Validating API vs Database
 //
 // Prerequisites:
 //   DATABASE_URL must be set in .env (MongoDB Atlas connection string)
 //   Add DATABASE_URL to vitest.config.ts env: {} and src/config.ts
 //
-// Run: npm test tests/lecture-10/lecture.test.ts
 
 import axios from 'axios';
 import { faker } from '@faker-js/faker';
@@ -10189,6 +10219,11 @@ tests/chapter-14/
   db-validation.test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-14/db-validation.test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. In beforeAll: sign up a new test user via the API. Connect to MongoDB Atlas using MongoClient. Open a MongoClient connection.
@@ -10522,6 +10557,11 @@ tests/chapter-15/
   uploads.test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-15/uploads.test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. Call POST /images/profile with the TEST_AVATAR_IMAGE base64 data URL. Assert status 200 and message is "Image added successfully".
@@ -10552,12 +10592,10 @@ Create a folder named "Chapter 15" inside your Postman collection. Work through 
 
 ## The Test File for This Chapter
 
-> **Lecture 15 — Posts with Media (Image & Video Uploads)**
-> Run: `npm test tests/lecture-15/lecture.test.ts`
+> **Working example: Posts with Media (Image & Video Uploads)**
 
 ```ts
-// Lecture 15 — Posts with Media: Images & Videos
-// Run: npm test tests/lecture-15/lecture.test.ts
+// Working example: Posts with Media: Images & Videos
 
 import axios from 'axios';
 import { config } from '../../src/config';
@@ -11039,6 +11077,11 @@ tests/chapter-16/
   [chapter].test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-16/[chapter].test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. Create .github/workflows/tests.yml with a matrix strategy for Node 18 and Node 20. Trigger on push to main.
@@ -11176,7 +11219,7 @@ Add this line near the top of `README.md`, replacing `YOUR_USERNAME` and `YOUR_R
 
 ## The Config Files for This Chapter
 
-> **Lecture 11 — CI/CD: GitHub Actions**
+> **Working example: CI/CD: GitHub Actions**
 > Copy `tests/lecture-11/workflow.yml` to `.github/workflows/tests.yml` in your project.
 
 ```yaml
@@ -11543,6 +11586,11 @@ tests/chapter-17/
   [chapter].test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-17/[chapter].test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. Create a Dockerfile using node:20-alpine. Copy package files first, run npm ci, copy source, set CMD to npm test.
@@ -11650,7 +11698,7 @@ services:
 
 ## The Config Files for This Chapter
 
-> **Lecture 12 — Docker: Containerising the Test Runner**
+> **Working example: Docker: Containerising the Test Runner**
 > These files live in `tests/lecture-12/` — copy them to your project root.
 
 **Dockerfile**
@@ -12195,6 +12243,11 @@ tests/chapter-18/
   [chapter].test.ts
 ```
 
+To run your tests:
+```bash
+npm test tests/chapter-18/[chapter].test.ts
+```
+
 Write these tests in your file before reading the next chapter:
 
 1. Install @vitest/coverage-v8. Update vitest.config.ts with coverage provider, reporters, include pattern, and thresholds (lines: 80).
@@ -12429,7 +12482,7 @@ jobs:
 
 ## The Config Files for This Chapter
 
-> **Lecture 13 — Test Reporting: Vitest, Newman & Coverage**
+> **Working example: Test Reporting: Vitest, Newman & Coverage**
 > The updated `vitest.config.ts` with reporters and coverage configuration.
 
 ```ts
@@ -18305,7 +18358,6 @@ afterAll(async () => {
 
 ```ts
 // Chapter 14 — Database Cross-Validation
-// Run: npm test tests/lecture-10/homework/solution.test.ts
 
 import axios from 'axios';
 import { faker } from '@faker-js/faker';
@@ -34699,7 +34751,7 @@ userBAuthId = signupRes.data.user?.authId ?? '';
 The cleanup endpoint includes a safety check: it only deletes users whose username starts with `vitest`.
 
 ```typescript
-// chatty-backend/src/features/auth/controllers/test-cleanup.ts
+// Server-side safety check in the cleanup controller:
 if (!user.username.startsWith('vitest')) {
   throw new BadRequestError('Safety check failed: username must start with "vitest"');
 }

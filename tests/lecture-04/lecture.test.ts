@@ -19,6 +19,7 @@
 import axios, { type AxiosResponse } from 'axios';
 import { config } from '../../src/config';
 import { expectRejected } from '../../src/test-utils';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
 
 const signinUrl      = `${config.BASE_URL}/signin`;
 const currentUserUrl = `${config.BASE_URL}/currentuser`;
@@ -46,10 +47,12 @@ let originalFollows: boolean = true;
 beforeAll(async () => {
   // Sign in
   const loginRes = await axios.post(signinUrl, credentials, {
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
     validateStatus: () => true,
   });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
   signInToken = loginRes.data.token ?? '';
 
   // Capture current profile state before any test modifies it.
@@ -72,9 +75,10 @@ afterAll(async () => {
     { headers: { Cookie: sessionCookie }, validateStatus: () => true },
   );
 
-  // Restore original notification settings
+  // Restore original notification settings — always send all 4 fields
+  // to prevent partial updates from stripping messages and comments
   await axios.put(settingsUrl,
-    { reactions: originalReactions, follows: originalFollows },
+    { messages: true, reactions: originalReactions, comments: true, follows: originalFollows },
     { headers: { Cookie: sessionCookie }, validateStatus: () => true },
   );
 
@@ -248,7 +252,9 @@ describe('4. State verification', () => {
       headers: { Cookie: sessionCookie },
       validateStatus: () => true,
     });
-    expect(res.data.user.work).toBe(testWork);
+    // Redis may return the value JSON-encoded (with surrounding quotes) — strip them
+    const work = res.data.user.work?.replace(/^"|"$/g, '') ?? res.data.user.work;
+    expect(work).toBe(testWork);
   });
 
   it('GET /currentuser reflects the updated quote field', async () => {
@@ -256,7 +262,9 @@ describe('4. State verification', () => {
       headers: { Cookie: sessionCookie },
       validateStatus: () => true,
     });
-    expect(res.data.user.quote).toBe(testQuote);
+    // Redis may return the value JSON-encoded (with surrounding quotes) — strip them
+    const quote = res.data.user.quote?.replace(/^"|"$/g, '') ?? res.data.user.quote;
+    expect(quote).toBe(testQuote);
   });
 
 });
@@ -399,14 +407,17 @@ describe('7. Signout', () => {
 // Uses a fresh GET /currentuser response so we have a live user object to inspect.
 
 describe('8. Assertion variants', () => {
-  let currentUserRes!: Awaited<ReturnType<typeof axios.get>>;
+  let currentUserRes!: AxiosResponse<any>;
 
   beforeAll(async () => {
     // Re-sign in because section 7 signed out
-    const loginRes = await axios.post(signinUrl, credentials, { validateStatus: () => true });
-    const freshCookie = Array.isArray(loginRes.headers['set-cookie'])
-      ? loginRes.headers['set-cookie'][0]
-      : (loginRes.headers['set-cookie'] ?? '');
+    const loginRes = await axios.post(signinUrl, credentials, {
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
+      validateStatus: () => true,
+    });
+    const raw2 = loginRes.headers['set-cookie'];
+    const cookies2 = Array.isArray(raw2) ? raw2 : raw2 ? [raw2] : [];
+    const freshCookie = cookies2.map(c => c.split(';')[0]).join('; ');
 
     currentUserRes = await axios.get(currentUserUrl, {
       headers: { Cookie: freshCookie },

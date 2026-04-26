@@ -5,6 +5,7 @@
 import axios, { type AxiosResponse } from 'axios';
 import { config } from '../../../src/config';
 import { expectRejected } from '../../../src/test-utils';
+import { TEST_CLEANUP_SECRET } from '../../../src/fixtures';
 
 const signinUrl = `${config.BASE_URL}/signin`;
 const currentUserUrl = `${config.BASE_URL}/currentuser`;
@@ -16,10 +17,15 @@ beforeAll(async () => {
   response = await axios.post(signinUrl, {
     username: config.TEST_USERNAME,
     password: config.TEST_PASSWORD,
-  }, { validateStatus: () => true });
+  }, {
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
+    validateStatus: () => true,
+  });
 
+  // cookie-session sets TWO cookies: session + session.sig — both required
   const raw = response.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 });
 
 afterAll(async () => {
