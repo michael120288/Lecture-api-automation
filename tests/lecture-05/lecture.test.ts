@@ -17,6 +17,7 @@
 
 import axios, { type AxiosResponse } from 'axios';
 import { config } from '../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
 
 const signinUrl  = `${config.BASE_URL}/signin`;
 const postUrl    = `${config.BASE_URL}/post`;
@@ -43,10 +44,12 @@ let postDeleted = false;  // tracks deletion so afterAll can clean up if test fa
 beforeAll(async () => {
   // Sign in
   const loginRes = await axios.post(signinUrl, credentials, {
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
     validateStatus: () => true,
   });
   const raw = loginRes.headers['set-cookie'];
-  sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
 
   // Create the test post
   await axios.post(postUrl, {

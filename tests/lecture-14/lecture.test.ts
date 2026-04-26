@@ -3,6 +3,7 @@
 
 import axios from 'axios';
 import { config } from '../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
 
 const forgotPwUrl = `${config.BASE_URL}/forgot-password`;
 const resetPwUrl  = (token: string) => `${config.BASE_URL}/reset-password/${token}`;
@@ -17,7 +18,7 @@ let jwt: string = '';
 let sessionCookie: string = '';
 
 beforeAll(async () => {
-  const loginRes = await axios.post(signinUrl, credentials, { validateStatus: () => true });
+  const loginRes = await axios.post(signinUrl, credentials, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   jwt = loginRes.data.token ?? '';
   const raw = loginRes.headers['set-cookie'];
   sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');

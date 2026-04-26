@@ -3,6 +3,7 @@
 
 import axios from 'axios';
 import { config } from '../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
 import { TEST_AVATAR_IMAGE } from '../../src/fixtures';
 
 const signinUrl     = `${config.BASE_URL}/signin`;

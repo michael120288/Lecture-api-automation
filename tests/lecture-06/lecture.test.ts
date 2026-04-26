@@ -17,6 +17,7 @@
 
 import axios from 'axios';
 import { config } from '../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
 
 const signinUrl  = `${config.BASE_URL}/signin`;
 const postUrl    = `${config.BASE_URL}/post`;
@@ -48,7 +49,7 @@ const ZERO_REACTIONS = { like: 0, love: 0, happy: 0, sad: 0, wow: 0, angry: 0 };
 
 beforeAll(async () => {
   // Sign in
-  const loginRes = await axios.post(signinUrl, credentials, { validateStatus: () => true });
+  const loginRes = await axios.post(signinUrl, credentials, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
   sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
 

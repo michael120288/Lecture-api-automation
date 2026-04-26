@@ -4,6 +4,7 @@
 
 import axios from 'axios';
 import { config } from '../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
 
 const signinUrl  = `${config.BASE_URL}/signin`;
 const postUrl    = `${config.BASE_URL}/post`;
