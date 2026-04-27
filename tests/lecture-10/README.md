@@ -76,7 +76,7 @@ npm install mongodb
 Add your MongoDB Atlas connection string:
 
 ```
-DATABASE_URL=mongodb+srv://testuserread:testuserread@cluster0.8zhnmva.mongodb.net/
+DATABASE_URL=get it from .env
 ```
 
 node -e "require('dotenv').config(); const {MongoClient}=require('mongodb'); new
