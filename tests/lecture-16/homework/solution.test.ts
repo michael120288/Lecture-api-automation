@@ -3,7 +3,7 @@
 
 import axios from 'axios';
 import { config } from '../../../src/config';
-import { TEST_AVATAR_IMAGE } from '../../../src/fixtures';
+import { TEST_AVATAR_IMAGE, TEST_CLEANUP_SECRET } from '../../../src/fixtures';
 
 const signinUrl      = `${config.BASE_URL}/signin`;
 const signoutUrl     = `${config.BASE_URL}/signout`;
@@ -15,7 +15,7 @@ let username = '';
 let uId = '';
 
 beforeAll(async () => {
-  const r = await axios.post(signinUrl, { username: config.TEST_USERNAME, password: config.TEST_PASSWORD }, { validateStatus: () => true });
+  const r = await axios.post(signinUrl, { username: config.TEST_USERNAME, password: config.TEST_PASSWORD }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   const raw = r.headers['set-cookie'];
   const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
   sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');

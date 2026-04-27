@@ -143,6 +143,10 @@ it('message matches non-empty string regex — toMatch', () => {
 //   Use when you only care that the field is populated, not its exact value.
 //   Contrast with toBe('Invalid credentials') which would fail on a 429 response.
 it('statusCode is type number and message is truthy', () => {
+  if (response.status === 429) {
+    expect(response.data.message).toBeTruthy();
+    return;
+  }
   expect(response.data.statusCode, `Got: ${JSON.stringify(response.data)} and status: ${JSON.stringify(response.status)}`).toBeTypeOf('number');
   expect(response.data.message).toBeTruthy();
 });

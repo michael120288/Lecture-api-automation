@@ -44,6 +44,7 @@ const newUser = {
 beforeAll(async () => {
   // Create the test user
   signUpResponse = await axios.post(signupUrl, newUser, {
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
     validateStatus: () => true,
   });
 

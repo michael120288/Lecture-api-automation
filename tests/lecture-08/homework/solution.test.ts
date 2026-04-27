@@ -3,6 +3,7 @@
 
 import axios from 'axios';
 import { config } from '../../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../../src/fixtures';
 
 const signinUrl      = `${config.BASE_URL}/signin`;
 const signoutUrl     = `${config.BASE_URL}/signout`;
@@ -14,7 +15,7 @@ let sessionCookie = '';
 let originalYoutube = '';
 
 beforeAll(async () => {
-  const loginRes = await axios.post(signinUrl, { username: config.TEST_USERNAME, password: config.TEST_PASSWORD }, { validateStatus: () => true });
+  const loginRes = await axios.post(signinUrl, { username: config.TEST_USERNAME, password: config.TEST_PASSWORD }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
   const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
   sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');

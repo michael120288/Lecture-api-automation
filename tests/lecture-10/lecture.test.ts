@@ -42,11 +42,14 @@ beforeAll(async () => {
     password: TEST_PASSWORD,
     avatarColor: TEST_AVATAR_COLOR,
     avatarImage: TEST_AVATAR_IMAGE,
-  }, { validateStatus: () => true });
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
 
   apiUser   = signupRes.data.user ?? {};
   apiAuthId = (signupRes.data.user?.authId as string) ?? '';
   apiUserId = (signupRes.data.user?._id as string)    ?? '';
+
+  // Wait for the Bull queue to flush the signup to MongoDB
+  await new Promise(resolve => setTimeout(resolve, 2000));
 });
 
 afterAll(async () => {

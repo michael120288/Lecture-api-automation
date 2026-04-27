@@ -3,6 +3,7 @@
 
 import axios from 'axios';
 import { config } from '../../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../../src/fixtures';
 
 const forgotPwUrl = `${config.BASE_URL}/forgot-password`;
 const ssoUrl      = `${config.BASE_URL}/sso`;
@@ -13,19 +14,19 @@ let jwt = '';
 beforeAll(async () => {
   const res = await axios.post(signinUrl, {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
-  }, { validateStatus: () => true });
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   jwt = res.data.token ?? '';
 });
 
 it('forgot-password with non-existent email returns 400', async () => {
-  const res = await axios.post(forgotPwUrl, { email: 'notreal@nowhere.com' }, { validateStatus: () => true });
+  const res = await axios.post(forgotPwUrl, { email: 'notreal@nowhere.com' }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   expect(res.status).toBe(400);
   expect(res.data.message).toBe('Invalid credentials');
   // The server returns 'Invalid credentials' (not 'Email not found') to prevent email enumeration.
 });
 
 it('forgot-password with invalid email format returns 400', async () => {
-  const res = await axios.post(forgotPwUrl, { email: 'notanemail' }, { validateStatus: () => true });
+  const res = await axios.post(forgotPwUrl, { email: 'notanemail' }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   expect(res.status).toBe(400);
   expect(res.data.message).toContain('Field must be valid');
 });
@@ -36,20 +37,20 @@ it('reset-password with mismatched passwords returns 400', async () => {
   const res = await axios.post(`${config.BASE_URL}/reset-password/expiredtoken`, {
     password: 'NewPass@123456',
     confirmPassword: 'DifferentPass@123456',
-  }, { validateStatus: () => true });
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   expect(res.status).toBe(400);
   expect(res.data.message).toContain('Passwords should match');
 });
 
 it('SSO with valid JWT returns 200', async () => {
-  const res = await axios.post(ssoUrl, { token: jwt }, { validateStatus: () => true });
+  const res = await axios.post(ssoUrl, { token: jwt }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   expect(res.status).toBe(200);
   expect(res.data.message).toBe('SSO login successful');
   expect(res.data.user).toBeDefined();
 });
 
 it('SSO with empty body returns 400 — .then() style', () => {
-  return axios.post(ssoUrl, {}, { validateStatus: () => true })
+  return axios.post(ssoUrl, {}, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true })
     .then(res => {
       expect(res.status).toBe(400);
       expect(res.data.message).toBe('Token required');

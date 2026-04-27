@@ -20,7 +20,7 @@ beforeAll(async () => {
     password: TEST_PASSWORD,
     avatarColor: TEST_AVATAR_COLOR,
     avatarImage: TEST_AVATAR_IMAGE,
-  }, { validateStatus: () => true });
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
 
   authId = response.data.user?.authId ?? '';
 });

@@ -66,6 +66,12 @@ beforeAll(async () => {
   originalQuote     = currentRes.data.user?.quote     ?? '';
   originalReactions = currentRes.data.user?.notifications?.reactions ?? true;
   originalFollows   = currentRes.data.user?.notifications?.follows   ?? true;
+
+  // Ensure all four notification fields exist before section 1 reads them
+  await axios.put(settingsUrl,
+    { messages: true, reactions: originalReactions, comments: true, follows: originalFollows },
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+  );
 });
 
 afterAll(async () => {

@@ -24,7 +24,7 @@ beforeAll(async () => {
 
   const res = await axios.post(`${config.BASE_URL}/signup`, {
     username, email, password: TEST_PASSWORD, avatarColor: TEST_AVATAR_COLOR, avatarImage: TEST_AVATAR_IMAGE,
-  }, { validateStatus: () => true });
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   apiUser   = res.data.user ?? {};
   apiAuthId = (res.data.user?.authId as string) ?? '';
   apiUserId = (res.data.user?._id as string) ?? '';

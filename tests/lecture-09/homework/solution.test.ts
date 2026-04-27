@@ -14,7 +14,7 @@ let userBAuthId = '';
 beforeAll(async () => {
   const loginRes = await axios.post(`${config.BASE_URL}/signin`, {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
-  }, { validateStatus: () => true });
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
   const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
   sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
@@ -30,7 +30,7 @@ beforeAll(async () => {
     password: TEST_PASSWORD,
     avatarColor: TEST_AVATAR_COLOR,
     avatarImage: TEST_AVATAR_IMAGE,
-  }, { validateStatus: () => true });
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   userBId = signupRes.data.user?._id ?? '';
   userBAuthId = signupRes.data.user?.authId ?? '';
 });
