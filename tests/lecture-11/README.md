@@ -39,6 +39,7 @@
 | 5 | Full Workflow — Step by Step |
 | 6 | Matrix Strategy |
 | 7 | Artifacts |
+| 7b | Parallel Jobs and Shared State |
 | 8 | Status Badge |
 | 9 | Homework |
 
@@ -241,6 +242,37 @@ The `path: test-results/` folder is where artifacts are collected. Our `vitest.c
 
 ---
 
+## 7b. Parallel Jobs and Shared State
+
+The matrix strategy runs Node 18 and Node 20 **simultaneously**. Both jobs hit the same API and the same test account (`TEST_USERNAME`). This creates a race condition whenever a test:
+
+1. **Writes a value** to the shared account (e.g. `work`, `quote`, social links)
+2. **Reads it back** to verify the write
+
+If Job 2 writes its value between Job 1's write and Job 1's read, Job 1 reads the wrong value and fails.
+
+**Fix — unique per-run values using `Date.now()`:**
+
+```ts
+// ❌ Both jobs write the same string — they overwrite each other
+const testWork = 'QA Automation Engineer';
+
+// ✅ Each job writes a unique string — each job only matches its own value
+const run = Date.now();
+const testWork = `QA Automation Engineer ${run}`;
+```
+
+`Date.now()` returns milliseconds since epoch. Two parallel jobs starting at different times get different values. Each job writes its own unique string and only reads that string back — no collision.
+
+**When does this NOT apply?**
+- Negative tests (checking 400/401) — no shared state written
+- Read-only tests (GET only) — no state written
+- Tests that create their own users (each job creates a different user with Faker)
+
+**Rule:** any `beforeAll` that writes to a shared account field must use a unique value per run.
+
+---
+
 ## 8. Status Badge
 
 Add to your project's README.md:
@@ -260,6 +292,7 @@ Shows green ✅ when tests pass, red ❌ when they fail.
 - ✅ `npm ci` instead of `npm install` in CI — clean, fast, reproducible
 - ✅ Matrix strategy runs on Node 18 AND 20 in parallel
 - ✅ `if: always()` uploads artifacts even when tests fail — essential for debugging
+- ✅ Tests that write to a shared account must use unique per-run values (`Date.now()`) — parallel matrix jobs share the same API account
 
 **What's next:** Lecture 12 — Docker. Containerise the test runner so it runs identically everywhere.
 

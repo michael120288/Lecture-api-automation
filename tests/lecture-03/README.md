@@ -24,6 +24,8 @@
 - Password pattern requirements — not all strings are valid passwords
 - `src/fixtures.ts` — shared test constants: `TEST_AVATAR_IMAGE`, `TEST_AVATAR_COLOR`, `TEST_PASSWORD`, `TEST_CLEANUP_SECRET`
 - Why the cleanup secret is hardcoded (not an env var) — simpler deployment, same safety
+- Why **every** signup call needs `x-test-secret` — the rate limiter applies to signup too
+- Why duplicate-email tests need a short delay — Chatty writes to MongoDB via an async queue
 - Postman — testing signup, duplicate check, and cleanup in a Collection Runner flow
 - Advanced assertion variants — `toMatch(/regex/)` for email format, `toBeGreaterThanOrEqual` for numeric bounds, `toSatisfy(fn)` with custom predicates
 
@@ -207,6 +209,23 @@ authId = signUpResponse.data.user.authId;
 
 ---
 
+## 5b. The MongoDB Queue Delay
+
+After signup returns 201, the user document is **not yet in MongoDB**. Chatty writes to MongoDB via a Bull job queue — the API responds immediately from Redis, and the actual database write happens moments later.
+
+This matters for the **duplicate email** test: it calls signup again with the same email, expecting 400. If the first user hasn't been committed to MongoDB yet, the duplicate check finds nothing and the second signup succeeds (201). The test fails for the wrong reason.
+
+**Fix:** add a 1-second delay at the end of `beforeAll`, after capturing `authId`:
+
+```ts
+// Wait for Bull queue to flush the user to MongoDB
+await new Promise(resolve => setTimeout(resolve, 1000));
+```
+
+> **Why 1 second?** In practice the queue flushes in under 100ms. The 1-second delay is a conservative buffer that keeps CI reliable without adding meaningful wait time.
+
+---
+
 ## 6. Full Test Lifecycle
 
 ```
@@ -238,12 +257,20 @@ beforeAll(async () => {
   signUpResponse = await axios.post(
     `${config.BASE_URL}/signup`,
     userData,
-    { validateStatus: () => true },
+    {
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, // bypass rate limiter
+      validateStatus: () => true,
+    },
   );
 
   authId = signUpResponse.data.user?.authId ?? '';
   const raw = signUpResponse.headers['set-cookie'];
   sessionCookie = Array.isArray(raw) ? raw[0] : (raw ?? '');
+
+  // Wait for the async Bull queue to flush the user to MongoDB.
+  // Chatty's duplicate-email check queries MongoDB directly — without this delay,
+  // the duplicate signup test can return 201 instead of 400.
+  await new Promise(resolve => setTimeout(resolve, 1000));
 });
 
 afterAll(async () => {

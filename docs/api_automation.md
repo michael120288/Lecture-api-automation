@@ -2359,14 +2359,24 @@ Create a folder named "Chapter 5" inside your Postman collection. Work through t
 
 > **What is `x-test-secret` and `TEST_CLEANUP_SECRET`?**
 >
-> You will see these in the reference implementation below. They serve two purposes:
+> You will see these throughout the test files. They serve two purposes:
 >
-> 1. **In `beforeAll` signin calls** — bypasses the API rate limiter (5 req/min) so tests can sign in repeatedly without getting 429 errors. Only works for `vitest` usernames.
+> 1. **On every `signin` AND `signup` call** — bypasses the API rate limiter so tests can authenticate repeatedly without getting 429 errors when running the full suite. Only works for `vitest` usernames.
 > 2. **In `afterAll` cleanup calls** — authorizes the `DELETE /test/cleanup/user/:authId` endpoint to delete test users after a test run.
+>
+> **Important:** Add `x-test-secret` to **every** `beforeAll` that calls `/signin` or `/signup`. Running a single test file works without it, but running all 18 test files in sequence will hit the rate limiter by the time you reach later files.
 >
 > `TEST_CLEANUP_SECRET` is hardcoded in `src/fixtures.ts` as `'chatty-test-cleanup-2026'` — no `.env` entry needed. Import it with:
 > ```ts
 > import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
+> ```
+>
+> Pattern to use everywhere:
+> ```ts
+> const loginRes = await axios.post(signinUrl, credentials, {
+>   headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
+>   validateStatus: () => true,
+> });
 > ```
 
 ---
@@ -3491,7 +3501,9 @@ const newUser = {
 
 beforeAll(async () => {
   // Create the test user
+  // x-test-secret bypasses the rate limiter — required when running the full suite
   signUpResponse = await axios.post(signupUrl, newUser, {
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
     validateStatus: () => true,
   });
 
@@ -3504,6 +3516,11 @@ beforeAll(async () => {
   const raw = signUpResponse.headers['set-cookie'];
   const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
   sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
+
+  // Chatty writes to MongoDB asynchronously via a Bull queue.
+  // The duplicate-email check queries MongoDB directly — without this delay,
+  // the duplicate test can get 201 instead of 400.
+  await new Promise(resolve => setTimeout(resolve, 1000));
 });
 
 afterAll(async () => {
@@ -3640,6 +3657,12 @@ describe('4. Test cleanup endpoint — protection checks', () => {
 // This is a BUSINESS LOGIC error (not a Joi validation error):
 //   Joi passes (all fields are present and valid).
 //   The controller checks the database and finds a conflict.
+//
+// WHY the 1-second delay in beforeAll matters here:
+//   Chatty writes the new user to MongoDB via an async Bull queue.
+//   The duplicate check queries MongoDB directly.
+//   Without the delay, the duplicate test can get 201 instead of 400
+//   because the first user hasn't been committed yet.
 
 describe('5. Duplicate signup', () => {
 
@@ -11801,6 +11824,42 @@ jobs:
 ```
 
 > **WHY:** The `matrix.node-version` list `[18, 20]` makes GitHub Actions spin up two separate job runners in parallel — one per Node version. Both must pass before a pull request can merge. This catches regressions caused by Node API differences and documents which versions the project supports. `npm ci` is used instead of `npm install` because it installs the exact versions in `package-lock.json`, making builds reproducible.
+
+---
+
+### Parallel Jobs and Shared State
+
+The matrix strategy runs Node 18 and Node 20 **simultaneously**. Both jobs hit the same production API and the same test account (`TEST_USERNAME`). This creates a race condition whenever a test writes to the shared account and then reads the value back to verify it.
+
+**The problem:**
+
+```
+Job 1 (Node 18): writes work = "QA Automation Engineer"
+Job 2 (Node 20): writes work = "Senior QA Engineer"      ← overwrites Job 1
+Job 1 (Node 18): reads work → gets "Senior QA Engineer"  ← wrong value → FAIL
+```
+
+**The fix — unique per-run values using `Date.now()`:**
+
+```ts
+// ❌ Both jobs write the same string — they overwrite each other
+const testWork = 'QA Automation Engineer';
+
+// ✅ Each job writes a unique string — each job only matches its own value
+const run = Date.now();
+const testWork = `QA Automation Engineer ${run}`;
+```
+
+`Date.now()` returns milliseconds since epoch. Two jobs starting at different times (even milliseconds apart) get different values. Each job writes its own unique string and reads only that string back — no collision possible.
+
+**Apply this pattern to:**
+- Any field written in a `beforeAll` describe block on the shared test account
+- Common examples: `work`, `quote`, social links, notification settings
+
+**Does NOT apply to:**
+- Read-only tests (GET only) — nothing is written
+- Negative/validation tests (asserting 400/401) — no shared state changed
+- Tests that create their own users (Faker generates unique users per job)
 
 ---
 

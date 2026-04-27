@@ -10,10 +10,10 @@ Complete these first — they set up the foundation.
 
 | Task | What it practices |
 |------|------------------|
-| 1 | Create `.github/workflows/tests.yml` from lecture section 5 |
+| 1 | Create `.github/workflows/tests.yml` from lecture section 3 |
 | 2 | Add all 4 GitHub Secrets (BASE_URL, TEST_USERNAME, TEST_PASSWORD, DATABASE_URL) |
 | 3 | Push a commit — verify the Actions tab shows both Node 18 and Node 20 jobs passing |
-| 4 | Add JUnit reporter to `vitest.config.ts`, verify `test-results/junit.xml` is uploaded |
+| 4 | Trigger the workflow manually using the `workflow_dispatch` `chapter` input — run just one chapter |
 | 5 | Add the status badge to your project README.md |
 
 ---
@@ -22,37 +22,21 @@ Complete these first — they set up the foundation.
 
 These go beyond the lecture. Each requires reading, experimenting, and thinking independently.
 
-### Stretch 1 — Concurrency group (cancel outdated runs)
-
-Add this block to your workflow file, directly under the `on:` section:
-
-```yaml
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-```
-
-Push two commits in quick succession. Check the Actions tab — the first run should be cancelled automatically.
-
-**Why this matters:** Without a concurrency group, every push queues a new run. On a busy branch you can have 10 runs queued. The concurrency group cancels the old one the moment a new push arrives.
-
----
-
-### Stretch 2 — Path filter (only run when test files change)
+### Stretch 1 — Path filter (only run when test files change)
 
 Update the `on: push` section:
 
 ```yaml
 on:
   push:
-    branches: [main, develop]
+    branches: [master, develop]
     paths:
       - 'tests/**'
       - 'src/**'
       - 'vitest.config.ts'
       - 'package*.json'
   pull_request:
-    branches: [main]
+    branches: [master]
 ```
 
 Push a commit that changes only `README.md`. Verify the workflow does NOT trigger.
@@ -61,60 +45,41 @@ Push a commit that changes only `README.md`. Verify the workflow does NOT trigge
 
 ---
 
-### Stretch 3 — Manual trigger with lecture input
+### Stretch 2 — Unique per-run values to prevent parallel job collisions
 
-Add `workflow_dispatch` with an input so you can run a single lecture from the GitHub UI:
+The matrix runs Node 18 and Node 20 simultaneously — both jobs hit the same API and the same test account. If a test writes a hardcoded value to a shared field and reads it back, one job can overwrite the other's value before the read happens.
 
-```yaml
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
-    inputs:
-      lecture:
-        description: 'Lecture folder to run (e.g. lecture-02) — leave blank for all'
-        required: false
-        default: ''
+**Fix:** use `Date.now()` to make the written value unique per run:
+
+```ts
+// ❌ Both jobs write the same string
+const testWork = 'QA Automation Engineer';
+
+// ✅ Each job writes a unique string — only matches its own value on read-back
+const run = Date.now();
+const testWork = `QA Automation Engineer ${run}`;
 ```
 
-Then update the Run Vitest step:
-
-```yaml
-- name: Run Vitest
-  run: |
-    if [ -n "${{ github.event.inputs.lecture }}" ]; then
-      npm test tests/${{ github.event.inputs.lecture }}/lecture.test.ts
-    else
-      npm test
-    fi
-```
-
-Go to the Actions tab → select the workflow → click **Run workflow** → type `lecture-02` in the input. Verify only that lecture runs.
+Find a test in the course that writes to a shared account field (e.g. `work`, `quote`, social links). Apply the `Date.now()` pattern and verify both matrix jobs pass.
 
 ---
 
-### Stretch 4 — `fail-fast: false` in the matrix
+### Stretch 3 — `fail-fast: false` behaviour
 
-By default, if Node 18 fails the Node 20 job is cancelled immediately. Add:
+The workflow already has `fail-fast: false`. To understand what it does:
 
-```yaml
-strategy:
-  fail-fast: false
-  matrix:
-    node-version: [18, 20]
-```
+1. Temporarily change it to `fail-fast: true`
+2. Intentionally break one test
+3. Push and observe: Node 18 fails → Node 20 is cancelled immediately
+4. Revert to `fail-fast: false`, push again — both jobs run to completion
 
-**When would you want this?**
-- `fail-fast: true` (default) — saves CI minutes: stop everything the moment something fails
-- `fail-fast: false` — lets ALL matrix jobs finish: useful when you want the full picture (maybe Node 18 fails but Node 20 passes — that's important information)
-
-No push needed — just update the file and explain your reasoning in the PR description.
+**When would you want each setting?**
+- `fail-fast: true` — saves CI minutes: stop everything the moment something fails
+- `fail-fast: false` — lets ALL matrix jobs finish: useful when you want the full picture
 
 ---
 
-### Stretch 5 — Cache node_modules explicitly
+### Stretch 4 — Cache node_modules explicitly
 
 The `cache: 'npm'` on `setup-node` caches the npm download cache, not `node_modules` itself. Add an explicit `node_modules` cache step:
 
@@ -143,7 +108,7 @@ Answer these in a comment on your PR or in a `homework-notes.md` file.
 2. **What is the difference between `if: always()` and `if: failure()`? When would you use each?**
 3. **What would happen if you put `TEST_PASSWORD: MyPassword123` directly in the YAML file instead of `${{ secrets.TEST_PASSWORD }}`?**
 4. **The matrix creates two jobs. Can they share state (files, env vars) between them? Why or why not?**
-5. **When a PR is opened, both `push` and `pull_request` triggers could fire. Which one actually fires, and why?**
+5. **Why does the `concurrency` block use `${{ github.ref }}` instead of just `${{ github.workflow }}`?**
 
 ---
 
@@ -153,9 +118,8 @@ Your homework is complete when:
 
 - [ ] The Actions tab shows green ✅ for both Node 18 and Node 20
 - [ ] The status badge in README shows passing
-- [ ] `test-results/junit.xml` appears as a downloadable artifact
-- [ ] Pushing to a non-matching path does NOT trigger the workflow (Stretch 2)
-- [ ] The manual trigger input works (Stretch 3)
+- [ ] The manual `chapter` input triggers only that chapter's test file
+- [ ] You understand why `Date.now()` prevents parallel job collisions (Stretch 2)
 
 ---
 
@@ -167,7 +131,7 @@ git checkout lecture-11-cicd
 git checkout -b lecture-11-cicd-homework
 
 # Add any config files you created or modified
-git add .github/workflows/tests.yml vitest.config.ts
+git add .github/workflows/tests.yml
 git status
 
 # Commit
