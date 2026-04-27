@@ -38,7 +38,7 @@ it('reset-password with mismatched passwords returns 400', async () => {
     confirmPassword: 'DifferentPass@123456',
   }, { validateStatus: () => true });
   expect(res.status).toBe(400);
-  expect(res.data.message).toContain('do not match');
+  expect(res.data.message).toContain('Passwords should match');
 });
 
 it('SSO with valid JWT returns 200', async () => {

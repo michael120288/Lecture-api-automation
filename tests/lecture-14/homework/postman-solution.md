@@ -12,7 +12,7 @@ pm.test('Message', () => pm.expect(pm.response.json().message).to.include('Field
 
 // Mismatched passwords
 pm.test('Status 400', () => pm.response.to.have.status(400));
-pm.test('Message', () => pm.expect(pm.response.json().message).to.include('do not match'));
+pm.test('Message', () => pm.expect(pm.response.json().message).to.include('Passwords should match'));
 ```
 
 ## Task 4 — SSO

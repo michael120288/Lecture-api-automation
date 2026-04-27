@@ -55,7 +55,7 @@
 |--------|------|---------|
 | GET | `/user/profile` | `{ message, user: {...} }` |
 | GET | `/user/profile/:userId` | `{ message, user: {...} }` |
-| GET | `/user/profile/posts/:username/:userId/:uId` | `{ message, user: {...}, posts: [...], totalPosts }` |
+| GET | `/user/profile/posts/:username/:userId/:uId` | `{ message, user: {...}, posts: [...] }` |
 | GET | `/user/profile/user/suggestions` | `{ message, users: [...] }` |
 | GET | `/images/:userId` | `{ message, images: [...] }` |
 | POST | `/images/profile` | `{ message: "Image added successfully" }` |

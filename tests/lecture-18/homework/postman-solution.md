@@ -112,6 +112,7 @@ There is no `pm.test()` script to write for this task — the goal is to observe
 **What a healthy run looks like:**
 - All GET requests (e.g. `/currentuser`, `/currentuser/profile/posts`) return green (pass)
 - POST `/signin` and POST `/signup` may return 429 (red) if you run the collection repeatedly — this is expected
+> **If you hit a 429 (rate limited):** Add header `x-test-secret: chatty-test-cleanup-2026` to bypass the rate limit. Only works for usernames starting with `vitest`.
 
 **How to read a failure in the Runner:**
 1. A red row means at least one `pm.test()` in that request failed

@@ -25,6 +25,7 @@ let userBId = '';            // user B User _id
 let userBAuthId = '';        // user B Auth _id (for cleanup)
 let userBUsername = '';
 let userBAvatarColor = '';
+let userBProfilePicture = '';
 let conversationId = '';
 let messageId = '';
 
@@ -32,7 +33,7 @@ beforeAll(async () => {
   // Sign in as user A
   const loginRes = await axios.post(signinUrl, {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
-  }, { validateStatus: () => true });
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
   const cookiesA = Array.isArray(raw) ? raw : raw ? [raw] : [];
   cookieA = cookiesA.map(c => c.split(';')[0]).join('; ');
@@ -50,12 +51,13 @@ beforeAll(async () => {
     password: TEST_PASSWORD,
     avatarColor: TEST_AVATAR_COLOR,
     avatarImage: TEST_AVATAR_IMAGE,
-  }, { validateStatus: () => true });
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
 
-  userBId          = signupRes.data.user?._id          ?? '';
-  userBAuthId      = signupRes.data.user?.authId        ?? '';
-  userBUsername    = signupRes.data.user?.username      ?? '';
-  userBAvatarColor = signupRes.data.user?.avatarColor   ?? '';
+  userBId             = signupRes.data.user?._id            ?? '';
+  userBAuthId         = signupRes.data.user?.authId          ?? '';
+  userBUsername       = signupRes.data.user?.username        ?? '';
+  userBAvatarColor    = signupRes.data.user?.avatarColor     ?? '';
+  userBProfilePicture = signupRes.data.user?.profilePicture  ?? 'https://placeholder.com/avatar.png';
 });
 
 afterAll(async () => {
@@ -76,7 +78,7 @@ describe('1. Send first message', () => {
       receiverId: userBId,
       receiverUsername: userBUsername,
       receiverAvatarColor: userBAvatarColor,
-      receiverProfilePicture: '',
+      receiverProfilePicture: userBProfilePicture,
       body: 'Hello from Lecture 17!',
     }, { headers: { Cookie: cookieA }, validateStatus: () => true });
 
@@ -165,7 +167,7 @@ describe('4. Send second message using conversationId', () => {
       receiverId: userBId,
       receiverUsername: userBUsername,
       receiverAvatarColor: userBAvatarColor,
-      receiverProfilePicture: '',
+      receiverProfilePicture: userBProfilePicture,
       body: 'Second message!',
     }, { headers: { Cookie: cookieA }, validateStatus: () => true });
     expect(res.status).toBe(200);
@@ -180,7 +182,7 @@ describe('5. Mark as read', () => {
   it('PUT /chat/message/mark-as-read returns 200', async () => {
     const res = await axios.put(markReadUrl, {
       senderId: userBId,
-      receiverId: config.TEST_USERNAME,
+      receiverId: userAId,
     }, { headers: { Cookie: cookieA }, validateStatus: () => true });
     expect(res.status).toBe(200);
   });
@@ -276,7 +278,7 @@ describe('9. Negative tests', () => {
   it('POST /chat/message without cookie returns 401', async () => {
     const res = await axios.post(chatUrl, {
       receiverId: userBId, receiverUsername: userBUsername,
-      receiverAvatarColor: '#fff', receiverProfilePicture: '', body: 'fail',
+      receiverAvatarColor: '#fff', receiverProfilePicture: userBProfilePicture, body: 'fail',
     }, { validateStatus: () => true });
     expect(res.status).toBe(401);
   });

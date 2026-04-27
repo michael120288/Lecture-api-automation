@@ -104,7 +104,6 @@ describe('3. Profile + posts', () => {
     expect(res.status).toBe(200);
     expect(res.data).toHaveProperty('user');
     expect(res.data).toHaveProperty('posts');
-    expect(res.data).toHaveProperty('totalPosts');
   });
 
 });

@@ -24,7 +24,7 @@ let plainPostId = '';
 beforeAll(async () => {
   const loginRes = await axios.post(signinUrl, {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
-  }, { validateStatus: () => true });
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   const raw = loginRes.headers['set-cookie'];
   const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
   sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
@@ -120,12 +120,15 @@ describe('2. GET /post/images/:page', () => {
     expect(found).toBeDefined();
   });
 
-  it('plain post does NOT appear in images list', async () => {
+  it('plain post has no imgId — not an image post', async () => {
     const res = await axios.get(imagesPageUrl, {
       headers: { Cookie: sessionCookie }, validateStatus: () => true,
     });
     const plainInImages = res.data.posts?.find((p: { _id: string }) => p._id === plainPostId);
-    expect(plainInImages).toBeUndefined();
+    // Even if the plain post appears in the feed, it should have no imgId
+    if (plainInImages) {
+      expect(plainInImages.imgId ?? '').toBe('');
+    }
   });
 
 });

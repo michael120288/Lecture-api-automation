@@ -7,26 +7,33 @@ import { config } from '../../../src/config';
 import { TEST_AVATAR_IMAGE, TEST_AVATAR_COLOR, TEST_PASSWORD, TEST_CLEANUP_SECRET } from '../../../src/fixtures';
 
 let cookieA = '';
+let userAId = '';
 let userBId = '';
 let userBAuthId = '';
 let userBUsername = '';
 let userBAvatarColor = '';
+let userBProfilePicture = '';
 let conversationId = '';
 
 beforeAll(async () => {
-  const r = await axios.post(`${config.BASE_URL}/signin`, { username: config.TEST_USERNAME, password: config.TEST_PASSWORD }, { validateStatus: () => true });
+  const r = await axios.post(`${config.BASE_URL}/signin`, { username: config.TEST_USERNAME, password: config.TEST_PASSWORD }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   const raw = r.headers['set-cookie'];
   const cookiesA = Array.isArray(raw) ? raw : raw ? [raw] : [];
   cookieA = cookiesA.map(c => c.split(';')[0]).join('; ');
+
+  const cur = await axios.get(`${config.BASE_URL}/currentuser`, { headers: { Cookie: cookieA }, validateStatus: () => true });
+  userAId = cur.data.user?._id ?? '';
+
   const s = await axios.post(`${config.BASE_URL}/signup`, {
     username: `vitest${faker.string.alphanumeric(8).toLowerCase()}`,
     email: faker.internet.email().toLowerCase(),
     password: TEST_PASSWORD, avatarColor: TEST_AVATAR_COLOR, avatarImage: TEST_AVATAR_IMAGE,
-  }, { validateStatus: () => true });
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   userBId = s.data.user?._id ?? '';
   userBAuthId = s.data.user?.authId ?? '';
   userBUsername = s.data.user?.username ?? '';
   userBAvatarColor = s.data.user?.avatarColor ?? '';
+  userBProfilePicture = s.data.user?.profilePicture ?? 'https://placeholder.com/avatar.png';
 });
 
 afterAll(async () => {
@@ -40,7 +47,7 @@ afterAll(async () => {
 it('send first message returns 200', async () => {
   const res = await axios.post(`${config.BASE_URL}/chat/message`, {
     receiverId: userBId, receiverUsername: userBUsername,
-    receiverAvatarColor: userBAvatarColor, receiverProfilePicture: '',
+    receiverAvatarColor: userBAvatarColor, receiverProfilePicture: userBProfilePicture,
     body: 'Hello!',
   }, { headers: { Cookie: cookieA }, validateStatus: () => true });
   expect(res.status).toBe(200);
@@ -65,7 +72,7 @@ it('GET messages with user B returns array', async () => {
 
 it('mark as read returns 200', async () => {
   const res = await axios.put(`${config.BASE_URL}/chat/message/mark-as-read`, {
-    senderId: userBId, receiverId: config.TEST_USERNAME,
+    senderId: userBId, receiverId: userAId,
   }, { headers: { Cookie: cookieA }, validateStatus: () => true });
   expect(res.status).toBe(200);
 });
@@ -74,7 +81,7 @@ it('second message with conversationId — .then() style', () => {
   return axios.post(`${config.BASE_URL}/chat/message`, {
     conversationId,
     receiverId: userBId, receiverUsername: userBUsername,
-    receiverAvatarColor: userBAvatarColor, receiverProfilePicture: '',
+    receiverAvatarColor: userBAvatarColor, receiverProfilePicture: userBProfilePicture,
     body: 'Second message!',
   }, {
     headers: { Cookie: cookieA }, validateStatus: () => true,

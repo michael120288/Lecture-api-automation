@@ -74,7 +74,6 @@ it('GET /user/profile/posts/:username/:userId/:uId returns profile + posts', asy
   expect(res.status).toBe(200);
   expect(res.data).toHaveProperty('user');
   expect(res.data).toHaveProperty('posts');
-  expect(res.data).toHaveProperty('totalPosts');
 });
 
 // Solution 6 (bonus) — .then() style

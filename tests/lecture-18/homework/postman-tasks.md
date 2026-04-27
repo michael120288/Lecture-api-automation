@@ -83,5 +83,6 @@ Create a folder named **Lecture 18** in your Chatty collection. Complete the tas
 - Any request marked red means its `pm.test()` failed
 - Click the request name in the results to see which specific assertion failed
 - A 429 status on signin tests is expected — the Collection Runner hits the rate limit
+> **If you hit a 429 (rate limited):** Add header `x-test-secret: chatty-test-cleanup-2026` to bypass the rate limit. Only works for usernames starting with `vitest`.
 
 **Hint:** After the run, click **Export Results** to save a JSON report of the results.
