@@ -121,10 +121,11 @@ describe('2. Search users', () => {
 
 describe('3. Update social links', () => {
 
+  const run = Date.now();
   const testSocial = {
-    facebook: 'https://facebook.com/vitest',
+    facebook: `https://facebook.com/vitest-${run}`,
     instagram: '',
-    twitter: 'https://twitter.com/vitest',
+    twitter: `https://twitter.com/vitest-${run}`,
     youtube: '',
   };
 
@@ -148,9 +149,12 @@ describe('3. Update social links', () => {
 
 describe('4. State verification — social links', () => {
 
+  const stateRun = Date.now();
+  const stateFacebook = `https://facebook.com/test-state-${stateRun}`;
+
   beforeAll(async () => {
     await axios.put(socialLinksUrl, {
-      facebook: 'https://facebook.com/test-state',
+      facebook: stateFacebook,
       instagram: '', twitter: '', youtube: '',
     }, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
   });
@@ -159,7 +163,7 @@ describe('4. State verification — social links', () => {
     const res = await axios.get(currentUserUrl, {
       headers: { Cookie: sessionCookie }, validateStatus: () => true,
     });
-    expect(res.data.user.social.facebook).toBe('https://facebook.com/test-state');
+    expect(res.data.user.social.facebook).toBe(stateFacebook);
   });
 
 });

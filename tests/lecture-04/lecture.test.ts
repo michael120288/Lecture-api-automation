@@ -242,8 +242,9 @@ describe('3. Update basic info', () => {
 
 describe('4. State verification', () => {
 
-  const testWork  = 'QA Automation Engineer';
-  const testQuote = 'Quality is not an act, it is a habit';
+  const run = Date.now();
+  const testWork  = `QA Automation Engineer ${run}`;
+  const testQuote = `Quality is not an act, it is a habit ${run}`;
 
   beforeAll(async () => {
     // Make the update
