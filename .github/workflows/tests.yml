@@ -1,27 +1,39 @@
+# .github/workflows/tests.yml
+# Copy this file to your project's .github/workflows/ folder.
+# Add these GitHub Secrets: BASE_URL, TEST_USERNAME, TEST_PASSWORD, DATABASE_URL
+
 name: Chatty API Tests
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, develop]
   pull_request:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
+    inputs:
+      chapter:
+        required: false
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
-    name: Run Vitest (Node ${{ matrix.node-version }})
+    name: Run Vitest (${{ matrix.node-version }})
     runs-on: ubuntu-latest
-
     strategy:
+      fail-fast: false
       matrix:
         node-version: [18, 20]
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
@@ -29,8 +41,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Vitest
-        run: npm test
+      - name: Run tests
+        run: |
+          if [ -n "${{ github.event.inputs.chapter }}" ]; then
+            npm test tests/${{ github.event.inputs.chapter }}/lecture.test.ts
+          else
+            npm test
+          fi
         env:
           BASE_URL: ${{ secrets.BASE_URL }}
           TEST_USERNAME: ${{ secrets.TEST_USERNAME }}

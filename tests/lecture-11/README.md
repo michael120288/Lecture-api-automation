@@ -91,24 +91,34 @@ name: Chatty API Tests
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, develop]
   pull_request:
-    branches: [main]
-  workflow_dispatch:  # manual trigger
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      chapter:
+        required: false
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
-    name: Run Vitest
+    name: Run Vitest (${{ matrix.node-version }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         node-version: [18, 20]
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
@@ -116,8 +126,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Vitest
-        run: npm test
+      - name: Run tests
+        run: |
+          if [ -n "${{ github.event.inputs.chapter }}" ]; then
+            npm test tests/${{ github.event.inputs.chapter }}/lecture.test.ts
+          else
+            npm test
+          fi
         env:
           BASE_URL: ${{ secrets.BASE_URL }}
           TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
@@ -160,10 +175,10 @@ Anything inside `${{ }}` is evaluated at runtime by GitHub Actions.
 - `${{ matrix.node-version }}` → reads the current matrix value (18 or 20)
 - `${{ always() }}` → a function that returns `true` regardless of previous step status
 
-**`@v3` on actions** — version pinning:
-`uses: actions/checkout@v3` pins the action to version 3.
+**`@v4` on actions** — version pinning:
+`uses: actions/checkout@v4` pins the action to version 4.
 Without pinning you would write `uses: actions/checkout` which would use `@main` (unstable).
-Always pin to a major version (`@v3`, `@v4`) to avoid breaking changes.
+Always pin to a major version (`@v4`) to avoid breaking changes.
 
 **`cache: 'npm'`** — caches the npm dependency cache between runs.
 After the first run, subsequent pushes skip re-downloading all packages if `package-lock.json`
@@ -172,7 +187,11 @@ hasn't changed. This can save 30–60 seconds per run on large projects.
 **`on:`** — when to trigger:
 - `push` → runs on every commit to main/develop
 - `pull_request` → runs when a PR is opened against main
-- `workflow_dispatch` → adds a "Run workflow" button in the GitHub Actions tab — useful for manual re-runs
+- `workflow_dispatch` → adds a "Run workflow" button in the GitHub Actions tab. Our workflow adds a `chapter` input so you can run a single chapter (`lecture-02`) instead of the full suite — useful for debugging without waiting for all 18.
+
+**`concurrency`** → cancels any in-progress run for the same branch when a new push arrives. Prevents two runs from hitting the API simultaneously and triggering rate limits.
+
+**`fail-fast: false`** → if Node 18 fails, Node 20 still runs. You see results on both versions.
 
 **`jobs:`** → one or more jobs, each runs on a separate machine
 
@@ -182,7 +201,7 @@ hasn't changed. This can save 30–60 seconds per run on large projects.
 1. Checkout — download your repo code
 2. Setup Node.js — install the right version
 3. `npm ci` — clean install (faster than `npm install` in CI)
-4. `npm test` — run Vitest
+4. Run tests — `npm test` for all, or one lecture if `lecture` input was set
 5. Upload artifacts — save the results
 
 **`env:`** — pass secrets as environment variables to the test runner.
@@ -218,12 +237,7 @@ GitHub runs them simultaneously — total time is the same as one job.
 
 `if: always()` — upload even when tests fail. This lets you inspect the results to debug.
 
-To generate JUnit XML results (downloadable from GitHub):
-```bash
-# In vitest.config.ts, add:
-reporters: process.env.CI ? ['junit', 'verbose'] : ['verbose'],
-outputFile: { junit: 'test-results/junit.xml' },
-```
+The `path: test-results/` folder is where artifacts are collected. Our `vitest.config.ts` uses `reporters: ['verbose']` — verbose output appears in the Actions log directly, so downloading artifacts is mainly useful when you need to share results outside GitHub.
 
 ---
 
@@ -290,7 +304,7 @@ git checkout -b lecture-12-docker
 | 1 | Create `.github/workflows/tests.yml` with the workflow from section 5 |
 | 2 | Add all 4 GitHub Secrets to your repository |
 | 3 | Push a commit and verify the Actions tab shows the workflow running |
-| 4 | Add `reporters` to `vitest.config.ts` for JUnit output |
+| 4 | Trigger the workflow manually using the `workflow_dispatch` lecture input |
 | 5 | Add the status badge to your project README |
 
 No automated Vitest tests for this lecture — the homework is infrastructure setup.
