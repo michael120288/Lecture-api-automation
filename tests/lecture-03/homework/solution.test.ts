@@ -23,6 +23,9 @@ beforeAll(async () => {
   }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
 
   authId = response.data.user?.authId ?? '';
+
+  // Wait for Bull queue to flush the user to MongoDB — duplicate email check reads from DB
+  await new Promise(resolve => setTimeout(resolve, 1000));
 });
 
 afterAll(async () => {

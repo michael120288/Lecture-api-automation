@@ -57,6 +57,9 @@ beforeAll(async () => {
   const raw = signUpResponse.headers['set-cookie'];
   const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
   sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
+
+  // Wait for Bull queue to flush user to MongoDB — duplicate email check reads from DB
+  await new Promise(resolve => setTimeout(resolve, 1000));
 });
 
 afterAll(async () => {
