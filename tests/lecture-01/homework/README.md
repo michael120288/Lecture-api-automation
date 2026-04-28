@@ -50,7 +50,7 @@ Homework gets its own branch, separate from the lecture branch.
 
 ```bash
 # Create a homework branch from the lecture branch
-git checkout main
+git checkout master
 git checkout -b lecture-01-setup-homework
 
 # Make sure tests pass first
@@ -64,7 +64,7 @@ git push -u origin lecture-01-setup-homework
 
 ### Open a Pull Request
 
-- Base branch: `main` (or `main` after it's merged)
+- Base branch: `master` (or `main` after it's merged)
 - Compare: `lecture-01-setup-homework`
 - Title: `lecture-01: homework complete — 4 tests passing`
 

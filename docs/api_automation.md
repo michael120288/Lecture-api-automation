@@ -11920,7 +11920,94 @@ Add this line near the top of `README.md`, replacing `YOUR_USERNAME` and `YOUR_R
 
 ---
 
-> **Note:** No test files for this chapter — the deliverable is a working CI pipeline.
+---
+
+**Exercise 6** — Create a nightly scheduled workflow
+
+Create `.github/workflows/scheduled.yml` — a second workflow file that runs all tests automatically every night at midnight UTC.
+
+**Why nightly runs matter:**  
+The push-triggered workflow only runs when YOU push code. It does not catch regressions caused by server-side changes — API deployments, Redis restarts, certificate renewals, or database migrations. A nightly run catches these overnight so you know by morning.
+
+**The `schedule:` trigger and cron syntax:**
+
+```yaml
+on:
+  schedule:
+    - cron: '0 0 * * *'
+```
+
+Cron is a 5-field time expression:
+```
+minute  hour  day-of-month  month  day-of-week
+  0       0        *           *        *
+```
+
+| Expression | Meaning |
+|------------|---------|
+| `0 0 * * *` | Every day at midnight UTC |
+| `0 6 * * 1` | Every Monday at 6am UTC |
+| `0 */6 * * *` | Every 6 hours |
+
+**Complete `scheduled.yml`:**
+
+```yaml
+name: Nightly API Tests
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nightly:
+    name: Nightly Run (${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run all tests
+        run: npm test
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-results-node-${{ matrix.node-version }}
+          path: test-results/
+          retention-days: 14
+```
+
+> **Why `retention-days: 14` instead of 7?** The nightly workflow runs once per day. Keeping 14 days lets you compare two full weeks of runs and spot trends — for example, "tests started flaking 5 days ago" points to a server change on that date.
+
+> **Testing a schedule locally:** The `schedule:` trigger only fires on its cron schedule — you cannot test it by pushing a commit. Add `workflow_dispatch:` to the `on:` section temporarily, trigger manually from the Actions tab, then remove it.
+
+---
+
+> **Note:** No Vitest test files for this chapter — the deliverables are working CI pipeline YAML files.
 
 ---
 
@@ -19411,6 +19498,52 @@ Expected output: all pm.test() assertions show as green ticks. Exit code 0 means
 ```
 
 **Exercise 5** — Push and verify in Actions tab.
+
+#### Scheduled Workflow Solution
+
+**Exercise 6** — Create `.github/workflows/scheduled.yml`:
+
+```yaml
+name: Nightly API Tests
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nightly:
+    name: Nightly Run (${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-results-node-${{ matrix.node-version }}
+          path: test-results/
+          retention-days: 14
+```
+
+A full starter template with TODOs is in `tests/lecture-11/homework/starter.yml`.
 
 #### Vitest Solutions
 

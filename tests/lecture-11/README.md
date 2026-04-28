@@ -21,7 +21,8 @@
 - Matrix strategy — testing on multiple Node versions (18 and 20)
 - Uploading test results as artifacts (7-day retention)
 - Adding a status badge to your README
-- Newman — running Postman collections from the CLI in CI
+- `schedule:` trigger — cron syntax for nightly automated runs
+- Why nightly runs catch regressions that push-triggered runs miss
 
 > **Reference Topics**
 > - GitHub Actions deep-dive reference → [`docs/topics/github-actions.md`](../../docs/topics/github-actions.md)
@@ -73,7 +74,7 @@ on:
 # Array item (dash + space)
 steps:
   - name: Checkout code
-    uses: actions/checkout@v3
+    uses: actions/checkout@v4
 ```
 
 Rules:
@@ -186,8 +187,8 @@ After the first run, subsequent pushes skip re-downloading all packages if `pack
 hasn't changed. This can save 30–60 seconds per run on large projects.
 
 **`on:`** — when to trigger:
-- `push` → runs on every commit to main/develop
-- `pull_request` → runs when a PR is opened against main
+- `push` → runs on every commit to master/develop
+- `pull_request` → runs when a PR is opened against master
 - `workflow_dispatch` → adds a "Run workflow" button in the GitHub Actions tab. Our workflow adds a `chapter` input so you can run a single chapter (`lecture-02`) instead of the full suite — useful for debugging without waiting for all 18.
 
 **`concurrency`** → cancels any in-progress run for the same branch when a new push arrives. Prevents two runs from hitting the API simultaneously and triggering rate limits.
@@ -202,7 +203,7 @@ hasn't changed. This can save 30–60 seconds per run on large projects.
 1. Checkout — download your repo code
 2. Setup Node.js — install the right version
 3. `npm ci` — clean install (faster than `npm install` in CI)
-4. Run tests — `npm test` for all, or one lecture if `lecture` input was set
+4. Run tests — `npm test` for all, or one chapter if `chapter` input was set
 5. Upload artifacts — save the results
 
 **`env:`** — pass secrets as environment variables to the test runner.
@@ -324,8 +325,8 @@ git push -u origin lecture-11-cicd
 ### After merging — start the next lecture
 
 ```bash
-git checkout main
-git pull origin main               # get the merged changes
+git checkout master
+git pull origin master               # get the merged changes
 git checkout -b lecture-12-docker
 ```
 
@@ -334,10 +335,12 @@ git checkout -b lecture-12-docker
 
 | Task | What it practices |
 |------|------------------|
-| 1 | Create `.github/workflows/tests.yml` with the workflow from section 5 |
+| 1 | Create `.github/workflows/tests.yml` with the workflow from section 3 |
 | 2 | Add all 4 GitHub Secrets to your repository |
 | 3 | Push a commit and verify the Actions tab shows the workflow running |
-| 4 | Trigger the workflow manually using the `workflow_dispatch` lecture input |
+| 4 | Trigger the workflow manually using the `workflow_dispatch` `chapter` input |
 | 5 | Add the status badge to your project README |
 
-No automated Vitest tests for this lecture — the homework is infrastructure setup.
+**Main exercise:** Create `.github/workflows/scheduled.yml` — a nightly test run using the `schedule:` trigger and cron syntax. Open `homework/starter.yml`, fill in the 5 TODOs, and copy it to `.github/workflows/scheduled.yml`.
+
+No automated Vitest tests for this lecture — the homework is YAML and repository configuration.

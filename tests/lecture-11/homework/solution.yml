@@ -1,0 +1,63 @@
+# Solution — Lecture 11: Scheduled Workflow
+# Copy to .github/workflows/scheduled.yml
+
+name: Nightly API Tests
+
+# Solution 1 — schedule trigger with cron expression
+# "0 0 * * *" = minute 0, hour 0 (midnight), every day of month, every month, every day of week
+# GitHub Actions cron runs in UTC. Midnight UTC = late evening in US, early morning in Europe.
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+# Solution 2 — concurrency block
+# Same pattern as tests.yml. Cancels any queued nightly run when a new one starts.
+# Useful if a previous nightly was still running (e.g. slow network) when the next one triggers.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nightly:
+    name: Nightly Run (${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # Solution 3 — matrix strategy
+      # Same as tests.yml — both Node versions must pass nightly too.
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run all tests
+        run: npm test
+        env:
+          # Solution 4 — secrets as env vars
+          # Same 4 secrets as tests.yml — the nightly runner needs the same credentials.
+          BASE_URL: ${{ secrets.BASE_URL }}
+          TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          # Solution 5 — artifact name and retention
+          # 14 days lets you compare two full weeks of nightly runs.
+          # The matrix suffix prevents the two jobs from overwriting each other's artifacts.
+          name: nightly-results-node-${{ matrix.node-version }}
+          path: test-results/
+          retention-days: 14

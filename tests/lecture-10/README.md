@@ -288,8 +288,8 @@ git push -u origin lecture-10-mongodb
 ### After merging — start the next lecture
 
 ```bash
-git checkout main
-git pull origin main               # get the merged changes
+git checkout master
+git pull origin master               # get the merged changes
 git checkout -b lecture-11-cicd
 ```
 

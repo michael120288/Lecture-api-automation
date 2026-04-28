@@ -327,8 +327,8 @@ git push -u origin lecture-13-reporting
 ### After merging — start the next lecture
 
 ```bash
-git checkout main
-git pull origin main
+git checkout master
+git pull origin master
 git checkout -b lecture-14-password-reset
 ```
 

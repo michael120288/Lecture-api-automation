@@ -3,6 +3,7 @@
 
 import axios from 'axios';
 import { config } from '../../../src/config';
+import { TEST_CLEANUP_SECRET } from '../../../src/fixtures';
 
 const forgotPwUrl = `${config.BASE_URL}/forgot-password`;
 const ssoUrl      = `${config.BASE_URL}/sso`;
@@ -13,7 +14,7 @@ let jwt = '';
 beforeAll(async () => {
   const res = await axios.post(signinUrl, {
     username: config.TEST_USERNAME, password: config.TEST_PASSWORD,
-  }, { validateStatus: () => true });
+  }, { headers: { 'x-test-secret': TEST_CLEANUP_SECRET }, validateStatus: () => true });
   jwt = res.data.token ?? '';
 });
 

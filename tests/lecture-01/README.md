@@ -1061,7 +1061,7 @@ git commit -m "lecture-01: project setup and first test"
 
 ```bash
 git remote add origin https://github.com/YOUR_USERNAME/chatty-api-tests.git
-git push -u origin main
+git push -u origin master
 ```
 
 Visit your repository on GitHub — you should see all your files.

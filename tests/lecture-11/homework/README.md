@@ -1,6 +1,6 @@
 # Homework — Lecture 11: CI/CD — GitHub Actions Pipeline
 
-> **Goal:** Set up and extend a GitHub Actions workflow that runs Vitest on every push.
+> **Goal:** Set up and extend a GitHub Actions workflow that runs Vitest on every push — and add a second workflow that runs every night automatically.
 
 ---
 
@@ -15,6 +15,51 @@ Complete these first — they set up the foundation.
 | 3 | Push a commit — verify the Actions tab shows both Node 18 and Node 20 jobs passing |
 | 4 | Trigger the workflow manually using the `workflow_dispatch` `chapter` input — run just one chapter |
 | 5 | Add the status badge to your project README.md |
+
+---
+
+## Main Exercise — Scheduled Nightly Workflow
+
+Create a second workflow file: `.github/workflows/scheduled.yml`.
+
+This workflow runs **all tests automatically every night at midnight UTC** — without any push or PR trigger. It detects regressions caused by server-side changes (API updates, Redis restarts, database migrations) that would otherwise be invisible until someone manually runs the tests.
+
+### Instructions
+
+1. Open `tests/lecture-11/homework/starter.yml`
+2. Fill in all 5 TODOs
+3. Copy the completed file to `.github/workflows/scheduled.yml` in your repository root
+4. Push and verify it appears in the Actions tab under **Nightly API Tests**
+
+> The scheduled workflow does NOT run immediately on push — it only runs on its cron schedule. To test it manually, add `workflow_dispatch:` to the `on:` section, trigger it from the Actions tab, then remove `workflow_dispatch:` when you are done.
+
+### Cron Syntax Reference
+
+```
+┌── minute (0–59)
+│  ┌── hour (0–23, UTC)
+│  │  ┌── day of month (1–31)
+│  │  │  ┌── month (1–12)
+│  │  │  │  ┌── day of week (0–6, Sunday=0)
+*  *  *  *  *
+```
+
+| Expression | Meaning |
+|------------|---------|
+| `0 0 * * *` | Every day at midnight UTC |
+| `0 6 * * 1` | Every Monday at 6am UTC |
+| `0 */6 * * *` | Every 6 hours |
+| `30 2 * * 0` | Every Sunday at 2:30am UTC |
+
+### Why `retention-days: 14` instead of 7?
+
+The main workflow uses 7 days — enough to investigate a recent failure.  
+The nightly workflow uses 14 days — so you can compare two full weeks of runs side by side and spot trends (e.g. "tests started flaking 5 days ago").
+
+### Solution
+
+Once done — or stuck — open `tests/lecture-11/homework/solution.yml`.  
+Read the explanation comments before comparing to your code.
 
 ---
 
@@ -116,10 +161,12 @@ Answer these in a comment on your PR or in a `homework-notes.md` file.
 
 Your homework is complete when:
 
-- [ ] The Actions tab shows green ✅ for both Node 18 and Node 20
+- [ ] The Actions tab shows green ✅ for both Node 18 and Node 20 (tests.yml)
 - [ ] The status badge in README shows passing
 - [ ] The manual `chapter` input triggers only that chapter's test file
+- [ ] `.github/workflows/scheduled.yml` exists and appears in the Actions tab
 - [ ] You understand why `Date.now()` prevents parallel job collisions (Stretch 2)
+- [ ] You can explain what `0 0 * * *` means without looking it up
 
 ---
 

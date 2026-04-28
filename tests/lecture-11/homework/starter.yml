@@ -1,0 +1,83 @@
+# Homework — Lecture 11: Scheduled Workflow
+#
+# Copy this file to .github/workflows/scheduled.yml in your repository.
+# Fill in all 5 TODOs to create a nightly test run.
+#
+# When complete, GitHub will run ALL your tests automatically every night
+# and flag any regressions caused by server-side changes.
+
+name: Nightly API Tests
+
+# TODO 1 ─────────────────────────────────────────────────────────────────────
+# Add a `schedule:` trigger that runs at midnight UTC every day.
+#
+# The `schedule:` trigger uses cron syntax — 5 space-separated fields:
+#   ┌── minute (0–59)
+#   │  ┌── hour (0–23, UTC)
+#   │  │  ┌── day of month (1–31)
+#   │  │  │  ┌── month (1–12)
+#   │  │  │  │  ┌── day of week (0–6, Sunday=0)
+#   *  *  *  *  *
+#
+# Midnight UTC every day = "0 0 * * *"
+# Every Sunday at 3am UTC = "0 3 * * 0"
+#
+# Pattern:
+#   on:
+#     schedule:
+#       - cron: '<expression>'
+#
+on:
+  # write your code here
+
+
+# TODO 2 ─────────────────────────────────────────────────────────────────────
+# Add a `concurrency:` block to cancel any in-progress nightly run
+# when a new one starts. Use the same pattern as tests.yml.
+#
+# write your code here
+
+
+jobs:
+  nightly:
+    name: Nightly Run (${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # TODO 3 ───────────────────────────────────────────────────────────────
+        # Add node-version: [18, 20] to the matrix.
+        # write your code here
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run all tests
+        run: npm test
+        env:
+          # TODO 4 ─────────────────────────────────────────────────────────────
+          # Add the 4 required secrets as environment variables:
+          #   BASE_URL, TEST_USERNAME, TEST_PASSWORD, DATABASE_URL
+          # Use ${{ secrets.NAME }} syntax — same as in tests.yml.
+          # write your code here
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          # TODO 5 ─────────────────────────────────────────────────────────────
+          # Set the artifact name to "nightly-results-node-{node-version}"
+          # Set retention-days to 14 (nightly results need longer than 7 days
+          # so you can compare two weeks of runs side by side).
+          # write your code here
+          path: test-results/
