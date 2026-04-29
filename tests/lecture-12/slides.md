@@ -33,6 +33,7 @@ One image. One behaviour. Everywhere.
 
 ```dockerfile
 FROM node:20-alpine
+RUN apk add --no-cache ca-certificates
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -40,9 +41,9 @@ COPY . .
 CMD ["npm", "test"]
 ```
 
-Six lines. Four key decisions.
+Seven lines. Five key decisions.
 
-<!-- note: walk through each line. FROM picks the runtime. WORKDIR sets context. The COPY order is the performance optimization. RUN installs deps. CMD is the default command. -->
+<!-- note: walk through each line. FROM picks the runtime. The ca-certificates line is not optional — without it HTTPS to the production API fails. WORKDIR sets context. The COPY order is the performance optimization. RUN installs deps. CMD is the default command. -->
 
 ---
 
@@ -104,14 +105,36 @@ COPY . .
 
 ---
 
+## Alpine and CA Certificates
+
+`node:20-alpine` strips everything non-essential — including the CA bundle.
+
+```dockerfile
+# Without this — HTTPS to api.codeandtest.com fails
+RUN apk add --no-cache ca-certificates
+```
+
+- CA certificates are needed to verify TLS certificates
+- Without them: connection refused or TLS verification error
+- `--no-cache` keeps the image smaller (no apk package cache)
+
+> Add this line immediately after `FROM node:20-alpine`
+
+<!-- note: this is a real failure you will hit. The tests work locally because your Mac has CA certs. In Alpine they must be explicitly installed. The error message when this is missing is "UNABLE_TO_VERIFY_LEAF_SIGNATURE" or similar TLS error. -->
+
+---
+
 ## .dockerignore
 
 ```
 node_modules
+dist
 .env
 .env.*
-dist
+!.env.example
 test-results
+coverage
+html
 .git
 ```
 
@@ -135,6 +158,31 @@ docker run --env-file .env chatty-tests
 > `.env` stays on your machine — never enters the image
 
 <!-- note: --env-file reads your local .env and passes each variable to the container as an environment variable. The file itself is not copied. Anyone with the image cannot extract your secrets. -->
+
+---
+
+## The `--env-file` Whitespace Trap
+
+`.env` with a comment or trailing space:
+```
+TEST_USERNAME=vitestmike  # my test account
+```
+
+| | Value received |
+|---|---|
+| `dotenv` (local) | `vitestmike` ✅ |
+| Docker `--env-file` | `vitestmike  # my test account` ❌ |
+
+Signin sends the wrong username → 401 on every test.
+
+**Fix — `.trim()` in `vitest.config.ts`:**
+```ts
+TEST_USERNAME: (process.env.TEST_USERNAME ?? '').trim(),
+```
+
+> `dotenv` strips comments. Docker does not. Always `.trim()`.
+
+<!-- note: this is the single most confusing Docker failure in this course. Tests pass locally, fail in Docker with 401 everywhere. The error says "Token is not valid" — nothing points to the env var. The fix is one word: .trim(). -->
 
 ---
 
@@ -163,8 +211,10 @@ services:
 - `.env` in image — secrets exposed
 - `CMD npm test` (string form) — shell injection risk
 - Missing `--env-file .env` — tests fail silently
+- Missing `ca-certificates` — HTTPS fails on Alpine
+- `.env` values with comments/spaces — 401 on every test (use `.trim()`)
 
-<!-- note: the CMD string form vs array form distinction: CMD npm test invokes a shell, which can cause signal handling issues. CMD ["npm", "test"] executes directly. Always use the array form. -->
+<!-- note: the last two are the hardest to diagnose because the error messages don't point to the root cause. TLS errors and 401s look like API problems, not Docker configuration problems. -->
 
 ---
 
@@ -174,8 +224,10 @@ services:
 - Changing test code does not invalidate the npm ci layer
 - `.env` passed at runtime with `--env-file` — never baked in
 - `.dockerignore` must exclude `node_modules` and `.env`
+- `apk add --no-cache ca-certificates` — Alpine needs this for HTTPS
+- `.trim()` all env var values — Docker `--env-file` keeps whitespace/comments
 
-<!-- note: the layer caching pattern is the most transferable lesson from this lecture — it applies to any Dockerfile, not just test runners. -->
+<!-- note: the layer caching pattern is the most transferable lesson from this lecture. The ca-certificates and .trim() lessons are the most practically impactful — they explain failures that otherwise look completely unrelated to Docker. -->
 
 ---
 
@@ -185,10 +237,12 @@ Infrastructure setup — no Vitest test files:
 
 | Task | What it builds |
 |------|----------------|
-| 1 | Create `Dockerfile` |
+| 1 | Create `Dockerfile` with `ca-certificates` and env validation |
 | 2 | Create `.dockerignore` |
 | 3 | `docker build -t chatty-tests .` — clean build |
-| 4 | `docker run --env-file .env chatty-tests` — tests pass |
+| 4 | `docker run --env-file .env chatty-tests` — 511/511 tests pass |
 | 5 | Create `docker-compose.yml` with volumes |
+| 6 | Add `.trim()` to env vars in `vitest.config.ts` |
+| 7 | Add `hookTimeout: 30000` to `vitest.config.ts` |
 
 After completing: your tests run identically on any machine with Docker installed.

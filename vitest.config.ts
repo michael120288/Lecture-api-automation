@@ -15,10 +15,10 @@ export default defineConfig({
     // Sequential: avoids hitting auth rate limits when running all lectures
     fileParallelism: false,
     env: {
-      BASE_URL: process.env.BASE_URL ?? '',
-      TEST_USERNAME: process.env.TEST_USERNAME ?? '',
-      TEST_PASSWORD: process.env.TEST_PASSWORD ?? '',
-      DATABASE_URL: process.env.DATABASE_URL ?? '',
+      BASE_URL: (process.env.BASE_URL ?? '').trim(),
+      TEST_USERNAME: (process.env.TEST_USERNAME ?? '').trim(),
+      TEST_PASSWORD: (process.env.TEST_PASSWORD ?? '').trim(),
+      DATABASE_URL: (process.env.DATABASE_URL ?? '').trim(),
     },
   },
 });
