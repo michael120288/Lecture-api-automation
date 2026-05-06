@@ -201,6 +201,74 @@ it('get user', async () => { /* always set */ });
 
 ---
 
+## VS Code Debugger — launch.json
+
+Create `.vscode/launch.json` in the project root:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Vitest",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vitest", "run", "--reporter=verbose"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}
+```
+
+Set a breakpoint inside any `it()` block → press **F5** → step through line by line.
+The Variables panel shows `res.data`, `sessionCookie`, and all local values.
+
+<!-- note: this is the most powerful debugging tool in the course. Once you have launch.json, you never need to litter the code with console.logs — just set a breakpoint and inspect. -->
+
+---
+
+## --inspect-brk — Node.js Inspector
+
+```bash
+node --inspect-brk node_modules/.bin/vitest run tests/lecture-18/lecture.test.ts
+```
+
+Then open **`chrome://inspect`** in Chrome → click **Open dedicated DevTools for Node**.
+
+Use the **Sources** panel to step through code line by line.
+
+> `--inspect-brk` pauses execution before the first line — lets you set breakpoints before anything runs
+
+<!-- note: --inspect-brk is the CLI alternative to launch.json. Useful when you don't want to configure VS Code, or when debugging a specific file in isolation. -->
+
+---
+
+## Switching BASE_URL via .env Override
+
+Run tests against a different environment without editing `.env`:
+
+```bash
+# Mac / Linux — inline override
+BASE_URL=http://localhost:5000/api/v1 npm test
+
+# Windows CMD
+set BASE_URL=http://localhost:5000/api/v1 && npm test
+
+# Windows PowerShell
+$env:BASE_URL="http://localhost:5000/api/v1"; npm test
+```
+
+This overrides the value in `.env` for that one shell session only.
+The `.env` file is not modified.
+
+> Use this to switch between local and production without touching any file
+
+<!-- note: inline env override is the clean way to target a local server for a single run. It's safe because the override is session-scoped — no risk of accidentally committing the wrong BASE_URL. -->
+
+---
+
 ## Homework
 
 | TODO | Goal |

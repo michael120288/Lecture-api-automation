@@ -87,10 +87,22 @@ outputFile: {
 
 ---
 
+## HTML Report Setup
+
+```bash
+npm install --save-dev @vitest/ui@1 --legacy-peer-deps
+```
+
+> **Windows:** `open html/index.html` does not work — use `start html/index.html`
+
+<!-- note: @vitest/ui is required for the html reporter. Without it, Vitest throws a missing package error. On Windows, the open command is not available — use start instead. -->
+
+---
+
 ## Coverage — v8 Setup
 
 ```bash
-npm install --save-dev @vitest/coverage-v8
+npm install --save-dev @vitest/coverage-v8@1 --legacy-peer-deps
 npm run test:coverage
 ```
 

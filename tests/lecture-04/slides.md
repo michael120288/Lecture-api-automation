@@ -93,6 +93,25 @@ afterAll(async () => {
 
 ---
 
+## Session Token — `GET /session-token`
+
+```ts
+const res = await axios.get(
+  `${config.BASE_URL}/session-token`,
+  { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+);
+// { "token": "eyJhbGci..." }
+const token = res.data.token;
+```
+
+- Returns the JWT from the current session cookie
+- Useful to confirm a session is alive without loading the full user object
+- If no valid session → `401`
+
+<!-- note: The simplest endpoint in the API. Use it in tests to verify a session is active or to extract the JWT for use in Bearer-token scenarios. -->
+
+---
+
 ## currentUser Response Shape
 
 ```json
@@ -147,11 +166,37 @@ expect(res.status).toBe(401);
 
 ---
 
+## `PUT /user/profile/settings`
+
+```ts
+const res = await axios.put(
+  `${config.BASE_URL}/user/profile/settings`,
+  {
+    messages: true,
+    reactions: false,
+    comments: true,
+    follows: false,
+  },
+  { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+);
+// { message: "Notification settings updated successfully", settings: { ... } }
+expect(res.status).toBe(200);
+expect(res.data.settings.reactions).toBe(false);
+```
+
+- All fields optional — send only what you want to change
+- Response includes the saved `settings` object — no follow-up GET needed
+
+<!-- note: Unlike basic-info, the settings PUT returns the saved values directly. Students can assert on res.data.settings without an extra GET call. -->
+
+---
+
 ## Endpoint Reference
 
 | Method | Path | Returns |
 |--------|------|---------|
 | GET | `/currentuser` | `{ token, isUser, user }` |
+| GET | `/session-token` | `{ token }` |
 | PUT | `/user/profile/basic-info` | `{ message }` |
 | PUT | `/user/profile/settings` | `{ message, settings }` |
 | POST | `/signout` | `{ message, user: {}, token: "" }` |

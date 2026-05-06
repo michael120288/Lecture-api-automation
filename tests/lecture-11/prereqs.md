@@ -19,11 +19,11 @@
 ## Videos
 
 - [ ] **GitHub Actions in 10 minutes** — Fireship
-  Watch: Search YouTube → *"GitHub Actions in 10 minutes Fireship"*
+  Watch: https://www.youtube.com/watch?v=eB0nUzAI7M8
   *~10 min · See a real workflow file, triggers, jobs, steps*
 
 - [ ] **CI/CD explained** — freeCodeCamp
-  Watch: Search YouTube → *"CI CD pipeline explained freeCodeCamp"*
+  Watch: https://www.youtube.com/results?search_query=CI+CD+pipeline+freeCodeCamp
   *~15 min · What happens at each stage from commit to deploy*
 
 ---

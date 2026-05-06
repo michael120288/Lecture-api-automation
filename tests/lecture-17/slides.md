@@ -170,7 +170,7 @@ await axios.delete(
 
 | TODO | Goal |
 |------|------|
-| 1 | Send first message → 201, save `conversationId` |
+| 1 | Send first message → 200, save `conversationId` |
 | 2 | GET conversation-list → list array |
 | 3 | GET messages with User B → messages array |
 | 4 | Mark as read → 200 |

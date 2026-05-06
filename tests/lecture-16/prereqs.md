@@ -20,7 +20,7 @@
 ## Videos
 
 - [ ] **REST API best practices — resource design**
-  Watch: Search YouTube → *"REST API design best practices 2024"*
+  Watch: https://www.youtube.com/watch?v=7nm1pYuKAhY
   *~15 min · Resource naming, nesting, versioning — how professional APIs are structured*
 
 ---

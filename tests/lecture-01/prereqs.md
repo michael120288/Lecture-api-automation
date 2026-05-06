@@ -6,6 +6,19 @@ Complete these before opening `README.md` or any test file.
 
 ---
 
+## Before Anything Else — Register Your Account
+
+- [ ] **Register on codeandtest.com**
+  Sign up at: [codeandtest.com](https://codeandtest.com)
+
+  > **Your username MUST start with `vitest`** — for example: `vitestmike`, `vitestjane`, `vitest_yourname`.
+  >
+  > This is not optional. The cleanup endpoint used in later lectures only works for accounts whose username begins with `vitest`. If you register with a different username you will not be able to clean up test data and will need to create a new account.
+
+  *~2 min · Do this first — you need a real account to run the tests in this lecture.*
+
+---
+
 ## Essential (do these first)
 
 - [ ] **What is a REST API?**
@@ -30,11 +43,11 @@ Complete these before opening `README.md` or any test file.
 ## Videos (pick one)
 
 - [ ] **HTTP Crash Course** — Traversy Media
-  Watch: Search YouTube → *"HTTP Crash Course Traversy Media"*
+  Watch: https://www.youtube.com/watch?v=iYM2zFP3Zn0
   *~37 min · Covers everything: methods, status codes, headers, body, REST*
 
 - [ ] **REST API explained in 5 minutes** — Fireship
-  Watch: Search YouTube → *"REST API Fireship"*
+  Watch: https://www.youtube.com/watch?v=-MTSQjw5DrM
   *~6 min · Fast-paced visual overview — perfect if you already know some HTTP*
 
 ---

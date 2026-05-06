@@ -68,6 +68,103 @@ vitest.config.ts    # globals, timeout
 
 ---
 
+## Project Setup — Steps 1–3
+
+```bash
+mkdir chatty-api-tests
+cd chatty-api-tests
+npm init -y
+npm install axios dotenv
+npm install --save-dev vitest typescript @types/node @faker-js/faker
+```
+
+> `dependencies`: axios, dotenv — needed at runtime
+> `devDependencies`: vitest, typescript, @types/node, @faker-js/faker — dev only
+
+<!-- note: Two separate install commands are intentional — runtime vs dev dependencies. Walk students through the distinction. -->
+
+---
+
+## Project Setup — `tsconfig.json` (Step 6)
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["vitest/globals"]
+  },
+  "include": ["src/**/*", "tests/**/*"]
+}
+```
+
+> `"types": ["vitest/globals"]` — gives IDE autocomplete for `describe`, `it`, `expect`
+
+<!-- note: Without vitest/globals the IDE shows "Cannot find name 'describe'". The tests still run — this is purely for type checking. -->
+
+---
+
+## Project Setup — `vitest.config.ts` (Step 7)
+
+```ts
+import { defineConfig } from 'vitest/config';
+import { config as dotenvConfig } from 'dotenv';
+import { resolve } from 'path';
+
+dotenvConfig({ path: resolve(__dirname, '.env') });
+
+export default defineConfig({
+  test: {
+    globals: true,
+    testTimeout: 15000,
+    reporters: ['verbose'],
+    fileParallelism: false,
+    env: {
+      BASE_URL: process.env.BASE_URL ?? '',
+      TEST_USERNAME: process.env.TEST_USERNAME ?? '',
+      TEST_PASSWORD: process.env.TEST_PASSWORD ?? '',
+    },
+  },
+});
+```
+
+> `fileParallelism: false` — prevents 20+ concurrent auth requests hitting the rate limiter
+
+<!-- note: dotenvConfig loads .env into the main process. env:{} forwards vars to worker threads. Both are required — workers do NOT inherit process.env automatically. -->
+
+---
+
+## Project Setup — `.env` and `src/config.ts` (Steps 8–9)
+
+**.env**
+```
+BASE_URL=https://api.codeandtest.com/api/v1
+```
+
+> Never commit `.env`. Use `cp .env.example .env`.
+> The API is at `api.codeandtest.com` — NOT `codeandtest.com` (that's the Vercel frontend).
+
+**src/config.ts**
+```ts
+const BASE_URL = process.env.BASE_URL;
+
+if (!BASE_URL) {
+  throw new Error('Missing env var: BASE_URL — copy .env.example to .env');
+}
+
+export const config = { BASE_URL } as const;
+```
+
+> `as const` makes `BASE_URL` readonly. The guard throws immediately if `.env` is missing.
+
+<!-- note: Single source of truth. If the guard fires you get a clear error — not a silent undefined buried in a test. -->
+
+---
+
 ## The Most Important Option
 
 ```ts

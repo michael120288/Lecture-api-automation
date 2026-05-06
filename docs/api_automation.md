@@ -47,7 +47,28 @@ This book is divided into four parts.
 
 **A practical note on exercises**: Every chapter ends with exercises. Do them. Reading about testing is useful. Writing tests is transformative. The exercises are designed to take 15–45 minutes each and produce working code. The solution for every exercise exists in the course repository.
 
----
+**Chapter overview**: This book has 18 chapters. They are designed to be read in order — each chapter builds on the previous one. The exercises at the end of each chapter are your practical checkpoints.
+
+| Chapter | Topic |
+|---------|-------|
+| 1 | What Is API Testing |
+| 2 | HTTP and REST |
+| 3 | Tools & Setup |
+| 4 | Your First Test |
+| 5 | Assertions |
+| 6 | Authentication |
+| 7 | State and Side Effects |
+| 8 | Create (POST) |
+| 9 | Read (GET) |
+| 10 | Update (PATCH) |
+| 11 | Delete (DELETE) |
+| 12 | Error Testing |
+| 13 | Multi-User Scenarios |
+| 14 | Database Cross-Validation |
+| 15 | File Uploads |
+| 16 | CI with GitHub Actions |
+| 17 | Docker |
+| 18 | Reporting & Coverage |
 
 ---
 
@@ -97,7 +118,8 @@ This book is divided into four parts.
 - [Appendix G: Chatty API — Complete Endpoint Reference](#appendix-g-chatty-api--complete-endpoint-reference)
 - [Appendix H: Chapter Practice Solutions](#appendix-h-chapter-practice-solutions)
 
-**Part VII: Reference Library** (40 standalone deep-dive chapters)
+**Part VII: Reference Library** (40 standalone deep-dive chapters — each is self-contained, you do not need to read them in order)
+- These chapters are deep-dives on individual topics. You will be pointed to them from the main chapters when you need more detail on a specific concept. They are not required reading for the core course.
 - Reference 1: What Is API Testing? — Reference 40: Git Commands
 
 ---
@@ -155,7 +177,7 @@ A response from an HTTP API carries a rich payload of information. Most beginner
 
 **Response headers** carry important information about authentication (set-cookie), content type (content-type: application/json), caching behavior, and CORS permissions. Testing that set-cookie is present and contains the right flags (HttpOnly, Secure, SameSite) is a security assertion that protects your users.
 
-**Response timing** catches performance regressions. An endpoint that normally responds in 200ms but now takes 5 seconds has a bug — probably a missing database index or an N+1 query. Asserting that responses arrive within a reasonable timeout is a first line of defense.
+**Response timing** catches performance regressions. An endpoint that normally responds in 200ms but now takes 5 seconds has a bug — probably a missing database index or an N+1 query. Asserting that responses arrive within a reasonable timeout is a first line of defense. In Vitest, timing assertions look like: `const start = Date.now(); await ...; expect(Date.now() - start).toBeLessThan(2000)`. This pattern is demonstrated in Chapter 5.
 
 **Security — what should NOT be there** is one of the most important and most overlooked assertion category. Password hashes must never appear in API responses. Internal IDs, system fields, and sensitive configuration must not leak. These assertions protect your users and your system. `.not.toHaveProperty('password')` is a test worth writing on every endpoint that returns user data.
 
@@ -215,6 +237,8 @@ API testing has been possible as long as HTTP has existed. The first tool most d
 ---
 
 ### Chapter Practice
+
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
 
 Suggested project structure for this chapter's exercises:
 
@@ -467,6 +491,8 @@ Every field in this object is a JavaScript value that you can access directly, c
 
 ### Chapter Practice
 
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
+
 Suggested project structure for this chapter's exercises:
 
 ```
@@ -598,6 +624,8 @@ You only create three files before writing any tests: `src/config.ts`, `src/test
 
 **`src/fixtures.ts`** holds reusable constants. The most important is `TEST_AVATAR_IMAGE`, a base64-encoded 1×1 PNG used for image upload tests. Defining it once here means you never paste a 500-character string into a test file.
 
+> **The `vitest` username rule — memorize this now.** Every test username you create in this course must start with the prefix `vitest` (e.g., `vitest_alice` or `vitestAlice${Date.now()}`). This is enforced by the cleanup endpoint — it refuses to delete any user whose username does not start with `vitest`, protecting real production accounts from accidental deletion. When generating a unique username, always use the `Date.now()` suffix to prevent collisions between test runs: `vitest${Date.now()}`. You will use this pattern in every chapter that creates test users.
+
 **`tests/chapter-NN/`** is where you do your work. Create one test file per chapter, named after the topic — `auth.test.ts`, `posts.test.ts`, `reactions.test.ts`. There is no starter or solution file — you build it from scratch following the exercises in the book.
 
 **`.env`** contains your secrets. It is listed in `.gitignore` and never committed. An `.env.example` is committed instead, showing the required keys with placeholder values so a new developer knows what to set up.
@@ -617,15 +645,20 @@ npm init -y
 **Step 2: Install dependencies**
 
 ```bash
-npm install --save-dev vitest @vitest/coverage-v8 typescript
-npm install axios @faker-js/faker dotenv
+npm install axios dotenv
+npm install --save-dev vitest typescript @types/node @faker-js/faker
 ```
 
-- `vitest` and `@vitest/coverage-v8`: test runner and coverage provider.
-- `typescript`: TypeScript compiler.
-- `axios`: HTTP client.
-- `@faker-js/faker`: Random test data generation (unique usernames, emails, etc.).
-- `dotenv`: Loads `.env` files into `process.env`.
+**`dependencies` vs `devDependencies` — why two commands?**
+
+| Package | Where | Why |
+|---------|-------|-----|
+| `axios` | `dependencies` | Makes HTTP requests — needed at runtime |
+| `dotenv` | `dependencies` | Loads `.env` — needed at runtime |
+| `vitest` | `devDependencies` | Test runner — only needed during development |
+| `typescript` | `devDependencies` | Compiler — only needed during development |
+| `@types/node` | `devDependencies` | TypeScript types for Node.js built-ins |
+| `@faker-js/faker` | `devDependencies` | Test data generation — only in tests |
 
 **Step 3: Create `tsconfig.json`**
 
@@ -638,12 +671,9 @@ npm install axios @faker-js/faker dotenv
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["vitest/globals"],
-    "outDir": "dist",
-    "rootDir": "."
+    "types": ["vitest/globals"]
   },
-  "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*", "tests/**/*"]
 }
 ```
 
@@ -653,26 +683,21 @@ The key entry is `"types": ["vitest/globals"]` — this tells TypeScript that `d
 
 ```typescript
 import { defineConfig } from 'vitest/config';
-import dotenv from 'dotenv';
+import { config as dotenvConfig } from 'dotenv';
+import { resolve } from 'path';
 
-dotenv.config();
+dotenvConfig({ path: resolve(__dirname, '.env') });
 
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'node',
     testTimeout: 15000,
-    hookTimeout: 30000,
-    fileParallelism: false,
-    sequence: {
-      shuffle: false,
-    },
     reporters: ['verbose'],
+    fileParallelism: false,
     env: {
       BASE_URL: process.env.BASE_URL ?? '',
       TEST_USERNAME: process.env.TEST_USERNAME ?? '',
       TEST_PASSWORD: process.env.TEST_PASSWORD ?? '',
-      // TEST_CLEANUP_SECRET is hardcoded in src/fixtures.ts — not an env var
     },
   },
 });
@@ -684,11 +709,13 @@ Several of these settings deserve explanation:
 
 `testTimeout: 15000` sets a 15-second timeout per test. API calls typically take 50–500ms, so 15 seconds provides a generous buffer for slow responses without letting broken tests hang indefinitely.
 
-`hookTimeout: 30000` sets a 30-second timeout for `beforeAll` and `afterAll` hooks. Setup and cleanup sometimes need to make several sequential API calls, so they get a longer timeout.
+`fileParallelism: false` is the most consequential setting. By default, Vitest runs multiple test files in parallel across worker threads. For unit tests, this is safe and desirable. For API tests against a shared server, it is not. Parallel test files may interfere with each other through shared rate limits, shared test usernames (race conditions on who creates the user first), or shared session state. Setting `fileParallelism: false` makes test files run sequentially.
 
-`fileParallelism: false` is the most consequential setting. By default, Vitest runs multiple test files in parallel across worker threads. For unit tests, this is safe and desirable. For API tests against a shared server, it is not. Parallel test files may interfere with each other through shared rate limits, shared test usernames (race conditions on who creates the user first), or shared session state. Setting `fileParallelism: false` makes test files run sequentially. Individual tests within a file still run in the order they are defined, because we want to control the sequence of operations (create before read before delete).
+`resolve(__dirname, '.env')` builds the absolute path to `.env` relative to `vitest.config.ts`, so the file is found regardless of which directory you run `npm test` from.
 
-`sequence: { shuffle: false }` ensures tests run in the order they are defined in the file. Test ordering matters when tests build on each other's state.
+**Why are there two steps to load `.env`?** You might wonder why we call `dotenvConfig()` at the top of the config file AND also declare an `env: {}` block. The reason is Vitest's worker thread architecture. `dotenvConfig()` loads `.env` into `process.env` of the *main process* — the process that reads `vitest.config.ts`. But each test file runs inside a separate *worker thread*, which does not inherit `process.env` from the main process. The `env: {}` block explicitly forwards the variables you need into every worker thread. Both steps are required. If you omit `dotenvConfig()`, the `env: {}` block has nothing to forward. If you omit `env: {}`, your test files will see `undefined` for all environment variables even though `.env` was loaded.
+
+`TEST_USERNAME` and `TEST_PASSWORD` are forwarded here even though Chapter 3 doesn't use them yet. They are needed starting in Chapter 6 when you test authenticated endpoints. It is cleaner to configure them once here than to add them later and wonder why tests fail.
 
 **Step 5: Create `.env`**
 
@@ -712,24 +739,13 @@ coverage/
 **Step 7: Create `src/config.ts`**
 
 ```typescript
-import dotenv from 'dotenv';
-dotenv.config();
+const BASE_URL = process.env.BASE_URL;
 
-function requireEnv(key: string): string {
-  const value = process.env[key];
-  if (!value) {
-    throw new Error(
-      `Missing required environment variable: ${key}. ` +
-      `Make sure it is defined in your .env file.`
-    );
-  }
-  return value;
+if (!BASE_URL) {
+  throw new Error('Missing env var: BASE_URL — copy .env.example to .env');
 }
 
-export const BASE_URL = requireEnv('BASE_URL');
-export const TEST_USERNAME = requireEnv('TEST_USERNAME');
-export const TEST_PASSWORD = requireEnv('TEST_PASSWORD');
-// TEST_CLEANUP_SECRET is NOT read from env — see src/fixtures.ts
+export const config = { BASE_URL } as const;
 ```
 
 **Step 8: Add scripts to `package.json`**
@@ -739,13 +755,13 @@ export const TEST_PASSWORD = requireEnv('TEST_PASSWORD');
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit"
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
   }
 }
 ```
 
-With this setup complete, `npm test` runs all test files once. `npm run test:watch` runs Vitest in watch mode, re-running affected tests on file save. `npm run typecheck` runs the TypeScript compiler without emitting files, catching type errors without running tests.
+With this setup complete, `npm test` runs all test files once. `npm run test:watch` runs Vitest in watch mode, re-running affected tests on file save. `npm run test:ui` opens a visual browser UI showing test results. `npm run test:coverage` runs tests and generates a coverage report.
 
 ### 3.6 Environment Variables and Secrets
 
@@ -759,7 +775,7 @@ Never hardcode API URLs, usernames, passwords, or secret keys in test files. Thi
 
 **The `.env` pattern** solves all of these. The `dotenv` library reads a `.env` file from the project root and loads its contents into `process.env` at startup. The file is listed in `.gitignore` so it is never committed. An `.env.example` file is committed instead, containing the same keys with placeholder values, so a new team member knows exactly what variables they need to configure.
 
-The `requireEnv` function in `config.ts` adds a layer of safety: if a required variable is missing, the function throws a clear error message that immediately tells the developer which variable is needed and where to set it. Without this pattern, a missing environment variable produces `undefined` values that fail with confusing type errors deep in test code.
+The guard in `config.ts` adds a layer of safety: if a required variable is missing, the file throws a clear error message immediately at startup — before any test runs. Without this guard, a missing environment variable produces `undefined` values that fail with confusing type errors buried deep inside a test, far from the root cause.
 
 **Why `fileParallelism: false` is essential** for production API testing deserves fuller explanation here. Consider a test suite with three files: `auth.test.ts`, `posts.test.ts`, and `users.test.ts`. With `fileParallelism: true`, all three files start simultaneously in separate worker threads. Now consider:
 
@@ -773,8 +789,8 @@ These race conditions produce intermittent, hard-to-diagnose failures. `filePara
 
 - Vitest is fast, has native TypeScript support, and has a Jest-compatible API. `fileParallelism: false` is essential for API tests that share server state.
 - Axios provides `validateStatus`, automatic JSON parsing, and instance-level configuration. `response.data` is always already parsed — never call `JSON.parse` on it.
-- TypeScript's `AxiosResponse<T>` generic provides type-safe access to response bodies. Use it to catch assertion typos at compile time.
-- `src/config.ts` with a `requireEnv` function is the right pattern for environment configuration — it fails fast with a clear error if a required variable is missing.
+- TypeScript's `AxiosResponse<T>` generic (covered fully in Chapter 4) provides type-safe access to response bodies — a tool that catches assertion typos at compile time rather than at test runtime.
+- `src/config.ts` with a fail-fast guard (`if (!BASE_URL) throw new Error(...)`) is the right pattern for environment configuration — it surfaces a missing variable immediately at startup, not buried inside a failing test.
 - Never hardcode credentials or API URLs in test files. Always use environment variables loaded from `.env`.
 - `fileParallelism: false` prevents race conditions when multiple test files share API state (rate limits, session cookies, test data).
 
@@ -782,9 +798,9 @@ These race conditions produce intermittent, hard-to-diagnose failures. `filePara
 
 1. Follow the setup instructions in Section 3.5 to create the project structure from scratch. Verify that `npm test` runs without errors on an empty test directory.
 
-2. Create `src/config.ts` with the `requireEnv` pattern. Write a test (in a separate scratch file, not in the `tests/` directory) that imports `BASE_URL` from `config.ts` and asserts that it is a string starting with `https://`. Run it with `npm test`.
+2. Create `src/config.ts` with the fail-fast guard shown in Section 3.5. Write a test (in a separate scratch file, not in the `tests/` directory) that imports `config` from `config.ts` and asserts that `config.BASE_URL` is a string starting with `https://`. Run it with `npm test`.
 
-3. Deliberately break the setup by removing `BASE_URL` from your `.env` file and running `npm test`. Document the error message you receive. Restore the variable. This exercise teaches you what the `requireEnv` guard looks like when it triggers.
+3. Deliberately break the setup by removing `BASE_URL` from your `.env` file and running `npm test`. Document the error message you receive. Restore the variable. This exercise shows you exactly what the startup guard looks like when it fires — a clear, actionable error instead of a cryptic `undefined` buried in a failing test.
 
 4. Open `vitest.config.ts` and temporarily set `fileParallelism: true`. Create two test files that both `console.log('started')` in their `beforeAll` hooks and `console.log('finished')` in their `afterAll` hooks, with a 500ms delay (`await new Promise(r => setTimeout(r, 500))`) in each hook. Run `npm test` and observe the interleaved output. Then restore `fileParallelism: false` and observe the sequential output. This exercise makes the parallelism difference concrete.
 
@@ -796,6 +812,8 @@ These race conditions produce intermittent, hard-to-diagnose failures. `filePara
 ---
 
 ### Chapter Practice
+
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
 
 Suggested project structure for this chapter's exercises:
 
@@ -915,6 +933,8 @@ The lifecycle and data flow are: `beforeAll` runs once before any `it` blocks, p
 
 ### 4.2 Your First Test — The Wrong Way
 
+> **Read Section 4.3 first if you are new to this.** This section shows an anti-pattern so you can recognize it in real codebases. If you read the wrong code first and absorb it, unlearning it is harder than learning the right pattern first. Section 4.3 is the pattern you should internalize. Section 4.2 is the pattern you should be able to identify and fix.
+
 Before showing the right pattern, it is worth understanding the wrong pattern — not as a curiosity, but because you will encounter this mistake in real codebases and need to recognize it.
 
 Here is a test file that makes the same sign-in request in every test:
@@ -968,7 +988,9 @@ This approach has several problems:
 
 ### 4.3 Your First Test — The Right Way
 
-The correct pattern makes one request in `beforeAll` and tests all aspects of that single response:
+The correct pattern makes one request in `beforeAll` and tests all aspects of that single response.
+
+Before reading the code, one TypeScript syntax note: you will see `let response!: AxiosResponse`. The `let` is needed because we assign in `beforeAll`, not at declaration time. The `!` (non-null assertion operator) tells TypeScript: "I guarantee this will be assigned before any test reads it." Without `!`, TypeScript would show an error saying `response` is used before being assigned. The `!` is a contract with the compiler — you are promising that `beforeAll` runs before any `it` block, which Vitest guarantees.
 
 ```typescript
 import axios, { AxiosResponse } from 'axios';
@@ -1021,8 +1043,6 @@ describe('POST /auth/signin - success', () => {
 ```
 
 This version makes exactly **one** HTTP request. All tests in the describe block read from the shared `response` variable. Request count goes from 10 to 1. Rate limit risk goes to zero. All tests see exactly the same response object.
-
-The `let response!: AxiosResponse` declaration warrants explanation. `let` because we will assign it in `beforeAll`, not at declaration time. `AxiosResponse` is the type. The `!` is TypeScript's non-null assertion operator. Without it, TypeScript would complain that `response` is used before being assigned (it is assigned in `beforeAll`, not at the `let` statement). The `!` tells TypeScript: "I know this will be assigned before use." This is a standard pattern in Vitest test files.
 
 ### 4.4 validateStatus: () => true
 
@@ -1220,6 +1240,8 @@ After your tests pass, add a second `describe` block for the failure case: send 
 ---
 
 ### Chapter Practice
+
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
 
 Suggested project structure for this chapter's exercises:
 
@@ -2276,6 +2298,8 @@ The following exercises use the Chatty API at `https://api.codeandtest.com/api/v
 
 ### Chapter Practice
 
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
+
 Suggested project structure for this chapter's exercises:
 
 ```
@@ -3120,7 +3144,9 @@ The `afterAll` at the outer scope runs once after every test in the suite comple
 
 Testing the error paths is just as important as testing the happy path. Failures confirm that your API enforces its contracts: wrong credentials should fail, malformed input should fail, and each failure should return a meaningful status code and error message.
 
-The key technique here is the **`expectRejected` pattern**. When Axios receives an HTTP response with a 4xx or 5xx status code, it throws an error rather than returning a response object. The thrown error has a `.response` property containing the actual response. In Vitest, you use `expect(...).rejects.toMatchObject(...)` to assert on this structure.
+The key technique here is the **`expectRejected` pattern**. When Axios receives an HTTP response with a 4xx or 5xx status code, it throws an error rather than returning a response object. The thrown error has a `.response` property containing the actual response. In Vitest, you can assert on this structure using `expect(...).rejects.toMatchObject(...)`.
+
+> **Note on two approaches**: Chapter 4 teaches `validateStatus: () => true` as the preferred way to test error responses — it prevents Axios from throwing, so you always get a response object to inspect. The `.rejects.toMatchObject()` pattern you see in some examples in this chapter works only on an Axios instance that does *not* have `validateStatus: () => true`. Both approaches produce the same test coverage. The `validateStatus` approach is preferred because it avoids try/catch blocks and gives clearer assertion failures. The `.rejects` approach appears here in examples that use a default Axios instance without `validateStatus` — you will encounter both patterns in real codebases, so it is worth knowing both.
 
 ```typescript
 describe('Failed authentication scenarios', () => {
@@ -3334,7 +3360,7 @@ describe('Some authenticated feature', () => {
 - Authentication tests must sign in once in `beforeAll`, reuse the session for all tests, and sign out in `afterAll` to avoid rate-limit issues.
 - JWT validation without the signing secret uses three structural checks: three dot-separated segments, Base64URL characters, and the `eyJ` header prefix.
 - Axios in Node.js does not maintain a cookie jar. You must manually extract the `set-cookie` response header (an array — take index `[0]`) and replay it as the `Cookie` request header.
-- Use `rejects.toMatchObject({ response: { status: N } })` to assert on error responses — Axios throws for 4xx/5xx, it does not return.
+- To test error responses, prefer `validateStatus: () => true` so Axios always resolves — then assert `expect(res.status).toBe(N)`. Alternatively, use `rejects.toMatchObject({ response: { status: N } })` on a default Axios instance (without `validateStatus`). Both work; `validateStatus` is cleaner for test suites.
 - Always assert that passwords are absent from API responses. This security contract is cheap to test and expensive to miss.
 - Extract the signin/signout pattern into a shared helper function to avoid duplication across your test suite.
 
@@ -3356,6 +3382,8 @@ describe('Some authenticated feature', () => {
 ---
 
 ### Chapter Practice
+
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
 
 Suggested project structure for this chapter's exercises:
 
@@ -4272,6 +4300,8 @@ This pattern collects all cleanup errors into an array and reports them as warni
 ---
 
 ### Chapter Practice
+
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
 
 Suggested project structure for this chapter's exercises:
 
@@ -5237,6 +5267,8 @@ describe('Complete POST /post test suite', () => {
 
 ### Chapter Practice
 
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
+
 Suggested project structure for this chapter's exercises:
 
 ```
@@ -6104,6 +6136,8 @@ describe('Access control on GET endpoints', () => {
 
 ### Chapter Practice
 
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
+
 Suggested project structure for this chapter's exercises:
 
 ```
@@ -6864,6 +6898,8 @@ describe('PUT /user/profile — full replacement semantics', () => {
 ---
 
 ### Chapter Practice
+
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
 
 Suggested project structure for this chapter's exercises:
 
@@ -7892,6 +7928,8 @@ All test files use `.env` for secrets, import from `../../src/` for shared utili
 ---
 
 ### Chapter Practice
+
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
 
 Suggested project structure for this chapter's exercises:
 
@@ -9294,6 +9332,8 @@ describe('Security Assertions on Error Responses', () => {
 
 ### Chapter Practice
 
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
+
 Suggested project structure for this chapter's exercises:
 
 ```
@@ -10139,6 +10179,8 @@ Running cleanup actions in parallel with `Promise.all` is much faster than runni
 
 ### Chapter Practice
 
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
+
 Suggested project structure for this chapter's exercises:
 
 ```
@@ -10825,6 +10867,8 @@ Cross-validation is equally valuable for verifying that updates are persisted co
 
 ### Chapter Practice
 
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
+
 Suggested project structure for this chapter's exercises:
 
 ```
@@ -11161,6 +11205,8 @@ The third assertion — actually fetching the uploaded image — gives the highe
 ---
 
 ### Chapter Practice
+
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
 
 Suggested project structure for this chapter's exercises:
 
@@ -11740,6 +11786,8 @@ jobs:
 ---
 
 ### Chapter Practice
+
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
 
 Suggested project structure for this chapter's exercises:
 
@@ -12373,6 +12421,8 @@ For most projects, Approach 1 provides the best combination of control and debug
 
 ### Chapter Practice
 
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
+
 Suggested project structure for this chapter's exercises:
 
 ```
@@ -12590,27 +12640,14 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    // Run reporters in sequence
-    reporters: [
-      'verbose',          // Always show verbose terminal output
-      'junit',            // Generate JUnit XML for CI
-      'json',             // Generate JSON for custom tools
-      ['html', {}],       // Generate HTML report (requires @vitest/ui)
-    ],
-
-    // Configure output file paths for non-terminal reporters
+    reporters: process.env.CI ? ['junit', 'verbose'] : ['html', 'verbose'],
     outputFile: {
-      junit: './test-results/junit.xml',
-      json: './test-results/results.json',
-      html: './test-results/index.html',
+      html: 'html/index.html',
+      junit: 'test-results/junit.xml',
     },
-
-    // Global test timeout (10 seconds for API tests)
-    testTimeout: 10000,
-
-    // Environment variables available in all tests
+    testTimeout: 15000,
     env: {
-      BASE_URL: process.env.BASE_URL ?? 'https://api.codeandtest.com/api/v1',
+      BASE_URL: process.env.BASE_URL ?? '',
     },
   },
 });
@@ -12619,7 +12656,7 @@ export default defineConfig({
 Install the required packages:
 
 ```bash
-npm install --save-dev @vitest/ui
+npm install --save-dev @vitest/ui@1 --legacy-peer-deps
 ```
 
 ---
@@ -12631,7 +12668,7 @@ Code coverage measures which lines of your source code are executed during tests
 Install the coverage package:
 
 ```bash
-npm install --save-dev @vitest/coverage-v8
+npm install --save-dev @vitest/coverage-v8@1 --legacy-peer-deps
 ```
 
 Configure in `vitest.config.ts`:
@@ -12992,7 +13029,7 @@ export default defineConfig({
     "coverage": "vitest run --coverage",
     "coverage:open": "vitest run --coverage && open coverage/index.html",
     "test:chapter": "vitest run tests/chapter-",
-    "test:ci": "vitest run --reporter=verbose --reporter=junit --outputFile.junit=test-results/junit.xml"
+    "test:ci": "CI=true vitest run"
   }
 }
 ```
@@ -13029,6 +13066,8 @@ export default defineConfig({
 ---
 
 ### Chapter Practice
+
+> **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
 
 Suggested project structure for this chapter's exercises:
 
@@ -15118,24 +15157,11 @@ npm init -y
 ## D.3 Install Dependencies
 
 ```bash
-# Test runner
-npm install --save-dev vitest
-
-# HTTP client
-npm install axios
-
-# Fake data generation
-npm install --save-dev @faker-js/faker
-
-# TypeScript
-npm install --save-dev typescript @types/node
-
-# Environment variable loading
-npm install dotenv
-
-# (Optional) MongoDB client for direct DB assertions
-npm install --save-dev mongodb
+npm install axios dotenv
+npm install --save-dev vitest typescript @types/node @faker-js/faker
 ```
+
+Two install commands are intentional — they make the `dependencies` vs `devDependencies` distinction visible. `axios` and `dotenv` are runtime dependencies (needed when the tests actually run). Everything else is development-only.
 
 Full `package.json` scripts section:
 ```json
@@ -15144,8 +15170,7 @@ Full `package.json` scripts section:
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit"
+    "test:coverage": "vitest run --coverage"
   }
 }
 ```
@@ -15154,7 +15179,7 @@ Full `package.json` scripts section:
 
 ## D.4 tsconfig.json
 
-Create `/tsconfig.json` with this exact content:
+Create `tsconfig.json` in the project root with this exact content:
 
 ```json
 {
@@ -15162,104 +15187,87 @@ Create `/tsconfig.json` with this exact content:
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022"],
     "strict": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true,
-    "outDir": "./dist",
-    "rootDir": "./",
     "skipLibCheck": true,
-    "types": ["vitest/globals", "node"]
+    "types": ["vitest/globals"]
   },
-  "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*", "tests/**/*"]
 }
 ```
+
+The `"types": ["vitest/globals"]` entry gives your IDE autocomplete for `describe`, `it`, and `expect` without any imports. Without it you will see red squiggles. The tests still run either way — this is purely for the IDE.
 
 ---
 
 ## D.5 vitest.config.ts
 
-Create `/vitest.config.ts` with this exact content:
+Create `vitest.config.ts` in the project root with this exact content:
 
 ```typescript
 import { defineConfig } from 'vitest/config';
+import { config as dotenvConfig } from 'dotenv';
+import { resolve } from 'path';
+
+dotenvConfig({ path: resolve(__dirname, '.env') });
 
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'node',
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    testTimeout: 15000,
     reporters: ['verbose'],
-    // Run test files sequentially to avoid rate limiting
-    pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
+    fileParallelism: false,
+    env: {
+      BASE_URL:      process.env.BASE_URL      ?? '',
+      TEST_USERNAME: process.env.TEST_USERNAME ?? '',
+      TEST_PASSWORD: process.env.TEST_PASSWORD ?? '',
     },
-    // Include test files in tests/ directory
-    include: ['tests/**/*.test.ts'],
-    // Load .env before tests run
-    setupFiles: ['./src/setup.ts'],
   },
 });
 ```
+
+`fileParallelism: false` is essential — it runs one test file at a time. Without it, multiple files fire simultaneous sign-in requests and trigger rate limiting. The `dotenvConfig()` call at the top loads `.env` into the main process; the `env: {}` block forwards those variables into every worker thread (workers do not inherit `process.env` automatically).
 
 ---
 
 ## D.6 .env File
 
-Create `/.env` (never commit this file):
+Create `.env` in the project root (never commit this file):
 
-```dotenv
-# Chatty API base URL
-API_BASE_URL=https://api.codeandtest.com/api/v1
-
-# Test cleanup secret — get this from the course instructor
-TEST_SECRET=your_test_secret_here
+```
+BASE_URL=https://api.codeandtest.com/api/v1
+TEST_USERNAME=your_vitest_username
+TEST_PASSWORD=your_password
 ```
 
-Add `.env` to `.gitignore`:
-```bash
-echo ".env" >> .gitignore
-echo "node_modules/" >> .gitignore
-echo "dist/" >> .gitignore
+> ⚠️ Use `api.codeandtest.com` — NOT `codeandtest.com`. The Vercel frontend at `codeandtest.com` returns 405 for POST requests.
+
+Create `.gitignore`:
 ```
-
----
-
-## D.7 src/setup.ts
-
-Create `/src/setup.ts`:
-
-```typescript
-import dotenv from 'dotenv';
-import path from 'path';
-
-// Load .env from the project root
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+node_modules/
+dist/
+.env
+coverage/
+*.log
 ```
 
 ---
 
-## D.8 src/config.ts
+## D.7 src/config.ts
 
-Create `/src/config.ts`:
+Create `src/config.ts`:
 
 ```typescript
-export const config = {
-  baseUrl: process.env.API_BASE_URL ?? 'https://api.codeandtest.com/api/v1',
-  testSecret: process.env.TEST_SECRET ?? '',
-} as const;
+const BASE_URL = process.env.BASE_URL;
 
-// Validate required config at startup
-if (!config.testSecret) {
-  throw new Error('TEST_SECRET is not set in environment variables. Check your .env file.');
+if (!BASE_URL) {
+  throw new Error('Missing env var: BASE_URL — copy .env.example to .env');
 }
+
+export const config = { BASE_URL } as const;
 ```
+
+This guard throws immediately at startup if `.env` is missing or `BASE_URL` is empty — you get a clear error message instead of a cryptic `undefined` buried in a failing test.
 
 ---
 
@@ -15289,7 +15297,7 @@ export async function signupUser(params: {
 }): Promise<AuthResult> {
   const password = params.password ?? 'Password1!';
   const res = await axios.post(
-    `${config.baseUrl}/auth/signup`,
+    `${config.BASE_URL}/auth/signup`,
     {
       username: params.username,
       email: params.email,
@@ -15324,7 +15332,7 @@ export async function signinUser(params: {
   password?: string;
 }): Promise<AuthResult> {
   const res = await axios.post(
-    `${config.baseUrl}/auth/signin`,
+    `${config.BASE_URL}/auth/signin`,
     {
       username: params.username,
       password: params.password ?? 'Password1!',
@@ -15353,7 +15361,7 @@ export async function signinUser(params: {
  */
 export async function cleanupUser(userId: string): Promise<void> {
   try {
-    await axios.delete(`${config.baseUrl}/test/cleanup/user/${userId}`, {
+    await axios.delete(`${config.BASE_URL}/test/cleanup/user/${userId}`, {
       headers: { 'x-test-secret': config.testSecret },
     });
   } catch (err: any) {
@@ -15369,7 +15377,7 @@ export async function authGet(
   path: string,
   cookie: string
 ): Promise<AxiosResponse> {
-  return axios.get(`${config.baseUrl}${path}`, {
+  return axios.get(`${config.BASE_URL}${path}`, {
     headers: { Cookie: cookie },
   });
 }
@@ -15382,7 +15390,7 @@ export async function authPost(
   body: Record<string, unknown>,
   cookie: string
 ): Promise<AxiosResponse> {
-  return axios.post(`${config.baseUrl}${path}`, body, {
+  return axios.post(`${config.BASE_URL}${path}`, body, {
     headers: { Cookie: cookie },
   });
 }
@@ -15395,7 +15403,7 @@ export async function authPut(
   body: Record<string, unknown>,
   cookie: string
 ): Promise<AxiosResponse> {
-  return axios.put(`${config.baseUrl}${path}`, body, {
+  return axios.put(`${config.BASE_URL}${path}`, body, {
     headers: { Cookie: cookie },
   });
 }
@@ -15407,7 +15415,7 @@ export async function authDelete(
   path: string,
   cookie: string
 ): Promise<AxiosResponse> {
-  return axios.delete(`${config.baseUrl}${path}`, {
+  return axios.delete(`${config.BASE_URL}${path}`, {
     headers: { Cookie: cookie },
   });
 }
@@ -15528,18 +15536,16 @@ After completing setup, your project should look like this:
 ```
 chatty-api-tests/
   src/
-    config.ts
-    fixtures.ts
-    setup.ts
-    test-utils.ts
+    config.ts        ← BASE_URL guard
+    fixtures.ts      ← TEST_AVATAR_IMAGE, TEST_CLEANUP_SECRET
+    test-utils.ts    ← expectRejected, expectSuccess
   tests/
-    chapter-01/
-      README.md
+    chapter-04/
       first-test.test.ts
-      homework/
-    chapter-02/
+    chapter-05/
       ...
-  .env              (not committed)
+  .env              ← never committed
+  .env.example      ← committed, shows required keys
   .gitignore
   package.json
   tsconfig.json
@@ -15595,7 +15601,7 @@ AssertionError: expected 409 to be 201
 ```
 Error: connect ECONNREFUSED 127.0.0.1:5000
 ```
-This means the API is not reachable at all. Check your `API_BASE_URL` in `.env`.
+This means the API is not reachable at all. Check your `BASE_URL` in `.env`.
 
 ```
 AxiosError: Request failed with status code 401
@@ -15749,7 +15755,7 @@ beforeAll(async () => {
 ```typescript
 // src/config.ts — read from multiple possible env var names
 export const config = {
-  baseUrl: process.env.API_BASE_URL ?? process.env.VITE_API_BASE_URL ?? 'https://api.codeandtest.com/api/v1',
+  BASE_URL: process.env.BASE_URL ?? 'https://api.codeandtest.com/api/v1',
   testSecret: process.env.TEST_SECRET ?? process.env.CI_TEST_SECRET ?? '',
 };
 ```
@@ -19677,7 +19683,7 @@ Chapter 18 covers test reporting configuration. There is no new Vitest test code
 **Exercise 1** — Install `@vitest/coverage-v8`, update `vitest.config.ts`, run coverage, open the HTML report
 
 ```bash
-npm install --save-dev @vitest/coverage-v8
+npm install --save-dev @vitest/coverage-v8@1 --legacy-peer-deps
 npm run test:coverage
 open coverage/index.html        # macOS
 
@@ -25737,7 +25743,7 @@ Then in tests:
 ```typescript
 import { config } from '../../src/config';
 
-const response = await axios.post(`${config.baseUrl}/auth/signin`, {
+const response = await axios.post(`${config.BASE_URL}/auth/signin`, {
   username: config.testUsername,
   password: config.testPassword
 });
@@ -26013,7 +26019,7 @@ node_modules
 
 ### Related Topics
 
-- [TypeScript Basics](typescript-basics.md) — Why `process.env.X` is `string | undefined`; the `!` assertion and `requireEnv` pattern
+- [TypeScript Basics](typescript-basics.md) — Why `process.env.X` is `string | undefined`; the `!` assertion and the fail-fast guard pattern
 - [Axios](axios.md) — How `BASE_URL` is used in every request; building the Axios instance with the base URL
 - [Vitest](vitest.md) — `vitest.config.ts` options; how Vitest loads `.env` automatically before tests
 - [Faker](faker.md) — Generating test usernames that do not require env vars; the `vitest` prefix requirement
@@ -39294,7 +39300,7 @@ Uses the Istanbul library, which has been the standard JavaScript coverage tool 
 Install the provider you choose:
 
 ```bash
-npm install --save-dev @vitest/coverage-v8
+npm install --save-dev @vitest/coverage-v8@1 --legacy-peer-deps
 ## or
 npm install --save-dev @vitest/coverage-istanbul
 ```
@@ -39305,7 +39311,7 @@ npm install --save-dev @vitest/coverage-istanbul
 
 ```bash
 ## For v8 (used in this course)
-npm install --save-dev @vitest/coverage-v8
+npm install --save-dev @vitest/coverage-v8@1 --legacy-peer-deps
 ```
 
 After installing, the `npm run test:coverage` command in `package.json` works:
@@ -39614,7 +39620,7 @@ Error: Failed to initialize coverage. The provider '@vitest/coverage-v8' was not
 
 Fix:
 ```bash
-npm install --save-dev @vitest/coverage-v8
+npm install --save-dev @vitest/coverage-v8@1 --legacy-peer-deps
 ```
 
 #### Mistake: including test files in coverage
@@ -40323,7 +40329,7 @@ $ npm install -D vitest
 For the course project setup in one command:
 
 ```bash
-$ npm install -D vitest axios typescript @types/node dotenv @vitest/coverage-v8
+$ npm install -D vitest axios typescript @types/node dotenv @vitest/coverage-v8@1 --legacy-peer-deps
 ```
 
 ---

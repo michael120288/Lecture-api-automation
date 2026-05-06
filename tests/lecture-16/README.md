@@ -292,8 +292,8 @@ git checkout -b lecture-17-chat
 | 3 | POST /images/profile → status 200 |
 | 4 | GET /images/:userId → images array |
 | 5 | `.then()` — GET /user/profile/:userId for any user |
-| 7 | `expect.arrayContaining` — assert messages array contains objects with a `body` field |
-| 8 | `toBeGreaterThanOrEqual(0)` — assert messages.length is never negative |
+| 6 | `expect.arrayContaining` — assert messages array contains objects with a `body` field |
+| 7 | `toBeGreaterThanOrEqual(0)` — assert messages.length is never negative |
 
 Goal: **7 tests passing.**
 

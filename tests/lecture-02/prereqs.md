@@ -25,11 +25,11 @@
 ## Videos
 
 - [ ] **JWT explained in 10 minutes** — Web Dev Simplified
-  Watch: Search YouTube → *"JWT Authentication Tutorial Web Dev Simplified"*
+  Watch: https://www.youtube.com/watch?v=mbsmsi7l3r4
   *~15 min · Covers signing, verifying, and why JWTs replace sessions in modern apps*
 
 - [ ] **Cookies explained** — Fireship
-  Watch: Search YouTube → *"cookies explained Fireship"*
+  Watch: https://www.youtube.com/watch?v=UBUNrFtufWo
   *~6 min · Visual breakdown of how cookies flow between browser and server*
 
 ---

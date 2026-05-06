@@ -25,11 +25,11 @@
 ## Videos
 
 - [ ] **MongoDB crash course** — Traversy Media
-  Watch: Search YouTube → *"MongoDB crash course Traversy Media"*
+  Watch: https://www.youtube.com/watch?v=-56x56UppqQ
   *~30 min · Collections, documents, BSON, ObjectId — all the basics*
 
 - [ ] **bcrypt explained** — how one-way hashing works
-  Watch: Search YouTube → *"bcrypt password hashing explained"*
+  Watch: https://www.youtube.com/watch?v=O6cmuiTBZVs
   *~10 min · Why you hash, how salting prevents rainbow tables*
 
 ---
@@ -58,3 +58,40 @@
 ---
 
 > **Note:** The `DATABASE_URL` connection string is provided in the lecture README — you don't need it before starting.
+
+---
+
+## `DATABASE_URL` Setup — 3 Files to Update
+
+When the lecture asks you to add `DATABASE_URL`, you must add it to **three places**:
+
+### 1. `.env` — store the actual value
+
+```
+DATABASE_URL=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/chattyapp-backend
+```
+
+*(Get this from MongoDB Atlas → your cluster → Connect → Drivers)*
+
+### 2. `vitest.config.ts` — forward it into the test sandbox
+
+Vitest runs each test file in an isolated worker. Env vars are not automatically available — you must list them explicitly in the `env` block:
+
+```ts
+env: {
+  BASE_URL: ...,
+  TEST_USERNAME: ...,
+  TEST_PASSWORD: ...,
+  DATABASE_URL: process.env.DATABASE_URL ?? '',
+},
+```
+
+### 3. `src/config.ts` — read, validate, and export it
+
+```ts
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) throw new Error('Missing env var: DATABASE_URL');
+export const config = { BASE_URL, TEST_USERNAME, TEST_PASSWORD, DATABASE_URL } as const;
+```
+
+This gives a clear error if the var is missing, instead of a confusing MongoClient error deep in test output.

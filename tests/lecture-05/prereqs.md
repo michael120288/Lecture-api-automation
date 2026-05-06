@@ -24,7 +24,7 @@
 ## Videos
 
 - [ ] **REST API CRUD with Node.js** — overview
-  Watch: Search YouTube → *"REST API CRUD tutorial Node.js"*
+  Watch: https://www.youtube.com/watch?v=l8WPWK9mS5M
   *~10 min · See POST/GET/PATCH/DELETE in action before writing your own tests*
 
 ---

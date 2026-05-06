@@ -23,11 +23,11 @@
 ## Videos
 
 - [ ] **How to debug JavaScript** — The Coding Train or Fireship
-  Watch: Search YouTube → *"how to debug JavaScript"*
+  Watch: https://www.youtube.com/watch?v=H0XScE08hy8
   *~10 min · Covers console.log, breakpoints, reading stack traces — pick any 10-min result*
 
 - [ ] **VS Code debugger tutorial**
-  Watch: Search YouTube → *"VS Code debugger Node.js tutorial"*
+  Watch: https://www.youtube.com/watch?v=2oFKNL7vYV8
   *~8 min · How to add a launch config and step through code line by line*
 
 ---

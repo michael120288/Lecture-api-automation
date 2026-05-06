@@ -131,6 +131,80 @@ expect(Array.isArray(res.data.notifications)).toBe(true);
 
 ---
 
+## Mark Notification as Read
+
+```ts
+PATCH /notifications/:notificationId
+// or: PUT /notification/:notificationId (server accepts both verbs)
+// Returns: { message: "Notification marked as read" }
+```
+
+If there are no notifications, test the error path instead:
+
+```ts
+// Invalid ObjectId → expect 400 or 500
+const res = await axios.patch(
+  `${BASE_URL}/notifications/not-an-objectid`,
+  {},
+  { headers, validateStatus: () => true }
+);
+expectRejected(res.status);
+```
+
+<!-- note: notifications may be empty — test the 400 error path if there are none. -->
+
+---
+
+## Delete a Notification
+
+```ts
+DELETE /notifications/:notificationId
+// Returns: { message: "Notification deleted successfully" }
+```
+
+Get a valid `notificationId` from `GET /notifications`:
+
+```ts
+const listRes = await axios.get(`${BASE_URL}/notifications`, { headers, validateStatus: () => true });
+const notif = listRes.data.notifications[0]; // may be undefined if empty
+if (notif) {
+  const delRes = await axios.delete(
+    `${BASE_URL}/notifications/${notif._id}`,
+    { headers, validateStatus: () => true }
+  );
+  expect(delRes.status).toBe(200);
+}
+```
+
+<!-- note: always guard the delete with an existence check — notifications array may be empty. -->
+
+---
+
+## Get Followers of a User
+
+```ts
+GET /user/followers/:userId
+// Returns: { message: "User followers", followers: [...] }
+```
+
+After following user B, user B gains a follower (user A). Verify it:
+
+```ts
+const res = await axios.get(
+  `${BASE_URL}/user/followers/${userBId}`,
+  { headers, validateStatus: () => true }
+);
+expect(res.status).toBe(200);
+expect(Array.isArray(res.data.followers)).toBe(true);
+// find user A in user B's followers list:
+const found = res.data.followers.find((u: { _id: string }) => u._id === userAId);
+expect(found).toBeDefined();
+```
+
+<!-- note: this is the companion to GET /user/following. Same two-user pattern applies. -->
+
+---
+
 ## Endpoint Summary
 
 | Method | Path | Notes |
@@ -138,9 +212,12 @@ expect(Array.isArray(res.data.notifications)).toBe(true);
 | PUT | `/user/follow/:followerId` | User B's `_id` |
 | PUT | `/user/unfollow/:followeeId/:followerId` | both IDs |
 | GET | `/user/following` | your following list |
+| GET | `/user/followers/:userId` | followers of a specific user |
 | PUT | `/user/block/:followerId` | 200 |
 | PUT | `/user/unblock/:followerId` | 200 |
 | GET | `/notifications` | may be empty |
+| PATCH | `/notifications/:notificationId` | mark as read |
+| DELETE | `/notifications/:notificationId` | delete notification |
 
 <!-- note: show this table and ask students to point to which ID goes where. Mistakes here are the most common source of 400 errors in homework. -->
 

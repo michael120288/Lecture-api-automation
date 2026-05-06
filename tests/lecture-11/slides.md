@@ -95,6 +95,7 @@ Settings → Secrets and variables → Actions → New repository secret
 
 ```yaml
 strategy:
+  fail-fast: false
   matrix:
     node-version: [18, 20]
 ```
@@ -102,8 +103,56 @@ strategy:
 - Creates **two parallel jobs**
 - Same test suite on Node 18 and Node 20
 - Total runtime = one job, not two
+- `fail-fast: false` — if Node 18 fails, Node 20 still runs
 
-<!-- note: if tests pass on both versions, you know your code is not accidentally relying on a Node version-specific behaviour. GitHub runs them simultaneously at no extra time cost. -->
+<!-- note: if tests pass on both versions, you know your code is not accidentally relying on a Node version-specific behaviour. GitHub runs them simultaneously at no extra time cost. Without fail-fast: false, a failure on Node 18 cancels the Node 20 job — you lose half your signal. -->
+
+---
+
+## Concurrency — Cancel Stale Runs
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+- Cancels any in-progress run for the same branch when a new push arrives
+- Prevents two runs hitting the API simultaneously
+- Avoids rate limit errors from overlapping requests
+
+<!-- note: without this, rapid pushes queue up parallel runs against the same branch. Two runs hitting the same API account at the same time can trigger rate limits or overwrite each other's test state. -->
+
+---
+
+## Parallel Jobs — Username Collision
+
+Matrix jobs run **simultaneously** and share the same `TEST_USERNAME` account.
+
+Race condition:
+
+1. Both jobs write a value to the shared account
+2. Job 2 overwrites Job 1's value
+3. Job 1 reads back the wrong value → **fails**
+
+---
+
+## Fix — Unique Values with `Date.now()`
+
+```ts
+// ❌ Both jobs write the same string — they overwrite each other
+const testWork = 'QA Automation Engineer';
+
+// ✅ Each job writes a unique string — no collision
+const run = Date.now();
+const testWork = `QA Automation Engineer ${run}`;
+```
+
+`Date.now()` returns milliseconds since epoch — two jobs starting at different times get different values.
+
+> **Rule:** any `beforeAll` that writes to a shared account field must use a unique value per run
+
+<!-- note: this does NOT apply to negative tests, read-only GETs, or tests that create their own users with Faker — only to writes against a shared account field. -->
 
 ---
 
@@ -163,12 +212,36 @@ outputFile: { junit: 'test-results/junit.xml' },
 
 ---
 
+## Scheduled Nightly Runs
+
+```yaml
+on:
+  schedule:
+    - cron: '0 0 * * *'  # midnight UTC every day
+```
+
+Why push-triggered CI is not enough:
+- Server changes at 2am → tests fail
+- Nobody pushed → nobody knows
+
+A nightly run catches server-side regressions automatically.
+
+> Cron: `minute hour day month weekday` — `0 0 * * *` = midnight every day
+
+<!-- note: the schedule trigger is the second most useful trigger after push. Students often don't realise the API can change without them changing any code. Nightly runs make those failures visible the next morning. -->
+
+---
+
 ## Key Takeaways
 
 - Secrets replace `.env` in CI — never commit `.env`
 - `${{ secrets.X }}` is encrypted and masked in logs
 - Matrix strategy: Node 18 + 20 in parallel, same time
+- `fail-fast: false` — both versions always report results
+- `concurrency` block prevents overlapping runs on the same branch
+- `Date.now()` suffix prevents matrix job collisions on shared account fields
 - `if: always()` on artifact upload is non-negotiable
+- `schedule: cron` catches server regressions overnight
 
 <!-- note: the secrets vs env vars distinction is the most exam-worthy concept. Emphasise it. -->
 
@@ -183,7 +256,8 @@ Infrastructure setup — no Vitest test files:
 | 1 | Create `.github/workflows/tests.yml` |
 | 2 | Add all 4 GitHub Secrets |
 | 3 | Push — verify Actions tab runs |
-| 4 | Add JUnit reporters to `vitest.config.ts` |
+| 4 | Trigger manually using the `chapter` input |
 | 5 | Add status badge to README |
+| 6 | Create `.github/workflows/scheduled.yml` — nightly cron run |
 
-After completing: every future PR runs your full test suite automatically.
+After completing: every future push runs your test suite automatically, and every night the full suite runs on its own.

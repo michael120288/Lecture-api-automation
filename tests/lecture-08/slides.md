@@ -32,7 +32,7 @@ GET-heavy endpoints — and when not to test the happy path
 
 ## Search Results Are Non-Deterministic
 
-`GET /user/all/:page/:query` → array of users (order unpredictable)
+`GET /user/profile/search/:query` → array of users (order unpredictable)
 
 ✅ Assert: array is not empty, each item has `_id` and `username`  
 ❌ Never assert: exact count, specific position, exact username
@@ -83,6 +83,28 @@ const res = await axios.get(
 > Always `encodeURIComponent` for query params
 
 <!-- note: the server runs a regex, not an exact match. encodeURIComponent is required when the term contains spaces or special chars — safe habit to always use it. -->
+
+---
+
+## Reading a User's Profile
+
+```ts
+// After a search, take the _id from one result:
+const userId = searchRes.data.search[0]._id;
+
+// Fetch the full profile:
+const res = await axios.get(
+  `${config.BASE_URL}/user/profile/${userId}`,
+  { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+);
+// { message: 'Get user', user: { _id, username, email, social, ... } }
+expect(res.status).toBe(200);
+expect(res.data.user._id).toBe(userId);
+```
+
+> Search gives you the `_id`. `GET /user/profile/:userId` gives you the full document.
+
+<!-- note: the search endpoint returns a slim projection. If you need the full user document — social links, followers count, bgImageVersion — call GET /user/profile/:userId with the _id you got from the search. -->
 
 ---
 

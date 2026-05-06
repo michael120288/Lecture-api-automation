@@ -23,11 +23,11 @@
 ## Videos
 
 - [ ] **Docker in 100 seconds** — Fireship
-  Watch: Search YouTube → *"Docker in 100 seconds Fireship"*
+  Watch: https://www.youtube.com/watch?v=Gjnup-PuquQ
   *~2 min · Best quick visual intro to containers*
 
 - [ ] **Docker crash course** — Traversy Media
-  Watch: Search YouTube → *"Docker crash course Traversy Media"*
+  Watch: https://www.youtube.com/watch?v=Kyx2PsuwomE
   *~1 hour · Full walkthrough: build image, run container, volumes, compose*
 
 ---

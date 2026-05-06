@@ -21,11 +21,11 @@
 ## Videos
 
 - [ ] **Redis in 100 seconds** — Fireship
-  Watch: Search YouTube → *"Redis in 100 seconds Fireship"*
+  Watch: https://www.youtube.com/watch?v=G1rOthIU-uo
   *~2 min · Key-value cache, why it's 10-100× faster than a database for reads*
 
 - [ ] **PUT vs PATCH explained**
-  Watch: Search YouTube → *"PUT vs PATCH REST API difference"*
+  Watch: https://www.youtube.com/watch?v=eIQMuIOgu3E
   *~5 min · Real-world examples of when to use each*
 
 ---

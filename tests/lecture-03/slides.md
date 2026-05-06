@@ -114,7 +114,41 @@ Two protection layers:
 1. Wrong or missing header → **403**
 2. Username not starting with `vitest` → **400**
 
+```ts
+await axios.delete(
+  `${config.BASE_URL}/test/cleanup/user/${authId}`,
+  {
+    headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
+    validateStatus: () => true,
+  },
+);
+```
+
 <!-- note: Students should always verify their cleanup is working by checking the response status in afterAll. A 404 means authId was empty — their beforeAll failed silently. -->
+
+---
+
+## Bull Queue Delay — Duplicate Email Test
+
+After signup returns 201, the user is **not yet in MongoDB**.
+
+Chatty writes to MongoDB via a Bull job queue — the API responds immediately from Redis.
+
+```ts
+beforeAll(async () => {
+  signUpResponse = await axios.post(signupUrl, userData, opts);
+  authId = signUpResponse.data.user?.authId ?? '';
+
+  // Wait for Bull queue to flush the user to MongoDB.
+  // Without this, the duplicate email test can return 201
+  // instead of 400 — the user isn't in the DB yet.
+  await new Promise(resolve => setTimeout(resolve, 1000));
+});
+```
+
+> 1 second is a conservative buffer. The queue usually flushes in under 100ms.
+
+<!-- note: This is the most common intermittent failure in lecture 03. The duplicate email test finds nothing in MongoDB because the first user hasn't been written yet. The 1-second delay fixes it reliably across CI and local runs. -->
 
 ---
 

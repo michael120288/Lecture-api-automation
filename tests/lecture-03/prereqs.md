@@ -24,7 +24,7 @@
 ## Videos
 
 - [ ] **Faker.js in action** — quick intro to the library
-  Watch: Search YouTube → *"Faker.js tutorial"*
+  Watch: https://www.youtube.com/watch?v=SeHT0ee4waU
   *~10 min · See `faker.internet.email()`, `faker.string.alphanumeric()` in action*
 
 - [ ] **How Cloudinary works** — official overview

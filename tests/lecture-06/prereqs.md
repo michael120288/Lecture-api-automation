@@ -20,7 +20,7 @@
 ## Videos
 
 - [ ] **URL encoding explained**
-  Watch: Search YouTube → *"URL encoding percent encoding explained"*
+  Watch: https://www.youtube.com/watch?v=lkAeX3T6A9I
   *~7 min · Why browsers and APIs need to encode special characters in URLs*
 
 ---

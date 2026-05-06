@@ -21,11 +21,11 @@
 ## Videos
 
 - [ ] **Image upload to Cloudinary** — Node.js tutorial
-  Watch: Search YouTube → *"Cloudinary image upload Node.js tutorial"*
+  Watch: https://www.youtube.com/watch?v=Rw_QeJLnCK4
   *~15 min · See the exact upload flow that happens in `POST /post/image/post`*
 
 - [ ] **Base64 encoding explained** — visual
-  Watch: Search YouTube → *"base64 encoding explained"*
+  Watch: https://www.youtube.com/watch?v=7gSSMy_M4HU
   *~10 min · How binary data (images) becomes a safe ASCII string*
 
 ---

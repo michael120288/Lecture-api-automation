@@ -74,7 +74,7 @@ These are what you send to a team lead or include in a PR comment.
 ## 3. HTML Report Setup
 
 ```bash
-npm install --save-dev @vitest/ui
+npm install --save-dev @vitest/ui@1 --legacy-peer-deps
 ```
 
 In `vitest.config.ts`:
@@ -123,7 +123,7 @@ Actions run summary as a test report.
 We use `v8` because it requires no extra transformation and works natively with our TypeScript/Vitest setup.
 
 ```bash
-npm install --save-dev @vitest/coverage-v8
+npm install --save-dev @vitest/coverage-v8@1 --legacy-peer-deps
 ```
 
 In `vitest.config.ts`:

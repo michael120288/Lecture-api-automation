@@ -58,6 +58,64 @@ Black-box test passes. Bug ships to production.
 
 ---
 
+## Setup — 3 Files
+
+**Install:**
+```bash
+npm install mongodb
+```
+
+**Import:**
+```ts
+import { MongoClient, ObjectId } from 'mongodb';
+```
+
+<!-- note: ObjectId is needed whenever you query by _id. Import it from the start even if the first test doesn't use it. -->
+
+---
+
+## Setup — `DATABASE_URL` in 3 Places
+
+**`.env`** — the actual connection string:
+```
+DATABASE_URL=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/chattyapp-backend
+```
+
+**`vitest.config.ts`** — forward it into the test sandbox:
+```ts
+env: {
+  BASE_URL: ...,
+  TEST_USERNAME: ...,
+  TEST_PASSWORD: ...,
+  DATABASE_URL: process.env.DATABASE_URL ?? '',
+},
+```
+
+**`src/config.ts`** — read, guard, export:
+```ts
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) throw new Error('Missing env var: DATABASE_URL');
+export const config = { BASE_URL, TEST_USERNAME, TEST_PASSWORD, DATABASE_URL } as const;
+```
+
+> All three are required — missing any one causes silent failures or confusing errors
+
+<!-- note: .env holds the value. vitest.config.ts forwards it into the isolated worker process. src/config.ts validates it at startup and exports it for all tests. -->
+
+---
+
+## Read-Only Rule
+
+> Tests run against the **production database** — never write to it directly
+
+- Use `find*` only — no `insertOne`, `updateOne`, `deleteOne`
+- All mutations go through the API (that's what you're testing)
+- Cleanup goes through the API cleanup endpoint
+
+<!-- note: there is no separate test database. The tests connect to the same MongoDB Atlas cluster the server uses. A direct insertOne or deleteOne would corrupt real data. Always mutate through the API. -->
+
+---
+
 ## Connection Pattern
 
 ```ts

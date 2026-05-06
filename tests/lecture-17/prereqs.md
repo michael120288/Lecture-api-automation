@@ -24,11 +24,11 @@
 ## Videos
 
 - [ ] **WebSocket explained** — Fireship
-  Watch: Search YouTube → *"WebSocket in 100 seconds Fireship"*
+  Watch: https://www.youtube.com/watch?v=1BfCnjr_Vjg
   *~2 min · How a persistent bidirectional connection works*
 
 - [ ] **Socket.IO tutorial** — what Chatty uses internally
-  Watch: Search YouTube → *"Socket.IO tutorial beginner"*
+  Watch: https://www.youtube.com/watch?v=ZKEqqIO7n-k
   *~20 min · Event-based messaging: `socket.emit('message', data)` on both sides*
 
 ---

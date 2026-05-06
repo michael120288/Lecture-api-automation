@@ -92,6 +92,30 @@ const postOwnerUserId = post.userId;
 
 ---
 
+## GET Reaction Endpoints
+
+```ts
+// All reactions for a post — returns reactions array + count
+const allRes = await axios.get(
+  `${config.BASE_URL}/post/reactions/${postId}`,
+  { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+);
+// { message: 'Post reactions', reactions: [...], count: 1 }
+
+// Single user's reaction on a post
+const singleRes = await axios.get(
+  `${config.BASE_URL}/post/single/reaction/username/${username}/${postId}`,
+  { headers: { Cookie: sessionCookie }, validateStatus: () => true },
+);
+// { message, reactions: { type: 'like', ... }, count: 1 }
+```
+
+> Use `reactions/:postId` for counts. Use `single/reaction/username/...` to confirm a specific user's reaction type.
+
+<!-- note: reactions/:postId returns an array of all reaction documents plus a total count. single/reaction/username/:username/:postId returns the specific reaction document for one user — useful for asserting that the signed-in user reacted with the expected type. -->
+
+---
+
 ## State Transition — The Test We Want
 
 | Action | Result |

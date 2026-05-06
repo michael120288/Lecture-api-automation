@@ -78,6 +78,11 @@ Then send it on every subsequent request:
 headers: { Cookie: sessionCookie }
 ```
 
+**Why is `set-cookie` an array?**
+Servers can set multiple cookies in a single response — HTTP parsers collect all of them into an array.
+Chatty only sets one (`session`), so we always take index `[0]`.
+Accessing `response.headers['set-cookie']` without `[0]` gives you the whole array, not the cookie string.
+
 <!-- note: set-cookie is always an array in Node.js HTTP. Index [0] gets the session cookie. The ternary handles edge cases where axios flattens it to a string. -->
 
 ---

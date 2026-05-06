@@ -23,11 +23,11 @@
 ## Videos
 
 - [ ] **Code coverage explained** — visual guide
-  Watch: Search YouTube → *"code coverage testing explained"*
+  Watch: https://www.youtube.com/watch?v=Ra42js3AXIQ
   *~10 min · Line coverage, branch coverage, what the coloured HTML report shows*
 
 - [ ] **Newman — Postman CLI tutorial**
-  Watch: Search YouTube → *"Newman Postman CLI tutorial"*
+  Watch: https://www.youtube.com/watch?v=SQlwGZj97Y4
   *~10 min · Export collection, run with Newman, generate HTML report*
 
 ---

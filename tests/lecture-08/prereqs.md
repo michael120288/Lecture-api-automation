@@ -16,7 +16,7 @@
 ## Videos
 
 - [ ] **Regex crash course** — Web Dev Simplified
-  Watch: Search YouTube → *"Regular expressions crash course Web Dev Simplified"*
+  Watch: https://www.youtube.com/watch?v=rhzKDrUiJVk
   *~20 min · Covers character classes, flags (i = case-insensitive), groups*
 
 ---

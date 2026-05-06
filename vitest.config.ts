@@ -1,24 +1,42 @@
+// vitest.config.ts — with full reporters and coverage
+// Copy this to your project root to replace the basic vitest.config.ts
+
 import { defineConfig } from 'vitest/config';
 import { config as dotenvConfig } from 'dotenv';
 import { resolve } from 'path';
 
-// Load .env so values are available in test worker threads
 dotenvConfig({ path: resolve(__dirname, '.env') });
 
 export default defineConfig({
   test: {
     globals: true,
     testTimeout: 15000,
-    // Docker/CI: first request includes DNS + TLS handshake — give beforeAll more time
-    hookTimeout: 30000,
-    reporters: ['verbose'],
-    // Sequential: avoids hitting auth rate limits when running all lectures
     fileParallelism: false,
+
+    // Reporters: verbose in local, JUnit in CI
+  reporters: process.env.CI ? ['junit', 'verbose'] : ['html', 'verbose'],
+    outputFile: {
+  html: 'html/index.html',
+  junit: 'test-results/junit.xml',
+},
+
+    // Coverage — run with: npm run test:coverage
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      include: ['src/**/*.ts'],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 70,
+      },
+    },
+
     env: {
-      BASE_URL: (process.env.BASE_URL ?? '').trim(),
-      TEST_USERNAME: (process.env.TEST_USERNAME ?? '').trim(),
-      TEST_PASSWORD: (process.env.TEST_PASSWORD ?? '').trim(),
-      DATABASE_URL: (process.env.DATABASE_URL ?? '').trim(),
+      BASE_URL:      process.env.BASE_URL      ?? '',
+      TEST_USERNAME: process.env.TEST_USERNAME ?? '',
+      TEST_PASSWORD: process.env.TEST_PASSWORD ?? '',
+      DATABASE_URL:  process.env.DATABASE_URL  ?? '',
     },
   },
 });

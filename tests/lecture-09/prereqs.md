@@ -19,7 +19,7 @@
 ## Videos
 
 - [ ] **Social network data modeling** — how follower/following works
-  Watch: Search YouTube → *"social network database design followers following"*
+  Watch: https://www.youtube.com/watch?v=F7d8ljTNtt8
   *~10 min · See how Twitter/Instagram store follow relationships*
 
 ---

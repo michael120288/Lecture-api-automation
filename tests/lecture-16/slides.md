@@ -163,6 +163,101 @@ expect(res.data.user.username).toBeTypeOf('string');
 
 ---
 
+## Image Management Endpoints
+
+Profile and background images are separate from post images — they go to the `Image` collection.
+
+| Method | Path | Returns |
+|--------|------|---------|
+| POST | `/images/profile` | `{ message: "Image added successfully" }` |
+| POST | `/images/background` | `{ message: "Image added successfully" }` |
+| DELETE | `/images/profile/:bgImageId` | `{ message: "Image deleted successfully" }` |
+| GET | `/images/:userId` | `{ message: "User images", images: [...] }` |
+
+<!-- note: these endpoints are completely separate from post image uploads. They manage the profile picture and background banner shown on the user's profile page. -->
+
+---
+
+## POST /images/profile
+
+```ts
+const res = await axios.post(
+  `${BASE_URL}/images/profile`,
+  { image: TEST_AVATAR_IMAGE },
+  { headers: { Cookie: sessionCookie }, validateStatus: () => true }
+);
+expect(res.status).toBe(200);
+expect(res.data.message).toBe('Image added successfully');
+```
+
+- `image` must be a valid data URL or HTTPS URL
+- Missing `image` field → 400
+
+<!-- note: TEST_AVATAR_IMAGE is imported from src/fixtures — a pre-encoded base64 image string. Don't generate your own — use the fixture. -->
+
+---
+
+## POST /images/background
+
+```ts
+const res = await axios.post(
+  `${BASE_URL}/images/background`,
+  { image: TEST_AVATAR_IMAGE },
+  { headers: { Cookie: sessionCookie }, validateStatus: () => true }
+);
+expect(res.status).toBe(200);
+expect(res.data.message).toBe('Image added successfully');
+```
+
+Same schema as `/images/profile` — `image` field required.
+
+<!-- note: background images appear as the banner at the top of the user's profile page. The same TEST_AVATAR_IMAGE fixture is used for testing both. -->
+
+---
+
+## DELETE /images/profile/:bgImageId
+
+Get `bgImageId` from `GET /images/:userId` first:
+
+```ts
+const listRes = await axios.get(
+  `${BASE_URL}/images/${userId}`,
+  { headers: { Cookie: sessionCookie }, validateStatus: () => true }
+);
+const img = listRes.data.images[0];
+
+if (img) {
+  const delRes = await axios.delete(
+    `${BASE_URL}/images/profile/${img.imgId}`,
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true }
+  );
+  expect(delRes.status).toBe(200);
+}
+```
+
+<!-- note: imgId is not the same as _id. It's a Cloudinary public ID. Always guard with existence check — images array may be empty on a fresh account. -->
+
+---
+
+## GET /images/:userId
+
+```ts
+const res = await axios.get(
+  `${BASE_URL}/images/${userId}`,
+  { headers: { Cookie: sessionCookie }, validateStatus: () => true }
+);
+// { message: 'User images', images: [{ imgId, imgVersion, createdAt }] }
+expect(res.status).toBe(200);
+expect(Array.isArray(res.data.images)).toBe(true);
+```
+
+Returns all images (profile + background) uploaded by the user.
+May be empty on a fresh account — assert shape, not count.
+
+<!-- note: images array includes both profile picture uploads and background image uploads. Use GET /images/:userId to get the imgId needed for the DELETE endpoint. -->
+
+---
+
 ## Homework
 
 | TODO | Goal |

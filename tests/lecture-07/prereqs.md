@@ -20,7 +20,7 @@
 ## Videos
 
 - [ ] **REST API design — nested resources**
-  Watch: Search YouTube → *"REST API nested resources best practices"*
+  Watch: https://www.youtube.com/watch?v=2MIrqKEa2SI
   *~8 min · Parent-child resource relationships in URL design*
 
 ---

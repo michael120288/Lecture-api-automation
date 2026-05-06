@@ -20,11 +20,11 @@
 ## Videos
 
 - [ ] **Password reset flow explained**
-  Watch: Search YouTube → *"password reset flow security best practices"*
+  Watch: https://www.youtube.com/watch?v=Rh6aJtHuEdc
   *~10 min · Full flow: request → token generation → email → reset → invalidate*
 
 - [ ] **SSO explained** — Okta
-  Watch: Search YouTube → *"Single Sign-On SSO explained Okta"*
+  Watch: https://www.youtube.com/watch?v=AtfznYgOw34
   *~5 min · How SSO differs from regular login*
 
 ---
