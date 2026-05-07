@@ -123,6 +123,19 @@ This book is divided into four parts.
 - Reference 1: What Is API Testing? — Reference 40: Git Commands
 
 ---
+
+## Before You Begin — Opening a Terminal
+
+Throughout this book you will type commands into a **terminal** (also called a command line or shell). If you have never used one before, here is how to open it on each platform:
+
+- **macOS**: Press `Cmd + Space`, type "Terminal", press Enter. Or open it from Applications → Utilities → Terminal.
+- **Windows**: Press `Win + R`, type `cmd`, press Enter. Or search for "Command Prompt" or "Windows Terminal" in the Start menu. If you have Windows Subsystem for Linux (WSL), you can use that instead.
+- **VS Code (any OS)**: Press `` Ctrl + ` `` (backtick) to open the integrated terminal directly inside the editor. This is the most convenient option — you can see your code and your terminal side by side.
+
+Once your terminal is open you will see a blinking cursor. Type each command exactly as shown and press Enter after each one. You only need to do this setup once — after the terminal is open, leave it open throughout the chapter.
+
+---
+
 # Part I: Foundations
 
 ---
@@ -19560,6 +19573,67 @@ Chapter 16 covers GitHub Actions infrastructure. There is no Vitest test code to
 **Exercise 1** — Create `.github/workflows/tests.yml` with a matrix strategy for Node 18 and Node 20
 
 ```yaml
+name: Chatty API Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      lecture:
+        description: 'Lecture folder to run (e.g. lecture-02) — leave blank for all'
+        required: false
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run Vitest (${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: |
+          if [ -n "${{ github.event.inputs.lecture }}" ]; then
+            npm test tests/${{ github.event.inputs.lecture }}/lecture.test.ts
+          else
+            npm test
+          fi
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-node-${{ matrix.node-version }}
+          path: test-results/
+          retention-days: 7
+```
 
 ---
 
@@ -19612,6 +19686,30 @@ Chapter 17 covers Docker infrastructure. There is no Vitest test code to write.
 **Exercise 1** — Create a `Dockerfile` using `node:20-alpine`
 
 ```dockerfile
+FROM node:20-alpine
+
+# Install CA certificates — required for HTTPS requests to api.codeandtest.com
+RUN apk add --no-cache ca-certificates
+
+WORKDIR /app
+
+# Copy package files first for Docker layer caching
+COPY package*.json ./
+
+# Clean install — same as CI
+RUN npm ci
+
+# Copy source and test files (.env is excluded via .dockerignore — pass via --env-file)
+COPY . .
+
+# Validate required env vars before running tests
+# Fails fast with a clear message rather than cryptic 401 errors
+CMD ["/bin/sh", "-c", "\
+  if [ -z \"$BASE_URL\" ]; then echo 'ERROR: BASE_URL is not set. Run with: docker run --env-file .env chatty-tests' && exit 1; fi && \
+  if [ -z \"$TEST_USERNAME\" ]; then echo 'ERROR: TEST_USERNAME is not set.' && exit 1; fi && \
+  if [ -z \"$TEST_PASSWORD\" ]; then echo 'ERROR: TEST_PASSWORD is not set.' && exit 1; fi && \
+  npm test"]
+```
 
 ---
 
