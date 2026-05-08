@@ -19562,7 +19562,7 @@ jobs:
           retention-days: 14
 ```
 
-A full starter template with TODOs is in `tests/lecture-11/homework/starter.yml`.
+A full starter template with TODOs is in `tests/lecture-11/homework/starter.yml` (Chapter 11 homework folder).
 
 #### Vitest Solutions
 
