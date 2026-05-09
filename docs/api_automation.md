@@ -77,6 +77,7 @@ This book is divided into four parts.
 **Front Matter**
 - [Preface](#preface)
 - [How to Read This Book](#how-to-read-this-book)
+- [Before You Begin — Opening a Terminal](#before-you-begin--opening-a-terminal)
 
 **Part I: Foundations**
 - [Chapter 1: What Is API Testing and Why It Matters](#chapter-1-what-is-api-testing-and-why-it-matters)
@@ -115,7 +116,7 @@ This book is divided into four parts.
 - [Appendix D: Project Setup Checklist](#appendix-d-project-setup-checklist)
 - [Appendix E: Debugging Failed Tests](#appendix-e-debugging-failed-tests)
 - [Appendix F: Glossary](#appendix-f-glossary)
-- [Appendix G: Chatty API — Complete Endpoint Reference](#appendix-g-chatty-api--complete-endpoint-reference)
+- [Appendix G: Complete Project Structure](#appendix-g-complete-project-structure)
 - [Appendix H: Chapter Practice Solutions](#appendix-h-chapter-practice-solutions)
 
 **Part VII: Reference Library** (40 standalone deep-dive chapters — each is self-contained, you do not need to read them in order)
@@ -11312,8 +11313,6 @@ Create a folder named "Chapter 15" inside your Postman collection. Work through 
 
 ---
 
----
-
 ## The Test File for This Chapter
 
 > **This is NOT the file you write for the exercises above.**
@@ -11978,8 +11977,6 @@ Add this line near the top of `README.md`, replacing `YOUR_USERNAME` and `YOUR_R
 ```
 
 > **WHY:** The badge fetches its SVG from GitHub's badge endpoint in real time. It shows green passing or red failing on the repository's front page, giving any visitor instant visibility into the current health of the test suite without opening the Actions tab.
-
----
 
 ---
 
@@ -13375,68 +13372,6 @@ export default defineConfig({
 });
 ```
 
-# Appendix: Complete Project Structure
-
-By the end of Parts V and VI, your project should be organized as follows:
-
-```
-chatty-api-tests/
-├── .github/
-│   └── workflows/
-│       ├── tests.yml                    # Primary CI workflow
-│       └── tests-with-reports.yml      # Extended CI with all reports
-├── src/
-│   └── utils/
-│       ├── auth-helpers.ts             # Shared authentication utilities
-│       ├── test-images.ts              # Base64 image constants
-│       └── cleanup-helpers.ts          # Shared cleanup utilities
-├── tests/
-│   ├── chapter-12/
-│   │   ├── README.md
-│   │   ├── errors.test.ts              # Error testing
-│   │   ├── boundary.test.ts            # Boundary value analysis
-│   │   ├── validation-distinction.test.ts
-│   │   ├── rate-limit.test.ts
-│   │   ├── error-shape.test.ts
-│   │   ├── security-assertions.test.ts
-│   │   └── homework/
-│   │       └── [chapter].test.ts
-│   ├── chapter-13/
-│   │   ├── README.md
-│   │   ├── multi-user.test.ts          # Multi-user scenarios
-│   │   └── homework/
-│   ├── chapter-14/
-│   │   ├── README.md
-│   │   ├── db-validation.test.ts       # Database cross-validation
-│   │   └── homework/
-│   ├── chapter-15/
-│   │   ├── README.md
-│   │   ├── uploads.test.ts             # File uploads
-│   │   └── homework/
-│   └── utils/
-│       └── test-images.ts
-├── test-results/                        # Generated reports (gitignored)
-│   ├── junit.xml
-│   ├── results.json
-│   └── index.html
-├── coverage/                            # Generated coverage (gitignored)
-│   ├── index.html
-│   └── lcov.info
-├── .dockerignore
-├── .env                                 # Local credentials (gitignored)
-├── .env.example                         # Template (committed)
-├── .gitignore
-├── Dockerfile
-├── docker-compose.yml
-├── package.json
-├── package-lock.json
-└── vitest.config.ts
-```
-
-This structure follows the conventions established throughout the book: test files in `tests/chapter-XX/`, shared utilities in `src/utils/`, generated output in gitignored directories, and infrastructure configuration at the project root.
-
----
-
 # Appendix A: Complete Vitest Matcher Reference
 
 This appendix documents every Vitest matcher used in API testing. Each entry includes the exact syntax, a plain-English description, guidance on when to choose it over alternatives, a concrete example drawn from the Chatty API test suite, and the most common misconceptions developers hold about that matcher.
@@ -14568,569 +14503,1106 @@ it('should not return 500 for valid input', async () => {
 
 # Appendix C: Chatty API Endpoint Reference
 
-Base URL: `https://api.codeandtest.com/api/v1`
+> This appendix is the authoritative reference for every Chatty API endpoint tested in this book.
+> Use it when you need to check a field name, validation constraint, or error message.
+> The live interactive version is always at `https://api.codeandtest.com/api-docs`.
 
-All authenticated endpoints require a valid session cookie from `POST /auth/signin` or `POST /auth/signup`, passed as the `Cookie` header.
+## Chatty API — Endpoint Reference
+
+**Base URL:** `https://api.codeandtest.com/api/v1`
+**Authentication:** Session cookie (`session=eyJ...`) — send in every authenticated request as `Cookie: session=eyJ...`
+**Content-Type:** `application/json` on all POST/PUT/PATCH requests
+
+**Legend:** 🔒 = requires auth cookie · 🎓 = first covered in chapter · ⚠️ = gotcha
+
+**Interactive docs (Swagger UI):** `https://api.codeandtest.com/api-docs`
+**Validation rules as JSON:** `GET https://api.codeandtest.com/api/v1/schema`
 
 ---
 
-## C.1 Authentication
+### Common Error Response
 
-### POST /auth/signup
+Every 4xx error returns:
+```ts
+interface ErrorResponse {
+  message: string;     // human-readable description
+  statusCode: number;  // HTTP status code echoed in body
+  status: 'error';
+}
+```
+```json
+{ "message": "Invalid credentials", "statusCode": 400, "status": "error" }
+```
 
-**Auth required**: No
+---
 
-**Request body**:
+### Rate Limits (nginx)
+
+| Zone | Endpoints | Limit | Effect |
+|------|-----------|-------|--------|
+| `auth` | `/signin`, `/signup` | 5 req/min + burst 5 | Returns 429 after burst |
+| `api` | all other `/api/` routes | 30 req/s + burst 50 | Very rarely hit |
+
+---
+
+### Schema & Discovery
+
+---
+
+#### `GET /schema` — Validation rules for all endpoints
+Public (no cookie needed)
+
+Returns every endpoint with its accepted fields, validation constraints, success response shape, and all possible error messages. Use this when tests start failing and you want to check if validation rules changed.
+
+**Response:**
 ```json
 {
-  "username": "string (required, unique)",
-  "email": "string (required, unique, valid email format)",
-  "password": "string (required, min 8 chars, uppercase + number + special char)",
-  "passwordConfirm": "string (required, must match password)",
-  "avatarColor": "string (optional, hex color)",
-  "avatarImage": "string (optional, base64 image)"
+  "swagger_ui": "https://api.codeandtest.com/api-docs",
+  "base_url": "https://api.codeandtest.com/api/v1",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/v1/signup",
+      "auth_required": false,
+      "fields": [
+        { "name": "username", "type": "string", "required": true, "min": 4, "max": 20 },
+        { "name": "password", "type": "string", "required": true, "min": 12, "pattern": "upper+lower+digit+special" }
+      ],
+      "success": { "status": 201, "body": "{ message, token, user }" },
+      "errors": [
+        { "status": 400, "message": "Invalid username" },
+        { "status": 429, "message": "Too many requests" }
+      ]
+    }
+  ]
 }
 ```
 
-**Success response**: `201 Created`
+---
+
+### Auth
+
+---
+
+#### `POST /signup` — Create a new user
+🎓 **Chapter 6** | Public (no cookie needed)
+
+**TypeScript:**
+```ts
+interface SignUpBody {
+  username: string;     // min 4, max 20
+  email: string;        // valid email format
+  password: string;     // min 12, max 128 + must have: upper, lower, digit, special (@$!%*?&)
+  avatarColor: string;  // any non-empty string, e.g. "#4a90e2"
+  avatarImage: string;  // data URL (data:image/png;base64,...) or HTTPS URL
+}
+
+interface SignUpResponse {
+  message: 'User created successfully';
+  user: UserDocument;   // see UserDocument type below
+  token: string;        // JWT — also set as session cookie
+}
+```
+
+**Request example:**
+```json
+{
+  "username": "vitestmike",
+  "email": "mike@test.com",
+  "password": "Vitest@123456",
+  "avatarColor": "#4a90e2",
+  "avatarImage": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+}
+```
+
+**Response (201):**
 ```json
 {
   "message": "User created successfully",
   "user": {
-    "_id": "ObjectId string",
-    "username": "string",
-    "email": "string",
-    "avatarColor": "string",
-    "profilePicture": "string",
-    "followersCount": 0,
-    "followingCount": 0,
+    "_id": "507f1f77bcf86cd799439011",
+    "authId": "507f1f77bcf86cd799439012",
+    "uId": "123456789012",
+    "username": "Vitestmike",
+    "email": "mike@test.com",
+    "avatarColor": "#4a90e2",
+    "profilePicture": "https://res.cloudinary.com/...",
     "postsCount": 0,
-    "admin": false,
-    "createdAt": "ISO 8601 string"
+    "followersCount": 0,
+    "followingCount": 0
   },
-  "token": "JWT string"
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
 
-**Error responses**:
-- `400` — Missing required fields, invalid email format
-- `409` — Username or email already exists
-- `422` — Passwords do not match, password complexity not met
+> ⚠️ `password` is never in the response — stripped before sending.
+> ⚠️ `username` is title-cased server-side: `"vitestmike"` → `"Vitestmike"`.
+> ⚠️ `avatarImage` is uploaded to Cloudinary — fake base64 data fails with 400.
+> ⚠️ Response sets `set-cookie: session=eyJ...` alongside the body `token`.
+> ⚠️ `user._id` = User collection document. `user.authId` = Auth collection document. Two different IDs.
 
-**Notes**: All test usernames must begin with `vitest` to be eligible for cleanup via the test utility endpoint. The response sets a `session` cookie.
+**Validation errors (400):**
+| Scenario | Error message |
+|----------|---------------|
+| username < 4 chars | `'Username must be at least 4 characters'` |
+| username > 20 chars | `'Username cannot exceed 20 characters'` |
+| password < 12 chars | `'Password must be at least 12 characters long'` |
+| password no special char | `'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'` |
+| invalid email | `'Email must be valid'` |
+| duplicate username/email | `'User already exists. Username or email is already taken.'` |
+| Cloudinary upload fails | `'File upload failed. Please check your image and try again.'` |
 
 ---
 
-### POST /auth/signin
+#### `POST /signin` — Sign in
+🎓 **Chapter 5** | Public
 
-**Auth required**: No
+**TypeScript:**
+```ts
+interface SignInBody {
+  username: string;  // min 4, max 32
+  password: string;  // min 8, max 128
+}
 
-**Request body**:
-```json
-{
-  "username": "string",
-  "password": "string"
+interface SignInResponse {
+  message: 'User login successfully';
+  user: UserDocument;
+  token: string;
 }
 ```
 
-**Success response**: `200 OK`
+**Request example:**
+```json
+{ "username": "vitestmike", "password": "Vitest@123456" }
+```
+
+**Response (200):**
 ```json
 {
   "message": "User login successfully",
   "user": {
-    "_id": "ObjectId string",
-    "username": "string",
-    "email": "string",
-    "admin": false
+    "_id": "507f1f77bcf86cd799439011",
+    "authId": "507f1f77bcf86cd799439012",
+    "uId": "123456789012",
+    "username": "Vitestmike",
+    "email": "mike@test.com",
+    "avatarColor": "#4a90e2",
+    "profilePicture": "https://res.cloudinary.com/...",
+    "work": "",
+    "school": "",
+    "quote": "",
+    "location": "",
+    "social": { "facebook": "", "instagram": "", "twitter": "", "youtube": "" },
+    "notifications": { "messages": true, "reactions": true, "comments": true, "follows": true },
+    "postsCount": 0,
+    "followersCount": 0,
+    "followingCount": 0
   },
-  "token": "JWT string"
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
 
-**Error responses**:
-- `400` — Missing username or password
-- `401` — Invalid username or password
+> ⚠️ Both "user not found" and "wrong password" return `'Invalid credentials'` — intentional security design (prevents username enumeration).
+> ⚠️ `set-cookie: session=eyJ...` header is also set — use the cookie (not the token) for subsequent requests.
 
-**Notes**: Sets a `session` cookie. Store this cookie for subsequent authenticated requests.
-
----
-
-### POST /auth/signout
-
-**Auth required**: Yes
-
-**Request body**: None
-
-**Success response**: `200 OK` or `204 No Content`
-
-**Error responses**:
-- `401` — Not authenticated
-
-**Notes**: Clears the session cookie. After this call, subsequent requests with the old cookie will receive 401.
+**Validation errors (400):**
+| Scenario | Error message |
+|----------|---------------|
+| username < 4 chars | `'Invalid username'` |
+| username > 32 chars | `'Invalid username'` |
+| password < 8 chars | `'Invalid password'` |
+| wrong credentials | `'Invalid credentials'` |
 
 ---
 
-### GET /auth/currentuser
+#### `POST /signout` 🔒 — Sign out
+🎓 **Chapter 5**
 
-**Auth required**: Yes
+No body required.
 
-**Request body**: None
-
-**Success response**: `200 OK`
+**Response (200):**
 ```json
-{
-  "token": "JWT string",
-  "currentUser": {
-    "_id": "ObjectId string",
-    "username": "string",
-    "email": "string",
-    "admin": false
-  }
+{ "message": "User logout successfully", "user": {}, "token": "" }
+```
+
+> ⚠️ Sets `req.session = null` — the cookie on the client still exists but the server ignores it.
+> ⚠️ Any subsequent authenticated request with the same cookie returns 401.
+
+---
+
+#### `POST /forgot-password` — Request password reset email
+Public.
+
+**TypeScript:**
+```ts
+interface ForgotPasswordBody { email: string; }
+```
+
+**Request example:**
+```json
+{ "email": "mike@test.com" }
+```
+
+**Response (200):** `{ "message": "Password reset email sent." }`
+
+> ⚠️ Always returns 200 even if the email doesn't exist (prevents email enumeration).
+
+---
+
+#### `POST /reset-password/:token` — Reset password via email link
+Public.
+
+**TypeScript:**
+```ts
+interface ResetPasswordBody {
+  password: string;         // min 12, max 128 + pattern
+  confirmPassword: string;  // must equal password
 }
 ```
 
-**Error responses**:
-- `401` — Not authenticated
+**Validation errors (400):**
+| Scenario | Error message |
+|----------|---------------|
+| passwords don't match | `'Passwords should match'` |
+| expired token | (token expiry handled server-side) |
 
 ---
 
-## C.2 User Profile
+### Current User
 
-### GET /user/:userId
+---
 
-**Auth required**: Yes
+#### `GET /currentuser` 🔒 — Get authenticated user
+🎓 **Chapter 7**
 
-**Path params**: `userId` — MongoDB ObjectId string
+No body. Reads from Redis cache (always fresh after login).
 
-**Success response**: `200 OK`
+**TypeScript:**
+```ts
+interface CurrentUserResponse {
+  token: string;      // JWT from current session
+  isUser: boolean;    // always true when authenticated
+  user: UserDocument;
+}
+```
+
+**Response (200):**
 ```json
 {
-  "message": "User profile",
+  "token": "eyJhbGci...",
+  "isUser": true,
   "user": {
-    "_id": "string",
-    "username": "string",
-    "email": "string",
-    "avatarColor": "string",
-    "profilePicture": "string",
-    "bgImageId": "string | null",
-    "bgImageVersion": "string | null",
-    "followersCount": "number",
-    "followingCount": "number",
-    "postsCount": "number",
-    "notifications": {
-      "messages": "boolean",
-      "reactions": "boolean",
-      "comments": "boolean",
-      "follows": "boolean"
-    },
-    "social": {
-      "github": "string",
-      "twitter": "string",
-      "instagram": "string",
-      "youtube": "string",
-      "facebook": "string",
-      "twitch": "string"
-    },
-    "createdAt": "ISO 8601 string"
+    "_id": "507f1f77...",
+    "username": "Vitestmike",
+    "email": "mike@test.com",
+    "work": "QA Engineer",
+    "school": "",
+    "quote": "",
+    "location": "Kyiv",
+    "social": { "facebook": "", "instagram": "", "twitter": "", "youtube": "" },
+    "notifications": { "messages": true, "reactions": true, "comments": true, "follows": true },
+    "postsCount": 3,
+    "followersCount": 1,
+    "followingCount": 2
   }
 }
 ```
 
-**Error responses**:
-- `401` — Not authenticated
-- `404` — User not found
+> ⚠️ Response shape is different from `/signin` — `{ token, isUser, user }` vs `{ message, token, user }`.
+> ⚠️ `isUser` is always `true` here — it is `false` only if the user is somehow deleted mid-session.
 
 ---
 
-### PUT /user/:userId
+#### `GET /session-token` 🔒 — Get JWT from current session
+🎓 **Chapter 7**
 
-**Auth required**: Yes (must be the same user)
+No body.
 
-**Request body**: Any subset of user fields to update (username, email, notifications, social, etc.)
+**TypeScript:**
+```ts
+interface SessionTokenResponse { token: string; }
+```
 
-**Success response**: `200 OK`
-```json
-{
-  "message": "User updated successfully"
+**Response (200):** `{ "token": "eyJhbGci..." }`
+
+> ⚠️ Returns the same JWT stored in the session cookie — useful when a frontend needs the raw token.
+
+---
+
+### Posts
+
+---
+
+#### `GET /post/all/:page` 🔒 — Get all posts (paginated)
+🎓 **Chapter 8**
+
+No body. Page size: **10**. Returns newest first (sorted by `createdAt` descending).
+
+**TypeScript:**
+```ts
+interface GetPostsResponse {
+  message: 'All posts';
+  posts: PostDocument[];
+  totalPosts: number;
 }
 ```
 
-**Error responses**:
-- `401` — Not authenticated
-- `403` — Trying to update another user's profile
-- `400` — Invalid field values
-
----
-
-### GET /user/all/:page
-
-**Auth required**: Yes
-
-**Path params**: `page` — page number (1-based)
-
-**Success response**: `200 OK`
-```json
-{
-  "message": "Get users",
-  "users": [],
-  "totalUsers": "number"
-}
-```
-
----
-
-### POST /user/follow/:userId
-
-**Auth required**: Yes
-
-**Success response**: `200 OK`
-
-**Error responses**:
-- `400` — Trying to follow yourself
-- `409` — Already following this user
-
----
-
-### DELETE /user/unfollow/:userId
-
-**Auth required**: Yes
-
-**Success response**: `200 OK`
-
----
-
-## C.3 Posts
-
-### POST /post
-
-**Auth required**: Yes
-
-**Request body**:
-```json
-{
-  "post": "string (required, the post text)",
-  "bgColor": "string (optional, background color)",
-  "privacy": "Public | Private | Followers",
-  "gifUrl": "string (optional)",
-  "profilePicture": "string (optional)",
-  "feelings": "string (optional)"
-}
-```
-
-**Success response**: `201 Created`
-```json
-{
-  "message": "Post created successfully",
-  "post": {}
-}
-```
-
-**Error responses**:
-- `400` — Missing post text
-- `401` — Not authenticated
-
----
-
-### GET /posts/:page
-
-**Auth required**: Yes
-
-**Path params**: `page` — page number (1-based)
-
-**Success response**: `200 OK`
+**Response (200):**
 ```json
 {
   "message": "All posts",
-  "posts": [],
-  "totalPosts": "number"
+  "posts": [{
+    "_id": "507f1f77...",
+    "userId": "507f1f77...",
+    "username": "Vitestmike",
+    "email": "mike@test.com",
+    "avatarColor": "#4a90e2",
+    "profilePicture": "https://res.cloudinary.com/...",
+    "post": "Hello world!",
+    "bgColor": "#ffffff",
+    "feelings": "",
+    "privacy": "Public",
+    "gifUrl": "",
+    "commentsCount": 0,
+    "imgVersion": "",
+    "imgId": "",
+    "videoId": "",
+    "videoVersion": "",
+    "createdAt": "2026-04-17T10:00:00.000Z",
+    "reactions": { "like": 0, "love": 0, "happy": 0, "sad": 0, "wow": 0, "angry": 0 }
+  }],
+  "totalPosts": 42
 }
 ```
 
+> ⚠️ Reads from Redis first, falls back to MongoDB if cache is empty.
+
 ---
 
-### GET /post/:postId
+#### `POST /post` 🔒 — Create a plain post
+🎓 **Chapter 8**
 
-**Auth required**: Yes
+**TypeScript:**
+```ts
+interface CreatePostBody {
+  post?: string;
+  bgColor?: string;
+  privacy?: string;         // 'Public' | 'Private' | 'Followers'
+  feelings?: string;
+  gifUrl?: string;
+  profilePicture?: string;  // sender's profile picture
+}
 
-**Success response**: `200 OK`
+interface CreatePostResponse {
+  message: 'Post created successfully';
+  // NO post _id in response — use GET /post/all/1 to find it
+}
+```
+
+**Request example:**
+```json
+{ "post": "My test post!", "bgColor": "#ffffff", "privacy": "Public", "feelings": "" }
+```
+
+**Response (201):** `{ "message": "Post created successfully" }`
+
+> ⚠️ Returns 201 (Created) — unlike comments which return 200.
+> ⚠️ **No post ID in the response.** Find it by calling `GET /post/all/1` and searching by post text.
+> ⚠️ All fields are optional — `{}` is valid and creates an empty post.
+
+---
+
+#### `PATCH /post/:postId` 🔒 — Update post
+🎓 **Chapter 8**
+
+Same body fields as `POST /post`. `:postId` must be a valid MongoDB ObjectId.
+
+**Response (200):** `{ "message": "Post updated successfully" }`
+
+> ⚠️ Owner-only — returns 403 if you try to update someone else's post.
+> ⚠️ Returns only the success message — call `GET /post/all/1` to verify the update.
+> ⚠️ Invalid ObjectId format → 400.
+
+---
+
+#### `DELETE /post/:postId` 🔒 — Delete post
+🎓 **Chapter 8**
+
+No body.
+
+**Response (200):** `{ "message": "Post deleted successfully" }`
+
+> ⚠️ Deletes from Redis immediately (visible in GET right away). DB deletion is queued asynchronously.
+
+---
+
+### Reactions
+
+---
+
+#### `POST /post/reaction` 🔒 — Add or switch reaction
+🎓 **Chapter 9**
+
+**TypeScript:**
+```ts
+type ReactionType = 'like' | 'love' | 'happy' | 'sad' | 'wow' | 'angry';
+
+interface AddReactionBody {
+  userTo: string;               // User _id of the post owner (NOT authId)
+  postId: string;               // Post _id
+  type: ReactionType;           // the new reaction type
+  previousReaction?: string;    // send current type when SWITCHING reactions, '' when adding first
+  postReactions?: {             // current reaction counts object
+    like: number; love: number; happy: number;
+    sad: number; wow: number; angry: number;
+  };
+  profilePicture?: string;      // reactor's profile picture
+}
+```
+
+**Request example — first reaction:**
 ```json
 {
-  "message": "Post",
-  "post": {
-    "_id": "string",
-    "userId": "string",
-    "username": "string",
-    "post": "string",
-    "bgColor": "string",
-    "privacy": "string",
-    "feelings": "string",
-    "gifUrl": "string",
-    "reactions": {
-      "like": "number",
-      "love": "number",
-      "wow": "number",
-      "sad": "number",
-      "happy": "number",
-      "angry": "number"
-    },
-    "commentsCount": "number",
-    "imgVersion": "string",
-    "imgId": "string",
-    "createdAt": "ISO 8601 string"
-  }
+  "userTo": "507f1f77bcf86cd799439011",
+  "postId": "507f1f77bcf86cd799439022",
+  "type": "like",
+  "previousReaction": "",
+  "postReactions": { "like": 0, "love": 0, "happy": 0, "sad": 0, "wow": 0, "angry": 0 },
+  "profilePicture": ""
 }
 ```
 
----
-
-### PUT /post/:postId
-
-**Auth required**: Yes (post owner only)
-
-**Success response**: `200 OK`
-
----
-
-### DELETE /post/:postId
-
-**Auth required**: Yes (post owner only)
-
-**Success response**: `200 OK`
-
----
-
-## C.4 Comments
-
-### POST /post/comment
-
-**Auth required**: Yes
-
-**Request body**:
+**Request example — switching from like to love:**
 ```json
 {
-  "userTo": "ObjectId string",
-  "postId": "ObjectId string",
-  "comment": "string",
-  "profilePicture": "string"
+  "userTo": "507f1f77...",
+  "postId": "507f1f77...",
+  "type": "love",
+  "previousReaction": "like",
+  "postReactions": { "like": 1, "love": 0, "happy": 0, "sad": 0, "wow": 0, "angry": 0 }
 }
 ```
 
-**Success response**: `200 OK`
+**Response (200):** `{ "message": "Reaction added successfully" }`
+
+> ⚠️ Returns 200 not 201.
+> ⚠️ `userTo` is the post **owner's** User `_id` — get it from `post.userId` after creating the post.
+> ⚠️ `previousReaction: ""` for first reaction, `previousReaction: "like"` when switching from like.
 
 ---
 
-### GET /post/:postId/comments
+#### `GET /post/reactions/:postId` 🔒 — Get all reactions for a post
+🎓 **Chapter 9**
 
-**Auth required**: Yes
+**TypeScript:**
+```ts
+interface GetReactionsResponse {
+  message: 'Post reactions';
+  reactions: ReactionDocument[];  // individual reaction documents
+  count: number;                  // total across all types
+}
+```
 
-**Success response**: `200 OK`
+**Response (200):**
+```json
+{
+  "message": "Post reactions",
+  "reactions": [{
+    "_id": "507f1f77...",
+    "username": "Vitestmike",
+    "avatarColor": "#4a90e2",
+    "type": "like",
+    "postId": "507f1f77..."
+  }],
+  "count": 1
+}
+```
+
+> ⚠️ `reactions` = array of individual documents. `count` = total number. Both are needed for different use cases.
+
+---
+
+#### `DELETE /post/reaction/:postId/:previousReaction/:postReactions` 🔒 — Remove reaction
+🎓 **Chapter 9**
+
+All three are URL path params. `:postReactions` is URL-encoded JSON.
+
+**TypeScript:**
+```ts
+// Build the URL like this:
+const postReactions = { like: 1, love: 0, happy: 0, sad: 0, wow: 0, angry: 0 };
+const url = `${BASE_URL}/post/reaction/${postId}/like/${encodeURIComponent(JSON.stringify(postReactions))}`;
+```
+
+**URL example:**
+```
+DELETE /post/reaction/507f1f77.../like/%7B%22like%22%3A1%2C%22love%22%3A0%2C%22happy%22%3A0%2C%22sad%22%3A0%2C%22wow%22%3A0%2C%22angry%22%3A0%7D
+```
+
+**Response (200):** `{ "message": "Reaction removed from post" }`
+
+> ⚠️ The encoded JSON `{"like":1,...}` represents the current reaction counts **before** removal.
+> ⚠️ Without URL-encoding, the `{` and `"` characters break the URL path.
+
+---
+
+### Comments
+
+---
+
+#### `POST /post/comment` 🔒 — Add comment
+🎓 **Chapter 10**
+
+**TypeScript:**
+```ts
+interface AddCommentBody {
+  userTo: string;          // post owner's User _id
+  postId: string;
+  comment: string;         // required — the comment text
+  profilePicture?: string;
+}
+
+interface AddCommentResponse {
+  message: 'Comment created successfully';
+  // NO commentId — find it via GET /post/comments/:postId
+}
+```
+
+**Request example:**
+```json
+{
+  "userTo": "507f1f77bcf86cd799439011",
+  "postId": "507f1f77bcf86cd799439022",
+  "comment": "Great post!",
+  "profilePicture": ""
+}
+```
+
+**Response (200):** `{ "message": "Comment created successfully" }`
+
+> ⚠️ Returns **200**, not 201. Comments are actions on a post, not new top-level resources.
+> ⚠️ **No commentId in response.** Find it by calling `GET /post/comments/:postId` and searching by text.
+
+---
+
+#### `GET /post/comments/:postId` 🔒 — Get all comments for a post
+🎓 **Chapter 10**
+
+**TypeScript:**
+```ts
+interface GetCommentsResponse {
+  message: 'Post comments';
+  comments: CommentDocument[];
+}
+
+interface CommentDocument {
+  _id: string;
+  postId: string;
+  username: string;
+  avatarColor: string;
+  profilePicture: string;
+  comment: string;
+  createdAt: string;
+}
+```
+
+**Response (200):**
 ```json
 {
   "message": "Post comments",
-  "comments": []
+  "comments": [{
+    "_id": "507f1f77...",
+    "postId": "507f1f77...",
+    "username": "Vitestmike",
+    "avatarColor": "#4a90e2",
+    "profilePicture": "https://...",
+    "comment": "Great post!",
+    "createdAt": "2026-04-17T10:00:00.000Z"
+  }]
 }
 ```
 
 ---
 
-## C.5 Reactions
+#### `GET /post/single/comment/:postId/:commentId` 🔒 — Get one comment
+🎓 **Chapter 10**
 
-### POST /post/reaction
+**Response (200):**
+```json
+{ "message": "Single comment", "comments": { "_id": "...", "comment": "Great post!", ... } }
+```
 
-**Auth required**: Yes
+> ⚠️ Despite `comments` being plural in the key name, it returns a **single object**, not an array.
 
-**Request body**:
+---
+
+#### `PATCH /post/comment/:postId/:commentId` 🔒 — Update comment
+🎓 **Chapter 10**
+
+**TypeScript:**
+```ts
+interface UpdateCommentBody { comment: string; }  // required
+```
+
+**Request example:** `{ "comment": "Updated text!" }`
+
+**Response (200):** `{ "message": "Comment updated successfully" }`
+
+> ⚠️ Both `:postId` AND `:commentId` required in URL — invalid ObjectId → 400.
+
+---
+
+#### `DELETE /post/comment/:postId/:commentId` 🔒 — Delete comment
+🎓 **Chapter 10**
+
+No body.
+
+**Response (200):** `{ "message": "Comment deleted successfully" }`
+
+---
+
+### User Profile
+
+---
+
+#### `GET /user/all/:page` 🔒 — Get all users (paginated)
+🎓 **Chapter 11**
+
+Page size: **12** (different from posts which uses 10).
+
+**TypeScript:**
+```ts
+interface GetAllUsersResponse {
+  message: 'Get users';
+  users: UserDocument[];
+  totalUsers: number;
+  followers: FollowerData[];  // users the current user is following — bundled for efficiency
+}
+```
+
+> ⚠️ The `followers` array is bundled in the response alongside the user list — no extra request needed.
+
+---
+
+#### `GET /user/profile/search/:query` 🔒 — Search users by username
+🎓 **Chapter 11**
+
+Case-insensitive regex search. Encode special characters with `encodeURIComponent()`.
+
+**TypeScript:**
+```ts
+interface SearchUsersResponse {
+  message: 'Search results';
+  search: Array<{
+    _id: string;
+    username: string;
+    email: string;
+    profilePicture: string;
+    avatarColor: string;
+  }>;
+}
+```
+
+**Example URL:** `GET /user/profile/search/vitest`
+
+**Response (200):**
 ```json
 {
-  "userTo": "ObjectId string",
-  "postId": "ObjectId string",
-  "type": "like | love | wow | sad | happy | angry",
-  "postReactions": { "like": 0, "love": 0 },
-  "profilePicture": "string",
-  "previousReaction": "string (optional, type of reaction to remove)"
+  "message": "Search results",
+  "search": [{ "_id": "507f1f77...", "username": "Vitestmike", "email": "mike@test.com", "profilePicture": "https://...", "avatarColor": "#4a90e2" }]
 }
 ```
 
-**Success response**: `200 OK`
+> ⚠️ Returns an empty array `[]` (not 404) when no users match the query.
 
 ---
 
-### DELETE /post/reaction/:postId/:previousReaction/:postReactions
+#### `PUT /user/profile/basic-info` 🔒 — Update profile fields
+🎓 **Chapter 7** / **Chapter 11**
 
-**Auth required**: Yes
+**TypeScript:**
+```ts
+interface UpdateBasicInfoBody {
+  quote?: string;
+  work?: string;
+  school?: string;
+  location?: string;
+}
+```
 
-**Success response**: `200 OK`
+**Request example:** `{ "work": "QA Engineer", "location": "Kyiv" }`
+
+**Response (200):** `{ "message": "Updated successfully" }`
+
+> ⚠️ All fields optional — `{}` is valid. Returns only the message — call `GET /currentuser` to verify.
 
 ---
 
-## C.6 Messages
+#### `PUT /user/profile/social-links` 🔒 — Update social links
+🎓 **Chapter 11**
 
-### POST /message/add-chat-users
+**TypeScript:**
+```ts
+interface UpdateSocialLinksBody {
+  facebook?: string;
+  instagram?: string;
+  twitter?: string;
+  youtube?: string;
+}
+```
 
-**Auth required**: Yes
+**Request example:** `{ "twitter": "https://twitter.com/vitestmike", "youtube": "" }`
 
-**Request body**:
+**Response (200):** `{ "message": "Updated successfully" }`
+
+---
+
+#### `PUT /user/profile/settings` 🔒 — Update notification settings
+🎓 **Chapter 7**
+
+**TypeScript:**
+```ts
+interface UpdateSettingsBody {
+  messages?: boolean;
+  reactions?: boolean;
+  comments?: boolean;
+  follows?: boolean;
+}
+```
+
+**Response (200):**
 ```json
 {
-  "userOne": "ObjectId string",
-  "userTwo": "ObjectId string"
+  "message": "Notification settings updated successfully",
+  "settings": { "messages": true, "reactions": false, "comments": true, "follows": false }
 }
 ```
 
-**Success response**: `200 OK`
+> ⚠️ Unlike basic-info, this response **echoes back the applied settings** — no need for a follow-up GET.
 
 ---
 
-### POST /message
+#### `PUT /user/profile/change-password` 🔒 — Change password
+🎓 **Chapter 11**
 
-**Auth required**: Yes
+**TypeScript:**
+```ts
+interface ChangePasswordBody {
+  currentPassword: string;   // min 4, max 8 ← unusually short!
+  newPassword: string;       // min 4, max 8
+  confirmPassword: string;   // must equal newPassword
+}
+```
 
-**Request body**:
+**Request example:** `{ "currentPassword": "Test1", "newPassword": "Test2", "confirmPassword": "Test2" }`
+
+**Response (200):** `{ "message": "Password updated successfully. You will be redirected shortly to the login page." }`
+
+> ⚠️ **Schema max is 8 characters** — much shorter than signup (min 12). Accounts with longer passwords get 400.
+> ⚠️ Sends a password reset confirmation email after success.
+> ⚠️ In tests: only test **validation errors** (mismatch, empty body) — never actually change the password.
+
+**Validation errors (400):**
+| Scenario | Error message |
+|----------|---------------|
+| currentPassword > 8 chars | `'Password should have a maximum length of 8'` |
+| passwords don't match | `'Confirm password does not match new password.'` |
+| wrong current password | `'Invalid credentials'` |
+
+---
+
+### Followers
+
+---
+
+#### `PUT /user/follow/:followerId` 🔒 — Follow a user
+🎓 **Chapter 12**
+
+`:followerId` = the **User `_id`** (from `user._id`) of who you want to follow.
+No body.
+
+**Response (200):** `{ "message": "..." }`
+
+> ⚠️ Use `user._id` — not `user.authId`. These are different IDs from different collections.
+> ⚠️ Get the target user's `_id` from signup response (`user._id`) or search results.
+
+---
+
+#### `PUT /user/unfollow/:followeeId/:followerId` 🔒 — Unfollow a user
+🎓 **Chapter 12**
+
+`:followeeId` = who you are unfollowing (their `user._id`)
+`:followerId` = **your own** `user._id` (get from `GET /currentuser → user._id`)
+No body.
+
+**Response (200):** `{ "message": "..." }`
+
+> ⚠️ Requires **both** IDs — unlike follow which only needs the target's ID.
+> ⚠️ Your own `_id` comes from `GET /currentuser` → `user._id`.
+
+---
+
+#### `GET /user/following` 🔒 — List users you follow
+🎓 **Chapter 12**
+
+**TypeScript:**
+```ts
+interface GetFollowingResponse {
+  message: 'User following';
+  following: FollowerData[];
+}
+```
+
+**Response (200):**
 ```json
 {
-  "conversationId": "ObjectId string",
-  "receiverId": "ObjectId string",
-  "receiverName": "string",
-  "receiverAvatarColor": "string",
-  "receiverProfilePicture": "string",
-  "body": "string",
-  "gifUrl": "string (optional)",
-  "selectedImage": "string (optional, base64)"
+  "message": "User following",
+  "following": [{ "_id": "507f1f77...", "username": "Vitestjohn", "profilePicture": "https://...", "followersCount": 1 }]
 }
 ```
 
-**Success response**: `200 OK`
+---
+
+#### `GET /user/followers/:userId` 🔒 — List followers of a user
+🎓 **Chapter 12**
+
+`:userId` = the User `_id` whose followers you want.
+
+**Response (200):** `{ "message": "User followers", "followers": [...] }`
 
 ---
 
-### GET /message/conversation-list
+#### `PUT /user/block/:followerId` 🔒 — Block a user
+🎓 **Chapter 12**
 
-**Auth required**: Yes
+No body. Adds user to your `blocked` array and you to their `blockedBy`.
+**Response (200):** `{ "message": "..." }`
 
-**Success response**: `200 OK`
+#### `PUT /user/unblock/:followerId` 🔒 — Unblock a user
+No body. Reverses blocking.
+**Response (200):** `{ "message": "..." }`
+
+> ⚠️ Blocking does: adds to blocked arrays, hides from suggestions, prevents follow-back.
+
+---
+
+### Notifications
+
+---
+
+#### `GET /notifications` 🔒 — Get all notifications
+🎓 **Chapter 12**
+
+**TypeScript:**
+```ts
+interface GetNotificationsResponse {
+  message: 'User notifications';
+  notifications: NotificationDocument[];  // may be empty []
+}
+```
+
+**Response (200):** `{ "message": "User notifications", "notifications": [] }`
+
+> ⚠️ May be empty on a fresh account. Always assert the shape (is array), not a specific count.
+
+---
+
+#### `PUT /notification/:notificationId` 🔒 — Mark notification as read
+No body. `:notificationId` must be a valid ObjectId.
+**Response (200):** `{ "message": "Notification marked as read" }`
+
+#### `DELETE /notifications/:notificationId` 🔒 — Delete notification
+No body.
+**Response (200):** `{ "message": "Notification deleted successfully" }`
+
+---
+
+### Images
+
+---
+
+#### `POST /images/profile` 🔒 — Upload profile picture
+
+**TypeScript:**
+```ts
+interface AddImageBody {
+  image: string;  // data URL (data:image/png;base64,...) or valid HTTPS URL
+}
+```
+
+**Validation errors (400):**
+| Scenario | Error message |
+|----------|---------------|
+| not data URL or HTTPS URL | `'Image must be either a data URL or HTTP/HTTPS URL'` |
+| invalid data URL format | `'Image must be a valid data URL in format: data:image/[type];base64,[data]'` |
+
+**Response (200):** `{ "message": "Image added successfully" }`
+
+---
+
+### Chat
+
+---
+
+#### `POST /chat/message` 🔒 — Send a message
+🎓 **Not covered in main chapters — reference only**
+
+**TypeScript:**
+```ts
+interface SendMessageBody {
+  receiverId: string;              // required — recipient's User _id
+  receiverUsername: string;        // required
+  receiverAvatarColor: string;     // required
+  receiverProfilePicture: string;  // required
+  conversationId?: string;         // omit for first message (creates new conversation)
+  body?: string;                   // message text
+  gifUrl?: string;
+  selectedImage?: string;          // data URL
+  isRead?: boolean;
+}
+```
+
+**Request example:**
 ```json
 {
-  "message": "User conversation list",
-  "list": []
+  "receiverId": "507f1f77...",
+  "receiverUsername": "Vitestjohn",
+  "receiverAvatarColor": "#ff6b6b",
+  "receiverProfilePicture": "https://...",
+  "body": "Hello!"
+}
+```
+
+**Response (200):** `{ "message": "Message added", "conversationId": "..." }`
+
+---
+
+#### `PUT /chat/message/mark-as-read` 🔒 — Mark conversation as read
+
+**TypeScript:**
+```ts
+interface MarkAsReadBody { senderId: string; receiverId: string; }
+```
+
+**Response (200):** `{ "message": "Message marked as read" }`
+
+---
+
+#### `PUT /chat/message/reaction` 🔒 — React to a chat message
+
+**TypeScript:**
+```ts
+interface MessageReactionBody {
+  conversationId: string;
+  messageId: string;
+  reaction: string;          // any emoji/string
+  type: 'add' | 'remove';
 }
 ```
 
 ---
 
-### GET /message/messages/:receiverId
+### Test Cleanup (course only)
 
-**Auth required**: Yes
+---
 
-**Success response**: `200 OK`
+#### `DELETE /test/cleanup/user/:authId` — Delete a test user
+🎓 **Chapter 6** (introduced)
+
+**Header required:** `x-test-secret: chatty-test-cleanup-2026`
+
+**TypeScript:**
+```ts
+// Correct usage:
+await axios.delete(`${BASE_URL}/test/cleanup/user/${authId}`, {
+  headers: { 'x-test-secret': TEST_CLEANUP_SECRET },  // from src/fixtures.ts
+  validateStatus: () => true,
+});
+```
+
+**Responses:**
 ```json
-{
-  "message": "User chat messages",
-  "messages": []
+// 200 — success
+{ "message": "Test user deleted successfully", "deletedAuthId": "507f1f77...", "deletedUsername": "Vitestmike" }
+
+// 403 — wrong or missing header
+{ "message": "Forbidden: invalid test secret" }
+
+// 400 — username doesn't start with "vitest"
+{ "message": "Safety check failed: user \"John\" does not appear to be a test user. Username must start with \"vitest\"." }
+
+// 404 — authId not found
+{ "message": "Auth user with id 507f1f77... not found", "status": "error", "statusCode": 404 }
+```
+
+> ⚠️ Use `user.authId` from the signup response — NOT `user._id`.
+> ⚠️ Username **must** start with `vitest` — safety guard prevents deleting real users.
+> ⚠️ Deletes from **both** `Auth` and `User` collections.
+> ⚠️ `TEST_CLEANUP_SECRET` is `'chatty-test-cleanup-2026'` — hardcoded in `src/fixtures.ts`, not in `.env`.
+
+---
+
+### Shared TypeScript Types
+
+```ts
+interface UserDocument {
+  _id: string;             // User collection document ID
+  authId: string;          // Auth collection document ID
+  uId: string;             // 12-digit numeric string
+  username: string;        // title-cased
+  email: string;           // lowercase
+  avatarColor: string;
+  profilePicture: string;  // Cloudinary URL
+  work: string;
+  school: string;
+  quote: string;
+  location: string;
+  bgImageVersion: string;
+  bgImageId: string;
+  postsCount: number;
+  followersCount: number;
+  followingCount: number;
+  blocked: string[];
+  blockedBy: string[];
+  notifications: {
+    messages: boolean;
+    reactions: boolean;
+    comments: boolean;
+    follows: boolean;
+  };
+  social: {
+    facebook: string;
+    instagram: string;
+    twitter: string;
+    youtube: string;
+  };
+  // password is NEVER present — stripped before any response
+}
+
+interface PostDocument {
+  _id: string;
+  userId: string;          // post owner's User _id — use as userTo in reactions/comments
+  username: string;
+  email: string;
+  avatarColor: string;
+  profilePicture: string;
+  post: string;
+  bgColor: string;
+  feelings: string;
+  privacy: string;
+  gifUrl: string;
+  commentsCount: number;
+  imgVersion: string;
+  imgId: string;
+  videoId: string;
+  videoVersion: string;
+  createdAt: string;
+  reactions: {
+    like: number; love: number; happy: number;
+    sad: number; wow: number; angry: number;
+  };
 }
 ```
-
----
-
-## C.7 Notifications
-
-### GET /notifications
-
-**Auth required**: Yes
-
-**Success response**: `200 OK`
-```json
-{
-  "message": "User notifications",
-  "notifications": []
-}
-```
-
----
-
-### PUT /notification/:notificationId
-
-**Auth required**: Yes
-
-**Success response**: `200 OK`
-
----
-
-### DELETE /notification/:notificationId
-
-**Auth required**: Yes
-
-**Success response**: `200 OK`
-
----
-
-## C.8 Images
-
-### POST /images/profile
-
-**Auth required**: Yes
-
-**Request body**:
-```json
-{
-  "image": "string (base64 encoded image)"
-}
-```
-
-**Success response**: `200 OK`
-
----
-
-### POST /images/background
-
-**Auth required**: Yes
-
-**Request body**:
-```json
-{
-  "image": "string (base64 encoded image)"
-}
-```
-
-**Success response**: `200 OK`
-
----
-
-### DELETE /images/background/:bgImageId
-
-**Auth required**: Yes
-
-**Success response**: `200 OK`
-
----
-
-## C.9 Test Utilities
-
-### DELETE /test/cleanup/user/:authId
-
-**Auth required**: Special — requires header `x-test-secret`
-
-**Path params**: `authId` — the `_id` from the signup/signin response
-
-**Headers**:
-```
-x-test-secret: <value from TEST_SECRET env var>
-```
-
-**Success response**: `200 OK`
-```json
-{
-  "message": "Test user cleaned up"
-}
-```
-
-**Error responses**:
-- `400` — Username does not start with `vitest`
-- `403` — Missing or invalid `x-test-secret` header
-- `404` — User not found
-
-**Notes**: Only users whose username starts with `vitest` can be deleted via this endpoint. This prevents accidental deletion of real production data during test runs.
-
----
 
 # Appendix D: Project Setup Checklist
 
@@ -15284,7 +15756,7 @@ This guard throws immediately at startup if `.env` is missing or `BASE_URL` is e
 
 ---
 
-## D.9 src/test-utils.ts
+## D.8 src/test-utils.ts
 
 Create `/src/test-utils.ts`:
 
@@ -15436,7 +15908,7 @@ export async function authDelete(
 
 ---
 
-## D.10 src/fixtures.ts
+## D.9 src/fixtures.ts
 
 Create `/src/fixtures.ts`:
 
@@ -15542,7 +16014,7 @@ export function emptyReactions(): Record<ReactionType, number> {
 
 ---
 
-## D.11 Directory Structure Verification
+## D.10 Directory Structure Verification
 
 After completing setup, your project should look like this:
 
@@ -15567,7 +16039,7 @@ chatty-api-tests/
 
 ---
 
-## D.12 Verify Setup
+## D.11 Verify Setup
 
 Run this verification command to confirm everything is working:
 
@@ -15986,134 +16458,75 @@ An Axios option that tells the browser to include cookies in cross-origin reques
 
 ---
 
-# Index
-
-**A**
-- Asymmetric matchers — Appendix A.9, Chapters 9, 12
-- Authentication — Appendix C.1, Chapters 5, 6
-- Authorization — Appendix B (403 section), Chapter 10
-- Axios — Appendix D.3, Chapters 4, 5
-- Axios interceptors — Appendix E.5
-
-**B**
-- Base64 — Appendix D.10, Chapters 16, 17
-- beforeAll — Appendix D.9, Chapters 5, 6
-- beforeEach — Appendix F, Chapter 11
-- Boundary value testing — Chapters 7, 8
-
-**C**
-- Cleanup endpoint — Appendix C.9, Chapter 5
-- config.ts — Appendix D.8
-- Cookie handling — Appendix D.9, Appendix E.2, Chapters 5, 6
-- Coverage — Appendix F, Chapter 15
-
-**D**
-- DELETE method — Appendix C, Chapters 12, 13
-- describe — Appendix F, Chapters 4, 5
-- dotenv — Appendix D.6, Chapter 4
-- Debugging — Appendix E
-
-**E**
-- Environment variables — Appendix D.6, Appendix D.8
-- Error handling — Appendix E.2, Chapters 6, 7
-- expect.any — Appendix A.7, Chapters 8, 9
-- expect.arrayContaining — Appendix A.5, Chapter 12
-- expect.objectContaining — Appendix A.6, Chapters 8, 10
-- expect.stringContaining — Appendix A.9, Chapter 9
-- expect.stringMatching — Appendix A.9, Chapter 9
-
-**F**
-- Faker.js — Appendix D.3, Chapter 5
-- Fixtures — Appendix D.10, Chapters 5, 16
-- generateUser — Appendix D.10, Chapter 5
-
-**G**
-- generatePost — Appendix D.10, Chapter 11
-- Glossary — Appendix F
-
-**H**
-- HTTP methods — Appendix C, Chapter 4
-- HTTP status codes — Appendix B, Chapters 6, 7, 8
-
-**I**
-- Integration tests — Appendix F, Chapter 4
-- Idempotency — Appendix F, Chapters 12, 13
-
-**J**
-- JWT — Appendix F, Appendix C.1, Chapter 5
-
-**M**
-- MongoDB — Appendix F, Chapters 4, 13
-- toMatchObject — Appendix A.6, Chapters 8, 9, 10
-
-**N**
-- .not negation — Appendix A.10, Chapters 7, 10
-- Notifications — Appendix C.7, Chapter 18
-
-**O**
-- ObjectId — Appendix A.8, Appendix F, Chapter 8
-
-**P**
-- Pagination — Appendix C.3, Appendix F, Chapter 11
-- Password complexity — Appendix C.1, Chapter 6
-- Posts API — Appendix C.3, Chapters 11, 12, 13
-
-**R**
-- Rate limiting — Appendix B (429 section), Appendix E.2, Chapters 17, 15
-- Reactions — Appendix C.5, Chapter 13
-- Redis — Appendix F, Chapter 17
-- REST — Appendix F, Chapter 4
-
-**S**
-- Session cookies — Appendix D.9, Appendix E.2
-- Setup checklist — Appendix D
-- signupUser — Appendix D.9, Chapter 5
-- signinUser — Appendix D.9, Chapter 6
-- Status codes — Appendix B
-
-**T**
-- test-utils.ts — Appendix D.9
-- TEST_AVATAR_IMAGE — Appendix D.10
-- toBeGreaterThan — Appendix A.3, Chapter 11
-- toBe — Appendix A.1, Chapters 5, 6
-- toBeDefined — Appendix A.2, Chapters 7, 8
-- toBeFalsy — Appendix A.2, Chapter 7
-- toBeNull — Appendix A.2, Chapter 10
-- toBeTruthy — Appendix A.2, Chapter 7
-- toBeTypeOf — Appendix A.7, Chapter 8
-- toBeUndefined — Appendix A.2, Chapters 7, 10
-- toContain — Appendix A.4, Chapters 7, 9
-- toEqual — Appendix A.1, Chapters 8, 9
-- toHaveLength — Appendix A.5, Chapters 11, 12
-- toHaveProperty — Appendix A.6, Chapter 8
-- toMatch — Appendix A.4, Chapters 8, 9
-- toMatchObject — Appendix A.6, Chapters 8, 9, 10
-- toSatisfy — Appendix A.8, Chapter 9
-- toStrictEqual — Appendix A.1, Chapter 8
-- TypeScript — Appendix D.4, Chapter 4
-
-**U**
-- Unit tests vs integration tests — Appendix F, Chapter 4
-
-**V**
-- Vitest config — Appendix D.5
-- Vitest commands — Appendix E.6
-- vitest username prefix — Appendix C.9, Chapter 5
-
-**W**
-- withCredentials — Appendix E.2, Appendix F
 
 ---
 
-*End of Part 4 — Appendices*
+# Appendix G: Complete Project Structure
+
+By the end of Parts V and VI, your project should be organized as follows:
+
+```
+chatty-api-tests/
+├── .github/
+│   └── workflows/
+│       ├── tests.yml                    # Primary CI workflow
+│       └── tests-with-reports.yml      # Extended CI with all reports
+├── src/
+│   └── utils/
+│       ├── auth-helpers.ts             # Shared authentication utilities
+│       ├── test-images.ts              # Base64 image constants
+│       └── cleanup-helpers.ts          # Shared cleanup utilities
+├── tests/
+│   ├── chapter-12/
+│   │   ├── README.md
+│   │   ├── errors.test.ts              # Error testing
+│   │   ├── boundary.test.ts            # Boundary value analysis
+│   │   ├── validation-distinction.test.ts
+│   │   ├── rate-limit.test.ts
+│   │   ├── error-shape.test.ts
+│   │   ├── security-assertions.test.ts
+│   │   └── homework/
+│   │       └── [chapter].test.ts
+│   ├── chapter-13/
+│   │   ├── README.md
+│   │   ├── multi-user.test.ts          # Multi-user scenarios
+│   │   └── homework/
+│   ├── chapter-14/
+│   │   ├── README.md
+│   │   ├── db-validation.test.ts       # Database cross-validation
+│   │   └── homework/
+│   ├── chapter-15/
+│   │   ├── README.md
+│   │   ├── uploads.test.ts             # File uploads
+│   │   └── homework/
+│   └── utils/
+│       └── test-images.ts
+├── test-results/                        # Generated reports (gitignored)
+│   ├── junit.xml
+│   ├── results.json
+│   └── index.html
+├── coverage/                            # Generated coverage (gitignored)
+│   ├── index.html
+│   └── lcov.info
+├── .dockerignore
+├── .env                                 # Local credentials (gitignored)
+├── .env.example                         # Template (committed)
+├── .gitignore
+├── Dockerfile
+├── docker-compose.yml
+├── package.json
+├── package-lock.json
+└── vitest.config.ts
+```
+
+This structure follows the conventions established throughout the book: test files in `tests/chapter-XX/`, shared utilities in `src/utils/`, generated output in gitignored directories, and infrastructure configuration at the project root.
 
 ---
 
----
 
 ---
 
-## Appendix H: Chapter Practice Solutions
+# Appendix H: Chapter Practice Solutions
 
 > Attempt the exercises before reading these. Each chapter's exercises are in the "Chapter Practice" section at the end of the chapter.
 
@@ -16237,8 +16650,6 @@ Examples:
 - No assertion on `set-cookie` — the cookie domain changes from `.codeandtest.com` to `codeandtest.com`, breaking cross-subdomain auth silently in Safari.
 
 The lesson: assert exact values, types, and shape — not just field existence.
-
----
 
 ---
 
@@ -16372,8 +16783,6 @@ Compare to `POST /post` — each call creates a new post. Ten calls create ten p
 **Methods that are not idempotent**: `POST`, `PATCH` (though PATCH *can* be designed to be idempotent with absolute values, it is not required to be).
 
 **Why it matters for testing**: idempotent endpoints can be called freely in tests without side effects. Non-idempotent endpoints (POST, PATCH) need cleanup in `afterAll` to avoid polluting the database with test data across runs.
-
----
 
 ---
 
@@ -16661,8 +17070,6 @@ describe('project setup — all src/ modules load and API responds', () => {
 ```
 
 > **WHY:** A dedicated setup-verification test gives you a fast sanity check before writing real feature tests. If the project is misconfigured (missing .env, wrong BASE_URL, TypeScript errors), this test tells you immediately with a clear failure message rather than a cryptic error buried inside a complex test suite. The `beforeAll` pattern — one request, multiple assertions — is the pattern used throughout the entire course.
-
----
 
 ---
 
@@ -16967,8 +17374,6 @@ it('message is "Invalid credentials" when password is wrong', ...)
 ```
 
 The naming convention encodes three things: the concern being tested, the input state or condition, and the expected outcome. A failing test with a well-named `it()` is self-documenting — you read the name, immediately understand what broke and why, and can fix it without opening the implementation.
-
----
 
 ---
 
@@ -17527,8 +17932,6 @@ it('JWT token is a string and matches three-part dot format', () => {
 
 ---
 
----
-
 ### Chapter 7 Solutions
 
 #### Postman Solutions
@@ -17764,8 +18167,6 @@ it('username and email fields are non-empty', async () => {
 
 ---
 
----
-
 ### Chapter 8 Solutions
 
 #### Postman Solutions
@@ -17981,8 +18382,6 @@ afterAll(async () => {
 ```
 
 > **WHY:** Cleanup in `afterAll` keeps the test database tidy and makes the suite idempotent. Asserting `toBe(200)` on the delete response turns the cleanup step into a self-checking teardown: if the post was already deleted by another mechanism, the assertion fails and alerts you to an unexpected state change rather than silently swallowing the error.
-
----
 
 ---
 
@@ -18409,8 +18808,6 @@ it('bgColor is unchanged after PATCH that only modifies post text', async () => 
 
 ---
 
----
-
 ### Chapter 11 Solutions
 
 #### Postman Solutions
@@ -18608,8 +19005,6 @@ it('find() result for deleted post is falsy (toBeFalsy)', async () => {
 ```
 
 > **WHY:** `toBeFalsy()` and `toBeUndefined()` both pass when `.find()` returns `undefined`. The distinction matters in teaching: `toBeFalsy` signals "I don't care about the exact falsy type, I just care that nothing was found", while `toBeUndefined` is more precise. Using `toBeFalsy` here reinforces that `undefined` is a falsy value — a foundational concept for new JavaScript developers.
-
----
 
 ---
 
@@ -18846,8 +19241,6 @@ expect([400, 429]).toContain(res.status);
 ```
 
 > **WHY:** Rate limiting is a real-world concern in API testing. Signup endpoints are commonly protected by per-IP request limits. Using `expect([400, 429]).toContain(res.status)` makes boundary tests tolerant of 429 without masking genuine failures — a 500 or a 200 would still fail the assertion.
-
----
 
 ---
 
@@ -19244,8 +19637,6 @@ it('DB password is a valid bcrypt hash', async () => {
 
 ---
 
----
-
 ### Chapter 15 Solutions
 
 #### Postman Solutions
@@ -19472,8 +19863,6 @@ it('images array items have expected shape when non-empty', async () => {
   }
 });
 ```
-
----
 
 ---
 
@@ -19785,6 +20174,131 @@ npm install --save-dev @vitest/coverage-v8@1 --legacy-peer-deps
 npm run test:coverage
 open coverage/index.html        # macOS
 
+
+
+---
+
+
+---
+
+# Index
+
+**A**
+- Asymmetric matchers — Appendix A.9, Chapters 9, 12
+- Authentication — Appendix C.1, Chapters 5, 6
+- Authorization — Appendix B (403 section), Chapter 10
+- Axios — Appendix D.3, Chapters 4, 5
+- Axios interceptors — Appendix E.5
+
+**B**
+- Base64 — Appendix D.10, Chapters 16, 17
+- beforeAll — Appendix D.9, Chapters 5, 6
+- beforeEach — Reference 30, Chapter 11
+- Boundary value testing — Chapters 7, 8
+
+**C**
+- Cleanup endpoint — Appendix C.9, Chapter 5
+- config.ts — Appendix D.7
+- Cookie handling — Appendix D.9, Appendix E.2, Chapters 5, 6
+- Coverage — Reference 37, Chapter 15
+
+**D**
+- DELETE method — Appendix C, Chapters 12, 13
+- describe — Reference 14, Chapters 4, 5
+- dotenv — Appendix D.6, Chapter 4
+- Debugging — Appendix E
+
+**E**
+- Environment variables — Appendix D.6, Appendix D.7
+- Error handling — Appendix E.2, Chapters 6, 7
+- expect.any — Appendix A.7, Chapters 8, 9
+- expect.arrayContaining — Appendix A.5, Chapter 12
+- expect.objectContaining — Appendix A.6, Chapters 8, 10
+- expect.stringContaining — Appendix A.9, Chapter 9
+- expect.stringMatching — Appendix A.9, Chapter 9
+
+**F**
+- Faker.js — Appendix D.3, Chapter 5
+- Fixtures — Appendix D.10, Chapters 5, 16
+- generateUser — Appendix D.10, Chapter 5
+
+**G**
+- generatePost — Appendix D.10, Chapter 11
+- Glossary — Appendix F
+
+**H**
+- HTTP methods — Appendix C, Chapter 4
+- HTTP status codes — Appendix B, Chapters 6, 7, 8
+
+**I**
+- Integration tests — Reference 1, Chapter 4
+- Idempotency — Chapter 10, Chapter 13
+
+**J**
+- JWT — Reference 18, Appendix C.1, Chapter 5
+
+**M**
+- MongoDB — Reference 23, Chapters 4, 13
+- toMatchObject — Appendix A.6, Chapters 8, 9, 10
+
+**N**
+- .not negation — Appendix A.10, Chapters 7, 10
+- Notifications — Appendix C.7, Chapter 18
+
+**O**
+- ObjectId — Appendix A.8, Reference 23, Chapter 8
+
+**P**
+- Pagination — Appendix C.3, Reference 29, Chapter 11
+- Password complexity — Appendix C.1, Chapter 6
+- Posts API — Appendix C.3, Chapters 11, 12, 13
+
+**R**
+- Rate limiting — Appendix B (429 section), Appendix E.2, Chapters 17, 15
+- Reactions — Appendix C.5, Chapter 13
+- Redis — Reference 24, Chapter 17
+- REST — Reference 2, Chapter 4
+
+**S**
+- Session cookies — Appendix D.9, Appendix E.2
+- Setup checklist — Appendix D
+- signupUser — Appendix D.9, Chapter 5
+- signinUser — Appendix D.9, Chapter 6
+- Status codes — Appendix B
+
+**T**
+- test-utils.ts — Appendix D.9
+- TEST_AVATAR_IMAGE — Appendix D.10
+- toBeGreaterThan — Appendix A.3, Chapter 11
+- toBe — Appendix A.1, Chapters 5, 6
+- toBeDefined — Appendix A.2, Chapters 7, 8
+- toBeFalsy — Appendix A.2, Chapter 7
+- toBeNull — Appendix A.2, Chapter 10
+- toBeTruthy — Appendix A.2, Chapter 7
+- toBeTypeOf — Appendix A.7, Chapter 8
+- toBeUndefined — Appendix A.2, Chapters 7, 10
+- toContain — Appendix A.4, Chapters 7, 9
+- toEqual — Appendix A.1, Chapters 8, 9
+- toHaveLength — Appendix A.5, Chapters 11, 12
+- toHaveProperty — Appendix A.6, Chapter 8
+- toMatch — Appendix A.4, Chapters 8, 9
+- toMatchObject — Appendix A.6, Chapters 8, 9, 10
+- toSatisfy — Appendix A.8, Chapter 9
+- toStrictEqual — Appendix A.1, Chapter 8
+- TypeScript — Appendix D.4, Chapter 4
+
+**U**
+- Unit tests vs integration tests — Reference 1, Chapter 4
+
+**V**
+- Vitest config — Appendix D.5
+- Vitest commands — Appendix E.6
+- vitest username prefix — Appendix C.9, Chapter 5
+
+**W**
+- withCredentials — Appendix E.2, Appendix F
+
+---
 
 
 ---
@@ -41312,1106 +41826,3 @@ git branch -d chapter-05-reactions
 
 
 ---
-
-## Appendix G: Chatty API — Complete Endpoint Reference
-
-> This appendix is the authoritative reference for every Chatty API endpoint tested in this book.
-> Use it when you need to check a field name, validation constraint, or error message.
-> The live interactive version is always at `https://api.codeandtest.com/api-docs`.
-
-## Chatty API — Endpoint Reference
-
-**Base URL:** `https://api.codeandtest.com/api/v1`
-**Authentication:** Session cookie (`session=eyJ...`) — send in every authenticated request as `Cookie: session=eyJ...`
-**Content-Type:** `application/json` on all POST/PUT/PATCH requests
-
-**Legend:** 🔒 = requires auth cookie · 🎓 = first covered in chapter · ⚠️ = gotcha
-
-**Interactive docs (Swagger UI):** `https://api.codeandtest.com/api-docs`
-**Validation rules as JSON:** `GET https://api.codeandtest.com/api/v1/schema`
-
----
-
-### Common Error Response
-
-Every 4xx error returns:
-```ts
-interface ErrorResponse {
-  message: string;     // human-readable description
-  statusCode: number;  // HTTP status code echoed in body
-  status: 'error';
-}
-```
-```json
-{ "message": "Invalid credentials", "statusCode": 400, "status": "error" }
-```
-
----
-
-### Rate Limits (nginx)
-
-| Zone | Endpoints | Limit | Effect |
-|------|-----------|-------|--------|
-| `auth` | `/signin`, `/signup` | 5 req/min + burst 5 | Returns 429 after burst |
-| `api` | all other `/api/` routes | 30 req/s + burst 50 | Very rarely hit |
-
----
-
-### Schema & Discovery
-
----
-
-#### `GET /schema` — Validation rules for all endpoints
-Public (no cookie needed)
-
-Returns every endpoint with its accepted fields, validation constraints, success response shape, and all possible error messages. Use this when tests start failing and you want to check if validation rules changed.
-
-**Response:**
-```json
-{
-  "swagger_ui": "https://api.codeandtest.com/api-docs",
-  "base_url": "https://api.codeandtest.com/api/v1",
-  "endpoints": [
-    {
-      "method": "POST",
-      "path": "/api/v1/signup",
-      "auth_required": false,
-      "fields": [
-        { "name": "username", "type": "string", "required": true, "min": 4, "max": 20 },
-        { "name": "password", "type": "string", "required": true, "min": 12, "pattern": "upper+lower+digit+special" }
-      ],
-      "success": { "status": 201, "body": "{ message, token, user }" },
-      "errors": [
-        { "status": 400, "message": "Invalid username" },
-        { "status": 429, "message": "Too many requests" }
-      ]
-    }
-  ]
-}
-```
-
----
-
-### Auth
-
----
-
-#### `POST /signup` — Create a new user
-🎓 **Chapter 6** | Public (no cookie needed)
-
-**TypeScript:**
-```ts
-interface SignUpBody {
-  username: string;     // min 4, max 20
-  email: string;        // valid email format
-  password: string;     // min 12, max 128 + must have: upper, lower, digit, special (@$!%*?&)
-  avatarColor: string;  // any non-empty string, e.g. "#4a90e2"
-  avatarImage: string;  // data URL (data:image/png;base64,...) or HTTPS URL
-}
-
-interface SignUpResponse {
-  message: 'User created successfully';
-  user: UserDocument;   // see UserDocument type below
-  token: string;        // JWT — also set as session cookie
-}
-```
-
-**Request example:**
-```json
-{
-  "username": "vitestmike",
-  "email": "mike@test.com",
-  "password": "Vitest@123456",
-  "avatarColor": "#4a90e2",
-  "avatarImage": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
-}
-```
-
-**Response (201):**
-```json
-{
-  "message": "User created successfully",
-  "user": {
-    "_id": "507f1f77bcf86cd799439011",
-    "authId": "507f1f77bcf86cd799439012",
-    "uId": "123456789012",
-    "username": "Vitestmike",
-    "email": "mike@test.com",
-    "avatarColor": "#4a90e2",
-    "profilePicture": "https://res.cloudinary.com/...",
-    "postsCount": 0,
-    "followersCount": 0,
-    "followingCount": 0
-  },
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-> ⚠️ `password` is never in the response — stripped before sending.
-> ⚠️ `username` is title-cased server-side: `"vitestmike"` → `"Vitestmike"`.
-> ⚠️ `avatarImage` is uploaded to Cloudinary — fake base64 data fails with 400.
-> ⚠️ Response sets `set-cookie: session=eyJ...` alongside the body `token`.
-> ⚠️ `user._id` = User collection document. `user.authId` = Auth collection document. Two different IDs.
-
-**Validation errors (400):**
-| Scenario | Error message |
-|----------|---------------|
-| username < 4 chars | `'Username must be at least 4 characters'` |
-| username > 20 chars | `'Username cannot exceed 20 characters'` |
-| password < 12 chars | `'Password must be at least 12 characters long'` |
-| password no special char | `'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'` |
-| invalid email | `'Email must be valid'` |
-| duplicate username/email | `'User already exists. Username or email is already taken.'` |
-| Cloudinary upload fails | `'File upload failed. Please check your image and try again.'` |
-
----
-
-#### `POST /signin` — Sign in
-🎓 **Chapter 5** | Public
-
-**TypeScript:**
-```ts
-interface SignInBody {
-  username: string;  // min 4, max 32
-  password: string;  // min 8, max 128
-}
-
-interface SignInResponse {
-  message: 'User login successfully';
-  user: UserDocument;
-  token: string;
-}
-```
-
-**Request example:**
-```json
-{ "username": "vitestmike", "password": "Vitest@123456" }
-```
-
-**Response (200):**
-```json
-{
-  "message": "User login successfully",
-  "user": {
-    "_id": "507f1f77bcf86cd799439011",
-    "authId": "507f1f77bcf86cd799439012",
-    "uId": "123456789012",
-    "username": "Vitestmike",
-    "email": "mike@test.com",
-    "avatarColor": "#4a90e2",
-    "profilePicture": "https://res.cloudinary.com/...",
-    "work": "",
-    "school": "",
-    "quote": "",
-    "location": "",
-    "social": { "facebook": "", "instagram": "", "twitter": "", "youtube": "" },
-    "notifications": { "messages": true, "reactions": true, "comments": true, "follows": true },
-    "postsCount": 0,
-    "followersCount": 0,
-    "followingCount": 0
-  },
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-> ⚠️ Both "user not found" and "wrong password" return `'Invalid credentials'` — intentional security design (prevents username enumeration).
-> ⚠️ `set-cookie: session=eyJ...` header is also set — use the cookie (not the token) for subsequent requests.
-
-**Validation errors (400):**
-| Scenario | Error message |
-|----------|---------------|
-| username < 4 chars | `'Invalid username'` |
-| username > 32 chars | `'Invalid username'` |
-| password < 8 chars | `'Invalid password'` |
-| wrong credentials | `'Invalid credentials'` |
-
----
-
-#### `POST /signout` 🔒 — Sign out
-🎓 **Chapter 5**
-
-No body required.
-
-**Response (200):**
-```json
-{ "message": "User logout successfully", "user": {}, "token": "" }
-```
-
-> ⚠️ Sets `req.session = null` — the cookie on the client still exists but the server ignores it.
-> ⚠️ Any subsequent authenticated request with the same cookie returns 401.
-
----
-
-#### `POST /forgot-password` — Request password reset email
-Public.
-
-**TypeScript:**
-```ts
-interface ForgotPasswordBody { email: string; }
-```
-
-**Request example:**
-```json
-{ "email": "mike@test.com" }
-```
-
-**Response (200):** `{ "message": "Password reset email sent." }`
-
-> ⚠️ Always returns 200 even if the email doesn't exist (prevents email enumeration).
-
----
-
-#### `POST /reset-password/:token` — Reset password via email link
-Public.
-
-**TypeScript:**
-```ts
-interface ResetPasswordBody {
-  password: string;         // min 12, max 128 + pattern
-  confirmPassword: string;  // must equal password
-}
-```
-
-**Validation errors (400):**
-| Scenario | Error message |
-|----------|---------------|
-| passwords don't match | `'Passwords should match'` |
-| expired token | (token expiry handled server-side) |
-
----
-
-### Current User
-
----
-
-#### `GET /currentuser` 🔒 — Get authenticated user
-🎓 **Chapter 7**
-
-No body. Reads from Redis cache (always fresh after login).
-
-**TypeScript:**
-```ts
-interface CurrentUserResponse {
-  token: string;      // JWT from current session
-  isUser: boolean;    // always true when authenticated
-  user: UserDocument;
-}
-```
-
-**Response (200):**
-```json
-{
-  "token": "eyJhbGci...",
-  "isUser": true,
-  "user": {
-    "_id": "507f1f77...",
-    "username": "Vitestmike",
-    "email": "mike@test.com",
-    "work": "QA Engineer",
-    "school": "",
-    "quote": "",
-    "location": "Kyiv",
-    "social": { "facebook": "", "instagram": "", "twitter": "", "youtube": "" },
-    "notifications": { "messages": true, "reactions": true, "comments": true, "follows": true },
-    "postsCount": 3,
-    "followersCount": 1,
-    "followingCount": 2
-  }
-}
-```
-
-> ⚠️ Response shape is different from `/signin` — `{ token, isUser, user }` vs `{ message, token, user }`.
-> ⚠️ `isUser` is always `true` here — it is `false` only if the user is somehow deleted mid-session.
-
----
-
-#### `GET /session-token` 🔒 — Get JWT from current session
-🎓 **Chapter 7**
-
-No body.
-
-**TypeScript:**
-```ts
-interface SessionTokenResponse { token: string; }
-```
-
-**Response (200):** `{ "token": "eyJhbGci..." }`
-
-> ⚠️ Returns the same JWT stored in the session cookie — useful when a frontend needs the raw token.
-
----
-
-### Posts
-
----
-
-#### `GET /post/all/:page` 🔒 — Get all posts (paginated)
-🎓 **Chapter 8**
-
-No body. Page size: **10**. Returns newest first (sorted by `createdAt` descending).
-
-**TypeScript:**
-```ts
-interface GetPostsResponse {
-  message: 'All posts';
-  posts: PostDocument[];
-  totalPosts: number;
-}
-```
-
-**Response (200):**
-```json
-{
-  "message": "All posts",
-  "posts": [{
-    "_id": "507f1f77...",
-    "userId": "507f1f77...",
-    "username": "Vitestmike",
-    "email": "mike@test.com",
-    "avatarColor": "#4a90e2",
-    "profilePicture": "https://res.cloudinary.com/...",
-    "post": "Hello world!",
-    "bgColor": "#ffffff",
-    "feelings": "",
-    "privacy": "Public",
-    "gifUrl": "",
-    "commentsCount": 0,
-    "imgVersion": "",
-    "imgId": "",
-    "videoId": "",
-    "videoVersion": "",
-    "createdAt": "2026-04-17T10:00:00.000Z",
-    "reactions": { "like": 0, "love": 0, "happy": 0, "sad": 0, "wow": 0, "angry": 0 }
-  }],
-  "totalPosts": 42
-}
-```
-
-> ⚠️ Reads from Redis first, falls back to MongoDB if cache is empty.
-
----
-
-#### `POST /post` 🔒 — Create a plain post
-🎓 **Chapter 8**
-
-**TypeScript:**
-```ts
-interface CreatePostBody {
-  post?: string;
-  bgColor?: string;
-  privacy?: string;         // 'Public' | 'Private' | 'Followers'
-  feelings?: string;
-  gifUrl?: string;
-  profilePicture?: string;  // sender's profile picture
-}
-
-interface CreatePostResponse {
-  message: 'Post created successfully';
-  // NO post _id in response — use GET /post/all/1 to find it
-}
-```
-
-**Request example:**
-```json
-{ "post": "My test post!", "bgColor": "#ffffff", "privacy": "Public", "feelings": "" }
-```
-
-**Response (201):** `{ "message": "Post created successfully" }`
-
-> ⚠️ Returns 201 (Created) — unlike comments which return 200.
-> ⚠️ **No post ID in the response.** Find it by calling `GET /post/all/1` and searching by post text.
-> ⚠️ All fields are optional — `{}` is valid and creates an empty post.
-
----
-
-#### `PATCH /post/:postId` 🔒 — Update post
-🎓 **Chapter 8**
-
-Same body fields as `POST /post`. `:postId` must be a valid MongoDB ObjectId.
-
-**Response (200):** `{ "message": "Post updated successfully" }`
-
-> ⚠️ Owner-only — returns 403 if you try to update someone else's post.
-> ⚠️ Returns only the success message — call `GET /post/all/1` to verify the update.
-> ⚠️ Invalid ObjectId format → 400.
-
----
-
-#### `DELETE /post/:postId` 🔒 — Delete post
-🎓 **Chapter 8**
-
-No body.
-
-**Response (200):** `{ "message": "Post deleted successfully" }`
-
-> ⚠️ Deletes from Redis immediately (visible in GET right away). DB deletion is queued asynchronously.
-
----
-
-### Reactions
-
----
-
-#### `POST /post/reaction` 🔒 — Add or switch reaction
-🎓 **Chapter 9**
-
-**TypeScript:**
-```ts
-type ReactionType = 'like' | 'love' | 'happy' | 'sad' | 'wow' | 'angry';
-
-interface AddReactionBody {
-  userTo: string;               // User _id of the post owner (NOT authId)
-  postId: string;               // Post _id
-  type: ReactionType;           // the new reaction type
-  previousReaction?: string;    // send current type when SWITCHING reactions, '' when adding first
-  postReactions?: {             // current reaction counts object
-    like: number; love: number; happy: number;
-    sad: number; wow: number; angry: number;
-  };
-  profilePicture?: string;      // reactor's profile picture
-}
-```
-
-**Request example — first reaction:**
-```json
-{
-  "userTo": "507f1f77bcf86cd799439011",
-  "postId": "507f1f77bcf86cd799439022",
-  "type": "like",
-  "previousReaction": "",
-  "postReactions": { "like": 0, "love": 0, "happy": 0, "sad": 0, "wow": 0, "angry": 0 },
-  "profilePicture": ""
-}
-```
-
-**Request example — switching from like to love:**
-```json
-{
-  "userTo": "507f1f77...",
-  "postId": "507f1f77...",
-  "type": "love",
-  "previousReaction": "like",
-  "postReactions": { "like": 1, "love": 0, "happy": 0, "sad": 0, "wow": 0, "angry": 0 }
-}
-```
-
-**Response (200):** `{ "message": "Reaction added successfully" }`
-
-> ⚠️ Returns 200 not 201.
-> ⚠️ `userTo` is the post **owner's** User `_id` — get it from `post.userId` after creating the post.
-> ⚠️ `previousReaction: ""` for first reaction, `previousReaction: "like"` when switching from like.
-
----
-
-#### `GET /post/reactions/:postId` 🔒 — Get all reactions for a post
-🎓 **Chapter 9**
-
-**TypeScript:**
-```ts
-interface GetReactionsResponse {
-  message: 'Post reactions';
-  reactions: ReactionDocument[];  // individual reaction documents
-  count: number;                  // total across all types
-}
-```
-
-**Response (200):**
-```json
-{
-  "message": "Post reactions",
-  "reactions": [{
-    "_id": "507f1f77...",
-    "username": "Vitestmike",
-    "avatarColor": "#4a90e2",
-    "type": "like",
-    "postId": "507f1f77..."
-  }],
-  "count": 1
-}
-```
-
-> ⚠️ `reactions` = array of individual documents. `count` = total number. Both are needed for different use cases.
-
----
-
-#### `DELETE /post/reaction/:postId/:previousReaction/:postReactions` 🔒 — Remove reaction
-🎓 **Chapter 9**
-
-All three are URL path params. `:postReactions` is URL-encoded JSON.
-
-**TypeScript:**
-```ts
-// Build the URL like this:
-const postReactions = { like: 1, love: 0, happy: 0, sad: 0, wow: 0, angry: 0 };
-const url = `${BASE_URL}/post/reaction/${postId}/like/${encodeURIComponent(JSON.stringify(postReactions))}`;
-```
-
-**URL example:**
-```
-DELETE /post/reaction/507f1f77.../like/%7B%22like%22%3A1%2C%22love%22%3A0%2C%22happy%22%3A0%2C%22sad%22%3A0%2C%22wow%22%3A0%2C%22angry%22%3A0%7D
-```
-
-**Response (200):** `{ "message": "Reaction removed from post" }`
-
-> ⚠️ The encoded JSON `{"like":1,...}` represents the current reaction counts **before** removal.
-> ⚠️ Without URL-encoding, the `{` and `"` characters break the URL path.
-
----
-
-### Comments
-
----
-
-#### `POST /post/comment` 🔒 — Add comment
-🎓 **Chapter 10**
-
-**TypeScript:**
-```ts
-interface AddCommentBody {
-  userTo: string;          // post owner's User _id
-  postId: string;
-  comment: string;         // required — the comment text
-  profilePicture?: string;
-}
-
-interface AddCommentResponse {
-  message: 'Comment created successfully';
-  // NO commentId — find it via GET /post/comments/:postId
-}
-```
-
-**Request example:**
-```json
-{
-  "userTo": "507f1f77bcf86cd799439011",
-  "postId": "507f1f77bcf86cd799439022",
-  "comment": "Great post!",
-  "profilePicture": ""
-}
-```
-
-**Response (200):** `{ "message": "Comment created successfully" }`
-
-> ⚠️ Returns **200**, not 201. Comments are actions on a post, not new top-level resources.
-> ⚠️ **No commentId in response.** Find it by calling `GET /post/comments/:postId` and searching by text.
-
----
-
-#### `GET /post/comments/:postId` 🔒 — Get all comments for a post
-🎓 **Chapter 10**
-
-**TypeScript:**
-```ts
-interface GetCommentsResponse {
-  message: 'Post comments';
-  comments: CommentDocument[];
-}
-
-interface CommentDocument {
-  _id: string;
-  postId: string;
-  username: string;
-  avatarColor: string;
-  profilePicture: string;
-  comment: string;
-  createdAt: string;
-}
-```
-
-**Response (200):**
-```json
-{
-  "message": "Post comments",
-  "comments": [{
-    "_id": "507f1f77...",
-    "postId": "507f1f77...",
-    "username": "Vitestmike",
-    "avatarColor": "#4a90e2",
-    "profilePicture": "https://...",
-    "comment": "Great post!",
-    "createdAt": "2026-04-17T10:00:00.000Z"
-  }]
-}
-```
-
----
-
-#### `GET /post/single/comment/:postId/:commentId` 🔒 — Get one comment
-🎓 **Chapter 10**
-
-**Response (200):**
-```json
-{ "message": "Single comment", "comments": { "_id": "...", "comment": "Great post!", ... } }
-```
-
-> ⚠️ Despite `comments` being plural in the key name, it returns a **single object**, not an array.
-
----
-
-#### `PATCH /post/comment/:postId/:commentId` 🔒 — Update comment
-🎓 **Chapter 10**
-
-**TypeScript:**
-```ts
-interface UpdateCommentBody { comment: string; }  // required
-```
-
-**Request example:** `{ "comment": "Updated text!" }`
-
-**Response (200):** `{ "message": "Comment updated successfully" }`
-
-> ⚠️ Both `:postId` AND `:commentId` required in URL — invalid ObjectId → 400.
-
----
-
-#### `DELETE /post/comment/:postId/:commentId` 🔒 — Delete comment
-🎓 **Chapter 10**
-
-No body.
-
-**Response (200):** `{ "message": "Comment deleted successfully" }`
-
----
-
-### User Profile
-
----
-
-#### `GET /user/all/:page` 🔒 — Get all users (paginated)
-🎓 **Chapter 11**
-
-Page size: **12** (different from posts which uses 10).
-
-**TypeScript:**
-```ts
-interface GetAllUsersResponse {
-  message: 'Get users';
-  users: UserDocument[];
-  totalUsers: number;
-  followers: FollowerData[];  // users the current user is following — bundled for efficiency
-}
-```
-
-> ⚠️ The `followers` array is bundled in the response alongside the user list — no extra request needed.
-
----
-
-#### `GET /user/profile/search/:query` 🔒 — Search users by username
-🎓 **Chapter 11**
-
-Case-insensitive regex search. Encode special characters with `encodeURIComponent()`.
-
-**TypeScript:**
-```ts
-interface SearchUsersResponse {
-  message: 'Search results';
-  search: Array<{
-    _id: string;
-    username: string;
-    email: string;
-    profilePicture: string;
-    avatarColor: string;
-  }>;
-}
-```
-
-**Example URL:** `GET /user/profile/search/vitest`
-
-**Response (200):**
-```json
-{
-  "message": "Search results",
-  "search": [{ "_id": "507f1f77...", "username": "Vitestmike", "email": "mike@test.com", "profilePicture": "https://...", "avatarColor": "#4a90e2" }]
-}
-```
-
-> ⚠️ Returns an empty array `[]` (not 404) when no users match the query.
-
----
-
-#### `PUT /user/profile/basic-info` 🔒 — Update profile fields
-🎓 **Chapter 7** / **Chapter 11**
-
-**TypeScript:**
-```ts
-interface UpdateBasicInfoBody {
-  quote?: string;
-  work?: string;
-  school?: string;
-  location?: string;
-}
-```
-
-**Request example:** `{ "work": "QA Engineer", "location": "Kyiv" }`
-
-**Response (200):** `{ "message": "Updated successfully" }`
-
-> ⚠️ All fields optional — `{}` is valid. Returns only the message — call `GET /currentuser` to verify.
-
----
-
-#### `PUT /user/profile/social-links` 🔒 — Update social links
-🎓 **Chapter 11**
-
-**TypeScript:**
-```ts
-interface UpdateSocialLinksBody {
-  facebook?: string;
-  instagram?: string;
-  twitter?: string;
-  youtube?: string;
-}
-```
-
-**Request example:** `{ "twitter": "https://twitter.com/vitestmike", "youtube": "" }`
-
-**Response (200):** `{ "message": "Updated successfully" }`
-
----
-
-#### `PUT /user/profile/settings` 🔒 — Update notification settings
-🎓 **Chapter 7**
-
-**TypeScript:**
-```ts
-interface UpdateSettingsBody {
-  messages?: boolean;
-  reactions?: boolean;
-  comments?: boolean;
-  follows?: boolean;
-}
-```
-
-**Response (200):**
-```json
-{
-  "message": "Notification settings updated successfully",
-  "settings": { "messages": true, "reactions": false, "comments": true, "follows": false }
-}
-```
-
-> ⚠️ Unlike basic-info, this response **echoes back the applied settings** — no need for a follow-up GET.
-
----
-
-#### `PUT /user/profile/change-password` 🔒 — Change password
-🎓 **Chapter 11**
-
-**TypeScript:**
-```ts
-interface ChangePasswordBody {
-  currentPassword: string;   // min 4, max 8 ← unusually short!
-  newPassword: string;       // min 4, max 8
-  confirmPassword: string;   // must equal newPassword
-}
-```
-
-**Request example:** `{ "currentPassword": "Test1", "newPassword": "Test2", "confirmPassword": "Test2" }`
-
-**Response (200):** `{ "message": "Password updated successfully. You will be redirected shortly to the login page." }`
-
-> ⚠️ **Schema max is 8 characters** — much shorter than signup (min 12). Accounts with longer passwords get 400.
-> ⚠️ Sends a password reset confirmation email after success.
-> ⚠️ In tests: only test **validation errors** (mismatch, empty body) — never actually change the password.
-
-**Validation errors (400):**
-| Scenario | Error message |
-|----------|---------------|
-| currentPassword > 8 chars | `'Password should have a maximum length of 8'` |
-| passwords don't match | `'Confirm password does not match new password.'` |
-| wrong current password | `'Invalid credentials'` |
-
----
-
-### Followers
-
----
-
-#### `PUT /user/follow/:followerId` 🔒 — Follow a user
-🎓 **Chapter 12**
-
-`:followerId` = the **User `_id`** (from `user._id`) of who you want to follow.
-No body.
-
-**Response (200):** `{ "message": "..." }`
-
-> ⚠️ Use `user._id` — not `user.authId`. These are different IDs from different collections.
-> ⚠️ Get the target user's `_id` from signup response (`user._id`) or search results.
-
----
-
-#### `PUT /user/unfollow/:followeeId/:followerId` 🔒 — Unfollow a user
-🎓 **Chapter 12**
-
-`:followeeId` = who you are unfollowing (their `user._id`)
-`:followerId` = **your own** `user._id` (get from `GET /currentuser → user._id`)
-No body.
-
-**Response (200):** `{ "message": "..." }`
-
-> ⚠️ Requires **both** IDs — unlike follow which only needs the target's ID.
-> ⚠️ Your own `_id` comes from `GET /currentuser` → `user._id`.
-
----
-
-#### `GET /user/following` 🔒 — List users you follow
-🎓 **Chapter 12**
-
-**TypeScript:**
-```ts
-interface GetFollowingResponse {
-  message: 'User following';
-  following: FollowerData[];
-}
-```
-
-**Response (200):**
-```json
-{
-  "message": "User following",
-  "following": [{ "_id": "507f1f77...", "username": "Vitestjohn", "profilePicture": "https://...", "followersCount": 1 }]
-}
-```
-
----
-
-#### `GET /user/followers/:userId` 🔒 — List followers of a user
-🎓 **Chapter 12**
-
-`:userId` = the User `_id` whose followers you want.
-
-**Response (200):** `{ "message": "User followers", "followers": [...] }`
-
----
-
-#### `PUT /user/block/:followerId` 🔒 — Block a user
-🎓 **Chapter 12**
-
-No body. Adds user to your `blocked` array and you to their `blockedBy`.
-**Response (200):** `{ "message": "..." }`
-
-#### `PUT /user/unblock/:followerId` 🔒 — Unblock a user
-No body. Reverses blocking.
-**Response (200):** `{ "message": "..." }`
-
-> ⚠️ Blocking does: adds to blocked arrays, hides from suggestions, prevents follow-back.
-
----
-
-### Notifications
-
----
-
-#### `GET /notifications` 🔒 — Get all notifications
-🎓 **Chapter 12**
-
-**TypeScript:**
-```ts
-interface GetNotificationsResponse {
-  message: 'User notifications';
-  notifications: NotificationDocument[];  // may be empty []
-}
-```
-
-**Response (200):** `{ "message": "User notifications", "notifications": [] }`
-
-> ⚠️ May be empty on a fresh account. Always assert the shape (is array), not a specific count.
-
----
-
-#### `PUT /notification/:notificationId` 🔒 — Mark notification as read
-No body. `:notificationId` must be a valid ObjectId.
-**Response (200):** `{ "message": "Notification marked as read" }`
-
-#### `DELETE /notifications/:notificationId` 🔒 — Delete notification
-No body.
-**Response (200):** `{ "message": "Notification deleted successfully" }`
-
----
-
-### Images
-
----
-
-#### `POST /images/profile` 🔒 — Upload profile picture
-
-**TypeScript:**
-```ts
-interface AddImageBody {
-  image: string;  // data URL (data:image/png;base64,...) or valid HTTPS URL
-}
-```
-
-**Validation errors (400):**
-| Scenario | Error message |
-|----------|---------------|
-| not data URL or HTTPS URL | `'Image must be either a data URL or HTTP/HTTPS URL'` |
-| invalid data URL format | `'Image must be a valid data URL in format: data:image/[type];base64,[data]'` |
-
-**Response (200):** `{ "message": "Image added successfully" }`
-
----
-
-### Chat
-
----
-
-#### `POST /chat/message` 🔒 — Send a message
-🎓 **Not covered in main chapters — reference only**
-
-**TypeScript:**
-```ts
-interface SendMessageBody {
-  receiverId: string;              // required — recipient's User _id
-  receiverUsername: string;        // required
-  receiverAvatarColor: string;     // required
-  receiverProfilePicture: string;  // required
-  conversationId?: string;         // omit for first message (creates new conversation)
-  body?: string;                   // message text
-  gifUrl?: string;
-  selectedImage?: string;          // data URL
-  isRead?: boolean;
-}
-```
-
-**Request example:**
-```json
-{
-  "receiverId": "507f1f77...",
-  "receiverUsername": "Vitestjohn",
-  "receiverAvatarColor": "#ff6b6b",
-  "receiverProfilePicture": "https://...",
-  "body": "Hello!"
-}
-```
-
-**Response (200):** `{ "message": "Message added", "conversationId": "..." }`
-
----
-
-#### `PUT /chat/message/mark-as-read` 🔒 — Mark conversation as read
-
-**TypeScript:**
-```ts
-interface MarkAsReadBody { senderId: string; receiverId: string; }
-```
-
-**Response (200):** `{ "message": "Message marked as read" }`
-
----
-
-#### `PUT /chat/message/reaction` 🔒 — React to a chat message
-
-**TypeScript:**
-```ts
-interface MessageReactionBody {
-  conversationId: string;
-  messageId: string;
-  reaction: string;          // any emoji/string
-  type: 'add' | 'remove';
-}
-```
-
----
-
-### Test Cleanup (course only)
-
----
-
-#### `DELETE /test/cleanup/user/:authId` — Delete a test user
-🎓 **Chapter 6** (introduced)
-
-**Header required:** `x-test-secret: chatty-test-cleanup-2026`
-
-**TypeScript:**
-```ts
-// Correct usage:
-await axios.delete(`${BASE_URL}/test/cleanup/user/${authId}`, {
-  headers: { 'x-test-secret': TEST_CLEANUP_SECRET },  // from src/fixtures.ts
-  validateStatus: () => true,
-});
-```
-
-**Responses:**
-```json
-// 200 — success
-{ "message": "Test user deleted successfully", "deletedAuthId": "507f1f77...", "deletedUsername": "Vitestmike" }
-
-// 403 — wrong or missing header
-{ "message": "Forbidden: invalid test secret" }
-
-// 400 — username doesn't start with "vitest"
-{ "message": "Safety check failed: user \"John\" does not appear to be a test user. Username must start with \"vitest\"." }
-
-// 404 — authId not found
-{ "message": "Auth user with id 507f1f77... not found", "status": "error", "statusCode": 404 }
-```
-
-> ⚠️ Use `user.authId` from the signup response — NOT `user._id`.
-> ⚠️ Username **must** start with `vitest` — safety guard prevents deleting real users.
-> ⚠️ Deletes from **both** `Auth` and `User` collections.
-> ⚠️ `TEST_CLEANUP_SECRET` is `'chatty-test-cleanup-2026'` — hardcoded in `src/fixtures.ts`, not in `.env`.
-
----
-
-### Shared TypeScript Types
-
-```ts
-interface UserDocument {
-  _id: string;             // User collection document ID
-  authId: string;          // Auth collection document ID
-  uId: string;             // 12-digit numeric string
-  username: string;        // title-cased
-  email: string;           // lowercase
-  avatarColor: string;
-  profilePicture: string;  // Cloudinary URL
-  work: string;
-  school: string;
-  quote: string;
-  location: string;
-  bgImageVersion: string;
-  bgImageId: string;
-  postsCount: number;
-  followersCount: number;
-  followingCount: number;
-  blocked: string[];
-  blockedBy: string[];
-  notifications: {
-    messages: boolean;
-    reactions: boolean;
-    comments: boolean;
-    follows: boolean;
-  };
-  social: {
-    facebook: string;
-    instagram: string;
-    twitter: string;
-    youtube: string;
-  };
-  // password is NEVER present — stripped before any response
-}
-
-interface PostDocument {
-  _id: string;
-  userId: string;          // post owner's User _id — use as userTo in reactions/comments
-  username: string;
-  email: string;
-  avatarColor: string;
-  profilePicture: string;
-  post: string;
-  bgColor: string;
-  feelings: string;
-  privacy: string;
-  gifUrl: string;
-  commentsCount: number;
-  imgVersion: string;
-  imgId: string;
-  videoId: string;
-  videoVersion: string;
-  createdAt: string;
-  reactions: {
-    like: number; love: number; happy: number;
-    sad: number; wow: number; angry: number;
-  };
-}
-```
