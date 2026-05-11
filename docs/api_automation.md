@@ -29,15 +29,19 @@ A note on philosophy: this book teaches testing as a thinking skill, not just a 
 
 ## How to Read This Book
 
-This book is divided into four parts.
+This book is divided into six parts plus appendices.
 
 **Part I: Foundations** covers everything you need to understand before writing a single test. What API testing is and why it matters. How HTTP works at the level of detail that testing requires. What tools we use and why.
 
-**Part II: Writing Your First Tests** takes you from zero to working tests against a real API. The anatomy of a test. How to make assertions. How to handle authentication. How to structure a test file.
+**Part II: Writing Your First Tests** takes you from zero to working tests against a real API. The anatomy of a test. How to make assertions. How to structure a test file.
 
-**Part III: Real-World Patterns** covers the scenarios you encounter constantly in practice: testing authenticated endpoints, test data lifecycle management, testing CRUD operations, testing error conditions, and testing security properties.
+**Part III: Authentication and State** covers the two cross-cutting concerns that affect almost every endpoint: verifying that authentication works correctly, and reasoning about how tests interact with shared server state.
 
-**Part IV: Production-Ready Test Suites** covers the engineering work that turns a collection of test files into a professional test suite: configuration, CI/CD integration, reporting, coverage, and long-term maintenance.
+**Part IV: CRUD Testing Patterns** walks through the four fundamental HTTP operations — Create, Read, Update, Delete — with a full chapter on each. Each chapter covers the unique challenges, common mistakes, and complete test patterns for that operation.
+
+**Part V: Advanced Testing Patterns** covers topics you encounter as a suite matures: error and boundary testing, multi-user scenarios, database cross-validation, and file uploads.
+
+**Part VI: The Testing Infrastructure** covers the engineering work that turns a collection of test files into a professional test suite: CI/CD with GitHub Actions, containerizing tests with Docker, and test reporting with coverage.
 
 **Chapter dependencies** are linear within each part. Chapter 5 assumes Chapter 4. You can skip ahead if you have prior experience, but the foundational chapters are shorter than you might expect and contain assumptions that later chapters build on.
 
@@ -731,14 +735,28 @@ Several of these settings deserve explanation:
 
 `TEST_USERNAME` and `TEST_PASSWORD` are forwarded here even though Chapter 3 doesn't use them yet. They are needed starting in Chapter 6 when you test authenticated endpoints. It is cleaner to configure them once here than to add them later and wonder why tests fail.
 
+**Before Step 5 — Get your test account credentials**
+
+You need a free account on `codeandtest.com` to run the tests in this book. Here is how to create one:
+
+1. Open your browser and go to `https://codeandtest.com`
+2. Click **Sign Up** and fill in the registration form
+3. **Your username must start with `vitest`** — for example `vitest_alice` or `vitest_john123`. This prefix is required: the test cleanup endpoint will only delete accounts whose username starts with `vitest`, protecting real production accounts from accidental deletion.
+4. Choose a password that is at least 8 characters and contains one uppercase letter, one number, and one special character (e.g. `MyPass@123`). This is Chatty's password policy.
+5. After registration, note your username and password — you will put them in your `.env` file in the next step.
+
+> **Stuck?** If the sign-up page is not available, check `https://api.codeandtest.com/api-docs` to confirm the API is reachable from your network.
+
 **Step 5: Create `.env`**
 
 ```bash
 BASE_URL=https://api.codeandtest.com/api/v1
-TEST_USERNAME=your_chatty_username
-TEST_PASSWORD=your_chatty_password
+TEST_USERNAME=vitest_yourname
+TEST_PASSWORD=YourPassword@123
 # TEST_CLEANUP_SECRET is hardcoded in src/fixtures.ts — do not add to .env
 ```
+
+Replace `vitest_yourname` and `YourPassword@123` with the credentials you just registered.
 
 **Step 6: Create `.gitignore`**
 
@@ -753,14 +771,23 @@ coverage/
 **Step 7: Create `src/config.ts`**
 
 ```typescript
-const BASE_URL = process.env.BASE_URL;
+const BASE_URL      = process.env.BASE_URL;
+const TEST_USERNAME = process.env.TEST_USERNAME;
+const TEST_PASSWORD = process.env.TEST_PASSWORD;
 
-if (!BASE_URL) {
-  throw new Error('Missing env var: BASE_URL — copy .env.example to .env');
-}
+if (!BASE_URL)      throw new Error('Missing env var: BASE_URL — copy .env.example to .env');
+if (!TEST_USERNAME) throw new Error('Missing env var: TEST_USERNAME — add it to .env');
+if (!TEST_PASSWORD) throw new Error('Missing env var: TEST_PASSWORD — add it to .env');
 
-export const config = { BASE_URL } as const;
+export const config = { BASE_URL, TEST_USERNAME, TEST_PASSWORD } as const;
+
+// Named exports so both import styles work:
+//   import { config } from './src/config'          → config.BASE_URL
+//   import { BASE_URL } from './src/config'         → BASE_URL directly
+export { BASE_URL, TEST_USERNAME, TEST_PASSWORD };
 ```
+
+The three guard lines fail immediately with a clear message if a variable is missing — you see the problem in the first line of output, not buried inside a failing test. The named exports at the bottom mean you can import either `config.BASE_URL` or `BASE_URL` directly, whichever is more readable in context.
 
 **Step 8: Add scripts to `package.json`**
 
@@ -776,6 +803,69 @@ export const config = { BASE_URL } as const;
 ```
 
 With this setup complete, `npm test` runs all test files once. `npm run test:watch` runs Vitest in watch mode, re-running affected tests on file save. `npm run test:ui` opens a visual browser UI showing test results. `npm run test:coverage` runs tests and generates a coverage report.
+
+**Step 9: Create `.env.example`**
+
+This file is committed to git. It shows teammates exactly which variables they need, without exposing real values:
+
+```bash
+BASE_URL=https://api.codeandtest.com/api/v1
+TEST_USERNAME=vitest_yourname
+TEST_PASSWORD=YourPassword@123
+```
+
+**Step 10: Create `src/test-utils.ts`**
+
+This file holds helpers shared across all test files. The most important is `expectRejected` — a function that accepts status `400` OR `429` as a valid rejection. On the `/signin` endpoint, the server returns `400` for wrong credentials, but if you call it too many times in one minute (rate limiting), it returns `429`. Both mean "the request was rejected", so both are valid.
+
+```typescript
+export function expectRejected(status: number): void {
+  if (status !== 400 && status !== 429) {
+    throw new Error(
+      `Expected status 400 (bad request) or 429 (rate limited), got ${status}`
+    );
+  }
+}
+```
+
+**Step 11: Create `src/fixtures.ts`**
+
+This file holds reusable constants. `TEST_PASSWORD` is the password policy-compliant default used when creating test users. `TEST_AVATAR_IMAGE` is a tiny base64-encoded PNG — used for image upload tests so you never paste a 500-character string into a test file.
+
+```typescript
+// A password that satisfies Chatty's policy: 8+ chars, uppercase, number, special char
+export const TEST_PASSWORD = 'MyPass@1234!';
+
+// A 1×1 transparent PNG encoded as a base64 data URL — used for profile image upload tests
+export const TEST_AVATAR_IMAGE =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+```
+
+**Step 12: Verify your setup**
+
+Run this command to confirm everything is wired up correctly before writing any tests:
+
+```bash
+npm test
+```
+
+With no test files yet, you should see:
+
+```
+No test files found
+```
+
+That is the correct output — it means Vitest ran, found your config, loaded your `.env`, and exited cleanly. If you see an error like `Missing env var: BASE_URL`, check that your `.env` file exists and contains the correct values.
+
+If you see a TypeScript error, run `npx tsc --noEmit` to see the exact problem:
+
+```bash
+npx tsc --noEmit
+```
+
+This should print nothing (zero errors). If it prints errors, they are almost always in `tsconfig.json` — double-check you copied it exactly from Step 3.
+
+You are now ready to write your first test.
 
 ### 3.6 Environment Variables and Secrets
 
@@ -953,16 +1043,18 @@ Before showing the right pattern, it is worth understanding the wrong pattern �
 
 Here is a test file that makes the same sign-in request in every test:
 
+> **Note on the username below:** `'testuser'` is used here purely to illustrate the structural anti-pattern. In real tests you would use your actual `vitest_` prefixed username from `config.TEST_USERNAME`. The problem being demonstrated is the repeated-request structure, not the credentials.
+
 ```typescript
 // ANTI-PATTERN: Don't do this
 import axios from 'axios';
-import { BASE_URL } from '../../src/config';
+import { BASE_URL, TEST_USERNAME, TEST_PASSWORD } from '../../src/config';
 
 describe('POST /auth/signin', () => {
   it('returns 200 status code', async () => {
     const response = await axios.post(
       `${BASE_URL}/auth/signin`,
-      { username: 'testuser', password: 'password123' },
+      { username: TEST_USERNAME, password: TEST_PASSWORD },
       { validateStatus: () => true }
     );
     expect(response.status).toBe(200);
@@ -971,7 +1063,7 @@ describe('POST /auth/signin', () => {
   it('returns a message', async () => {
     const response = await axios.post(
       `${BASE_URL}/auth/signin`,
-      { username: 'testuser', password: 'password123' },
+      { username: TEST_USERNAME, password: TEST_PASSWORD },
       { validateStatus: () => true }
     );
     expect(response.data.message).toBeDefined();
@@ -980,7 +1072,7 @@ describe('POST /auth/signin', () => {
   it('returns a user object', async () => {
     const response = await axios.post(
       `${BASE_URL}/auth/signin`,
-      { username: 'testuser', password: 'password123' },
+      { username: TEST_USERNAME, password: TEST_PASSWORD },
       { validateStatus: () => true }
     );
     expect(response.data.user).toBeDefined();
