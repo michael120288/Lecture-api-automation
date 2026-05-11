@@ -45,6 +45,7 @@
 | 8 | Updated `package.json` Scripts |
 | 9 | CI/CD Integration |
 | 10 | Running Everything |
+| 11 | Git |
 
 ---
 
@@ -197,18 +198,26 @@ export default defineConfig({
   test: {
     globals: true,
     testTimeout: 15000,
-    reporters: process.env.CI
-      ? [['junit', {}], 'verbose']
-      : ['verbose'],
+    fileParallelism: false,
+
+    // html locally, JUnit in CI
+    reporters: process.env.CI ? ['junit', 'verbose'] : ['html', 'verbose'],
     outputFile: {
+      html: 'html/index.html',
       junit: 'test-results/junit.xml',
     },
-    fileParallelism: false,
+
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.ts'],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 70,
+      },
     },
+
     env: {
       BASE_URL:      process.env.BASE_URL      ?? '',
       TEST_USERNAME: process.env.TEST_USERNAME ?? '',
@@ -229,24 +238,17 @@ export default defineConfig({
     "test":          "vitest run",
     "test:watch":    "vitest",
     "test:ci":       "CI=true vitest run",
-
-> **Windows users:** `CI=true` inline syntax does not work on Windows CMD.
-> Use `set CI=true && npx vitest run` (CMD) or `$env:CI="true"; npx vitest run` (PowerShell).
-
-
-> **Windows users:** `CI=true` inline syntax does not work on Windows CMD.
-> Use `cross-env CI=true vitest run` (install `cross-env` first: `npm install --save-dev cross-env`),
-> or use `set CI=true && npm test` (CMD) / `$env:CI="true"; npm test` (PowerShell).
-
     "test:report":   "npx vitest --reporter=html && open html/index.html",
-> **Windows users:** Replace `open html/index.html` with `start html/index.html`.
-
     "test:coverage": "vitest run --coverage && open coverage/index.html"
-> **Windows users:** Replace `open coverage/index.html` with `start coverage/index.html`.
-
   }
 }
 ```
+
+> **Windows users — `CI=true`:** The inline `CI=true` syntax does not work on Windows CMD.
+> Use `set CI=true && npm test` (CMD) or `$env:CI="true"; npm test` (PowerShell).
+> Or install `cross-env` (`npm install --save-dev cross-env`) and use `cross-env CI=true vitest run` on all platforms.
+
+> **Windows users — `open`:** Replace `open html/index.html` with `start html/index.html`, and `open coverage/index.html` with `start coverage/index.html`.
 
 ---
 
@@ -281,7 +283,7 @@ Add after the Run Vitest step:
 - ✅ Newman runs your full Postman collection from CI — no browser needed
 - ✅ `newman-reporter-htmlextra` generates beautiful standalone HTML reports
 
-**Congratulations — you have completed all 13 lectures!**
+**Congratulations — you have completed Lecture 13!**
 
 ---
 
@@ -303,7 +305,7 @@ newman run chatty-api.postman_collection.json \
 
 ---
 
-## 10. Git
+## 11. Git
 
 ```bash
 # Stage the files for this lecture

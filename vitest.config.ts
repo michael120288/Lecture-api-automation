@@ -1,6 +1,3 @@
-// vitest.config.ts — with full reporters and coverage
-// Copy this to your project root to replace the basic vitest.config.ts
-
 import { defineConfig } from 'vitest/config';
 import { config as dotenvConfig } from 'dotenv';
 import { resolve } from 'path';
@@ -13,12 +10,12 @@ export default defineConfig({
     testTimeout: 15000,
     fileParallelism: false,
 
-    // Reporters: verbose in local, JUnit in CI
-  reporters: process.env.CI ? ['junit', 'verbose'] : ['html', 'verbose'],
+    // Reporters: html locally, JUnit in CI
+    reporters: process.env.CI ? ['junit', 'verbose'] : ['html', 'verbose'],
     outputFile: {
-  html: 'html/index.html',
-  junit: 'test-results/junit.xml',
-},
+      html: 'html/index.html',
+      junit: 'test-results/junit.xml',
+    },
 
     // Coverage — run with: npm run test:coverage
     coverage: {

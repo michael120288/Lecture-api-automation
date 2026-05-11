@@ -2,7 +2,7 @@
 
 **Total prep time: ~35 min**
 
-Complete these before opening `README.md` or any test file.
+Complete these before starting the lecture.
 
 ---
 

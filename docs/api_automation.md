@@ -251,9 +251,6 @@ API testing has been possible as long as HTTP has existed. The first tool most d
 
 ---
 
-
----
-
 ### Chapter Practice
 
 > **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
@@ -293,7 +290,7 @@ You cannot test what you do not understand. Before writing a single test, you ne
 
 ### 2.1 The Request-Response Cycle
 
-When your test calls `axios.post('https://api.codeandtest.com/api/v1/auth/signin', { username: 'alice', password: 'secret' })`, a remarkable sequence of events unfolds.
+When your test calls `axios.post('https://api.codeandtest.com/api/v1/signin', { username: 'alice', password: 'secret' })`, a remarkable sequence of events unfolds.
 
 **DNS resolution**: The HTTP client asks a DNS resolver to convert `api.codeandtest.com` into an IP address. This typically takes a few milliseconds and is cached, so subsequent requests to the same host skip it. The result is something like `76.76.21.164`.
 
@@ -313,10 +310,10 @@ Why does this matter for testing? Several reasons. The 50–200ms round-trip tim
 
 ### 2.2 Anatomy of an HTTP Request
 
-An HTTP request is a text document with a precise structure. Here is what the raw HTTP request looks like when your test calls `POST /auth/signin`:
+An HTTP request is a text document with a precise structure. Here is what the raw HTTP request looks like when your test calls `POST /signin`:
 
 ```
-POST /api/v1/auth/signin HTTP/1.1
+POST /api/v1/signin HTTP/1.1
 Host: api.codeandtest.com
 Content-Type: application/json
 Accept: application/json, text/plain, */*
@@ -350,7 +347,7 @@ Axios sets Content-Type, serializes the body to JSON, and sets Content-Length. Y
 
 ### 2.3 Anatomy of an HTTP Response
 
-Here is the raw HTTP response from a successful `POST /auth/signin`:
+Here is the raw HTTP response from a successful `POST /signin`:
 
 ```
 HTTP/1.1 200 OK
@@ -394,7 +391,7 @@ The HTTP method tells the server what kind of operation the client wants to perf
 
 **GET** retrieves a resource. GET requests are **safe** (they do not modify server state) and **idempotent** (calling the same GET multiple times produces the same result, barring external changes). GET requests have no body. In Chatty: `GET /users/:username/profile` retrieves a user's public profile.
 
-**POST** creates a new resource or triggers a non-idempotent action. POST requests are neither safe nor idempotent — calling POST twice typically creates two resources. POST requests have a body containing the resource to create. In Chatty: `POST /auth/signup` creates a new user, `POST /auth/signin` creates a new session.
+**POST** creates a new resource or triggers a non-idempotent action. POST requests are neither safe nor idempotent — calling POST twice typically creates two resources. POST requests have a body containing the resource to create. In Chatty: `POST /signup` creates a new user, `POST /signin` creates a new session.
 
 **PUT** replaces a resource entirely. If the resource does not exist, PUT may create it (this is implementation-defined). PUT is idempotent — calling PUT with the same body twice produces the same state. Put differently: the result of two identical PUT requests is the same as the result of one. In Chatty, PUT is used sparingly in favor of PATCH.
 
@@ -412,7 +409,7 @@ Status codes are the first thing your tests should check. Understanding the prec
 
 **200 OK** is the generic success response. The request was received, understood, and processed successfully. Use this as your expected status for GET requests and for PUT/PATCH/DELETE when no new resource was created.
 
-**201 Created** means a new resource was created. It is the correct status code for successful POST requests. Chatty returns 201 from `POST /auth/signup`. The distinction between 200 and 201 matters: asserting `expect(response.status).toBe(201)` tells you that the server specifically acknowledged resource creation, not just that it processed a request without error.
+**201 Created** means a new resource was created. It is the correct status code for successful POST requests. Chatty returns 201 from `POST /signup`. The distinction between 200 and 201 matters: asserting `expect(response.status).toBe(201)` tells you that the server specifically acknowledged resource creation, not just that it processed a request without error.
 
 **400 Bad Request** means the client sent something the server could not understand or accept. In Chatty, this typically means Joi validation failed. The response body will include an error message that describes exactly which field failed and why. In tests, you should assert not just the 400 status but the specific error message — this verifies that validation is working correctly and that error messages are user-friendly.
 
@@ -492,7 +489,7 @@ Every field in this object is a JavaScript value that you can access directly, c
 
 **Exercises**
 
-1. Using curl on your terminal, make a raw HTTP request to `https://api.codeandtest.com/api/v1/auth/signin` with a JSON body. Use `curl -v` to see both request and response headers. Identify: the request method, the Host header, the Content-Type request header, the response status code, the Content-Type response header, and the Set-Cookie response header. If you do not have curl installed, use the browser's Network tab in DevTools to inspect the same request.
+1. Using curl on your terminal, make a raw HTTP request to `https://api.codeandtest.com/api/v1/signin` with a JSON body. Use `curl -v` to see both request and response headers. Identify: the request method, the Host header, the Content-Type request header, the response status code, the Content-Type response header, and the Set-Cookie response header. If you do not have curl installed, use the browser's Network tab in DevTools to inspect the same request.
 
 2. The Chatty API returns 401 for unauthenticated requests and 403 for unauthorized requests. Describe in one sentence each: (a) what condition produces a 401, (b) what condition produces a 403, and (c) why the distinction matters for security testing.
 
@@ -501,9 +498,6 @@ Every field in this object is a JavaScript value that you can access directly, c
 4. Design a JSON object that represents a chat message in the Chatty application. Include at least six fields with at least four different JSON types. Then identify one field that would be tempting to represent as `undefined` in JavaScript but cannot appear as `undefined` in the JSON response.
 
 5. A test is checking the response from `DELETE /post/:postId`. The developer writes `expect(response.status).toBe(200)`. Is this assertion correct according to REST semantics? What would be a more precise assertion, and why does the distinction matter?
-
----
-
 
 ---
 
@@ -640,7 +634,7 @@ You only create three files before writing any tests: `src/config.ts`, `src/test
 
 **`src/test-utils.ts`** contains shared helpers used across many test files. The most important is `expectRejected`, a function that accepts status 400 OR 429 as valid rejections — because production auth endpoints can return either depending on rate limiting.
 
-**`src/fixtures.ts`** holds reusable constants. The most important is `TEST_AVATAR_IMAGE`, a base64-encoded 1×1 PNG used for image upload tests. Defining it once here means you never paste a 500-character string into a test file.
+**`src/fixtures.ts`** holds reusable constants. The most important is `TEST_AVATAR_IMAGE`, a base64-encoded 10×10 PNG used for image upload tests. Defining it once here means you never paste a 500-character string into a test file.
 
 > **The `vitest` username rule — memorize this now.** Every test username you create in this course must start with the prefix `vitest` (e.g., `vitest_alice` or `vitestAlice${Date.now()}`). This is enforced by the cleanup endpoint — it refuses to delete any user whose username does not start with `vitest`, protecting real production accounts from accidental deletion. When generating a unique username, always use the `Date.now()` suffix to prevent collisions between test runs: `vitest${Date.now()}`. You will use this pattern in every chapter that creates test users.
 
@@ -836,7 +830,7 @@ This file holds reusable constants. `TEST_PASSWORD` is the password policy-compl
 // A password that satisfies Chatty's policy: 8+ chars, uppercase, number, special char
 export const TEST_PASSWORD = 'MyPass@1234!';
 
-// A 1×1 transparent PNG encoded as a base64 data URL — used for profile image upload tests
+// A 10×10 blue PNG encoded as a base64 data URL — used for profile image upload tests
 export const TEST_AVATAR_IMAGE =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 ```
@@ -912,9 +906,6 @@ These race conditions produce intermittent, hard-to-diagnose failures. `filePara
 
 ---
 
-
----
-
 ### Chapter Practice
 
 > **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
@@ -931,7 +922,7 @@ Write these tests in your file before reading the next chapter:
 1. Create the project from scratch: npm init, install vitest + axios + typescript + @faker-js/faker + dotenv. Create tsconfig.json, vitest.config.ts, and .env.
 2. Create src/config.ts that reads BASE_URL, TEST_USERNAME, and TEST_PASSWORD from environment variables and throws a descriptive error if any are missing.
 3. Create src/test-utils.ts with an expectRejected function that accepts status 400 OR 429.
-4. Create src/fixtures.ts with TEST_PASSWORD and a TEST_AVATAR_IMAGE constant (a 1x1 PNG as a base64 data URL).
+4. Create src/fixtures.ts with TEST_PASSWORD and a TEST_AVATAR_IMAGE constant (a 10x10 PNG as a base64 data URL).
 5. Write a single test file that imports from all three src/ files and makes one request to POST /signin. Run it with npm test. The test should pass.
 
 
@@ -996,14 +987,14 @@ Here is the skeleton of a well-structured API test file:
 import axios, { AxiosResponse } from 'axios';
 import { BASE_URL } from '../../src/config';
 
-describe('POST /auth/signin', () => {
+describe('POST /signin', () => {
   // Arrange: the user exists (assumed in this example)
   let response!: AxiosResponse;
 
   beforeAll(async () => {
     // Act: make the HTTP request once
     response = await axios.post(
-      `${BASE_URL}/auth/signin`,
+      `${BASE_URL}/signin`,
       { username: 'testuser', password: 'password123' },
       { validateStatus: () => true }
     );
@@ -1050,10 +1041,10 @@ Here is a test file that makes the same sign-in request in every test:
 import axios from 'axios';
 import { BASE_URL, TEST_USERNAME, TEST_PASSWORD } from '../../src/config';
 
-describe('POST /auth/signin', () => {
+describe('POST /signin', () => {
   it('returns 200 status code', async () => {
     const response = await axios.post(
-      `${BASE_URL}/auth/signin`,
+      `${BASE_URL}/signin`,
       { username: TEST_USERNAME, password: TEST_PASSWORD },
       { validateStatus: () => true }
     );
@@ -1062,7 +1053,7 @@ describe('POST /auth/signin', () => {
 
   it('returns a message', async () => {
     const response = await axios.post(
-      `${BASE_URL}/auth/signin`,
+      `${BASE_URL}/signin`,
       { username: TEST_USERNAME, password: TEST_PASSWORD },
       { validateStatus: () => true }
     );
@@ -1071,7 +1062,7 @@ describe('POST /auth/signin', () => {
 
   it('returns a user object', async () => {
     const response = await axios.post(
-      `${BASE_URL}/auth/signin`,
+      `${BASE_URL}/signin`,
       { username: TEST_USERNAME, password: TEST_PASSWORD },
       { validateStatus: () => true }
     );
@@ -1102,12 +1093,12 @@ Before reading the code, one TypeScript syntax note: you will see `let response!
 import axios, { AxiosResponse } from 'axios';
 import { BASE_URL, TEST_USERNAME, TEST_PASSWORD } from '../../src/config';
 
-describe('POST /auth/signin - success', () => {
+describe('POST /signin - success', () => {
   let response!: AxiosResponse;
 
   beforeAll(async () => {
     response = await axios.post(
-      `${BASE_URL}/auth/signin`,
+      `${BASE_URL}/signin`,
       {
         username: TEST_USERNAME,
         password: TEST_PASSWORD,
@@ -1214,7 +1205,7 @@ With this shared instance, every request you make with `api.get(...)`, `api.post
 The `describe` function creates a named group of tests. Describes can be nested. Nesting creates a tree of test names that Vitest displays in its output:
 
 ```
-POST /auth/signin - success
+POST /signin - success
   1. Basic
     ✓ returns 200 status code
   2. Exact values
@@ -1296,7 +1287,7 @@ it('user._id is a non-empty string', ...)
 Good test names serve as living documentation. When you run the test suite and see this output:
 
 ```
-POST /auth/signin
+POST /signin
   Success path
     ✓ returns 200 when credentials are valid
     ✓ does not expose password hash in response
@@ -1330,7 +1321,7 @@ The first tells you the sign-in success path is broken. The second tells you not
 
 **Exercises**
 
-Write a test file at `tests/chapter-04/first-test.test.ts` that tests `POST /auth/signin` at `https://api.codeandtest.com/api/v1`. Your file should:
+Write a test file at `tests/chapter-04/first-test.test.ts` that tests `POST /signin` at `https://api.codeandtest.com/api/v1`. Your file should:
 
 1. Use the `beforeAll` pattern with one request shared across all tests.
 2. Assert the status code is 200.
@@ -1339,9 +1330,6 @@ Write a test file at `tests/chapter-04/first-test.test.ts` that tests `POST /aut
 5. Assert that `response.data.user.username` equals your test username.
 
 After your tests pass, add a second `describe` block for the failure case: send a request with an incorrect password. In `beforeAll`, make one request with a wrong password. Assert that the status code is 401. Assert that `response.data.message` is defined. Assert that `response.data` does NOT contain a `user` property.
-
----
-
 
 ---
 
@@ -2114,15 +2102,15 @@ expect(response.data.user).not.toHaveProperty('twoFactorSecret');
 
 ### 5.3 Positive Assertions
 
-A complete positive assertion checks all relevant dimensions of a successful response. For `POST /auth/signin` returning 200, here is what a thorough set of assertions looks like:
+A complete positive assertion checks all relevant dimensions of a successful response. For `POST /signin` returning 200, here is what a thorough set of assertions looks like:
 
 ```typescript
-describe('POST /auth/signin - success', () => {
+describe('POST /signin - success', () => {
   let response!: AxiosResponse;
 
   beforeAll(async () => {
     response = await axios.post(
-      `${BASE_URL}/auth/signin`,
+      `${BASE_URL}/signin`,
       { username: TEST_USERNAME, password: TEST_PASSWORD },
       { validateStatus: () => true }
     );
@@ -2180,12 +2168,12 @@ This covers five of the seven assertion dimensions: status code, exact values, s
 Negative assertions — tests against error paths — are equally important as positive assertions. The sign-in endpoint should refuse invalid credentials, enforce validation, and never return user data for failed requests.
 
 ```typescript
-describe('POST /auth/signin - invalid credentials', () => {
+describe('POST /signin - invalid credentials', () => {
   let response!: AxiosResponse;
 
   beforeAll(async () => {
     response = await axios.post(
-      `${BASE_URL}/auth/signin`,
+      `${BASE_URL}/signin`,
       { username: TEST_USERNAME, password: 'wrong_password_that_will_fail' },
       { validateStatus: () => true }
     );
@@ -2262,7 +2250,7 @@ Use `expect.any(Type)` for:
 
 The central pattern of this chapter put into practice: one `beforeAll` request, exhaustive assertions across multiple `it` blocks.
 
-Here is a complete, production-quality test file for `POST /auth/signup`:
+Here is a complete, production-quality test file for `POST /signup`:
 
 ```typescript
 import axios, { AxiosResponse } from 'axios';
@@ -2270,7 +2258,7 @@ import { faker } from '@faker-js/faker';
 import { config } from '../../src/config';
 import { TEST_CLEANUP_SECRET } from '../../src/fixtures';
 
-describe('POST /auth/signup', () => {
+describe('POST /signup', () => {
   const username = `vitest_${faker.internet.username().toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now()}`;
   const email = `${username}@example.com`;
   const password = 'Test1@Password';
@@ -2279,7 +2267,7 @@ describe('POST /auth/signup', () => {
 
   beforeAll(async () => {
     response = await axios.post(
-      `${BASE_URL}/auth/signup`,
+      `${BASE_URL}/signup`,
       { username, email, password },
       { validateStatus: () => true }
     );
@@ -2382,19 +2370,19 @@ The following exercises use the Chatty API at `https://api.codeandtest.com/api/v
 
 1. **Status code basics.** Call `GET /` (the API health check, if it exists) or `GET /users/nonexistent-user-xyz`. Use `validateStatus: () => true`. Write three assertions: (a) the status code is a number, (b) the status code is greater than or equal to 100, (c) the status code is less than 600. These assertions should pass for any valid HTTP response.
 
-2. **String matchers.** Call `POST /auth/signin` with invalid credentials (wrong password). Assert: (a) `response.data.message` contains at least one character (is truthy), (b) `response.data.message` matches the regex `/^[A-Z]/` (starts with a capital letter), (c) `response.data.message` does NOT contain the word "stack" (error stack traces should not leak to clients), (d) `response.data.message` does NOT contain the word "mongo" (internal implementation details should not leak).
+2. **String matchers.** Call `POST /signin` with invalid credentials (wrong password). Assert: (a) `response.data.message` contains at least one character (is truthy), (b) `response.data.message` matches the regex `/^[A-Z]/` (starts with a capital letter), (c) `response.data.message` does NOT contain the word "stack" (error stack traces should not leak to clients), (d) `response.data.message` does NOT contain the word "mongo" (internal implementation details should not leak).
 
-3. **Object shape matchers.** Call `POST /auth/signin` with valid credentials. Using `toMatchObject`, assert that `response.data.user` contains exactly these fields with these types: `_id` (any String), `username` (any String), `email` (any String), `postsCount` (any Number), `followersCount` (any Number), `followingCount` (any Number). Then add a `toHaveProperty` assertion for each of these same fields individually. Note that both approaches pass — they are testing the same thing in different ways.
+3. **Object shape matchers.** Call `POST /signin` with valid credentials. Using `toMatchObject`, assert that `response.data.user` contains exactly these fields with these types: `_id` (any String), `username` (any String), `email` (any String), `postsCount` (any Number), `followersCount` (any Number), `followingCount` (any Number). Then add a `toHaveProperty` assertion for each of these same fields individually. Note that both approaches pass — they are testing the same thing in different ways.
 
 4. **Array matchers.** If the Chatty API has a list endpoint (such as `GET /posts`), test it. Assert: (a) `response.data` (or `response.data.posts`) is an array, (b) each element contains at least a `_id` field of type string, using `expect.arrayContaining([expect.objectContaining({...})])`. If the list endpoint requires authentication, skip this exercise until Part III.
 
-5. **Security assertions.** Call `POST /auth/signin` with valid credentials. Write five security-focused assertions using `.not`: (a) `response.data.user` does not have a `password` property, (b) `response.data.user` does not have a `passwordHash` property, (c) `response.data.user` does not have a `salt` property, (d) `response.data` does not have an `internalError` property, (e) `response.data` does not have a `stackTrace` property.
+5. **Security assertions.** Call `POST /signin` with valid credentials. Write five security-focused assertions using `.not`: (a) `response.data.user` does not have a `password` property, (b) `response.data.user` does not have a `passwordHash` property, (c) `response.data.user` does not have a `salt` property, (d) `response.data` does not have an `internalError` property, (e) `response.data` does not have a `stackTrace` property.
 
-6. **Exact vs. partial matching.** Call `POST /auth/signup` with a unique new username and email. Write two versions of the same assertion about `response.data.user.username`: (a) using `toBe` with the exact username you sent, (b) using `toMatch` with a regex that checks the username starts with `vitest`. Verify both pass. Then change the regex in (b) to require the username to contain a digit — if your username generator does not include digits, this should fail. Fix the regex so it passes again. This exercise teaches the spectrum from exact to pattern matching.
+6. **Exact vs. partial matching.** Call `POST /signup` with a unique new username and email. Write two versions of the same assertion about `response.data.user.username`: (a) using `toBe` with the exact username you sent, (b) using `toMatch` with a regex that checks the username starts with `vitest`. Verify both pass. Then change the regex in (b) to require the username to contain a digit — if your username generator does not include digits, this should fail. Fix the regex so it passes again. This exercise teaches the spectrum from exact to pattern matching.
 
-7. **Custom assertions with toSatisfy.** Call `POST /auth/signin` with valid credentials. Assert that `response.data.user._id` satisfies a function that checks: (a) it is a string, (b) it has exactly 24 characters, (c) it only contains hexadecimal characters (0-9 and a-f). Write the `toSatisfy` callback to check all three conditions. This is a custom MongoDB ObjectId validator.
+7. **Custom assertions with toSatisfy.** Call `POST /signin` with valid credentials. Assert that `response.data.user._id` satisfies a function that checks: (a) it is a string, (b) it has exactly 24 characters, (c) it only contains hexadecimal characters (0-9 and a-f). Write the `toSatisfy` callback to check all three conditions. This is a custom MongoDB ObjectId validator.
 
-8. **Number range assertions.** Call `POST /auth/signin` with valid credentials. Assert: (a) `postsCount` is greater than or equal to 0, (b) `followersCount` is greater than or equal to 0, (c) `followingCount` is greater than or equal to 0. Then add timing assertions: capture `Date.now()` before and after the `beforeAll` request (record `startTime` before, `endTime` after). Assert that `(endTime - startTime)` is less than 5000 (5 seconds). This is a basic performance assertion.
+8. **Number range assertions.** Call `POST /signin` with valid credentials. Assert: (a) `postsCount` is greater than or equal to 0, (b) `followersCount` is greater than or equal to 0, (c) `followingCount` is greater than or equal to 0. Then add timing assertions: capture `Date.now()` before and after the `beforeAll` request (record `startTime` before, `endTime` after). Assert that `(endTime - startTime)` is less than 5000 (5 seconds). This is a basic performance assertion.
 
 9. **Negation patterns.** For the same sign-in response, write a test using `.not.toMatchObject` to assert that the response body does NOT match `{ error: expect.any(String) }`. This verifies there is no error field in the success response. Also assert the response does NOT have a `statusCode` property at the top level (some error formats include `statusCode` as a field; success responses should not).
 
@@ -2958,7 +2946,7 @@ export interface SigninPayload {
 
 ### Testing a Successful Signin
 
-The signin endpoint is `POST /auth/signin`. It accepts a JSON body with `username` and `password` fields and returns a JSON response containing a JWT token and a user object. Let us build up a complete test for a successful signin step by step.
+The signin endpoint is `POST /signin`. It accepts a JSON body with `username` and `password` fields and returns a JSON response containing a JWT token and a user object. Let us build up a complete test for a successful signin step by step.
 
 The first question is: where does the test user come from? For an auth chapter test, you want a user who already exists — there is no point testing signup in a signin test. We have a dedicated test user `vitestAuthUser` seeded in the production test environment for this purpose. In your own environment, you would create the user in a `beforeAll` hook.
 
@@ -2973,11 +2961,11 @@ const TEST_USER = {
 };
 
 describe('Chapter 6: Authentication Flows', () => {
-  describe('POST /auth/signin — successful authentication', () => {
+  describe('POST /signin — successful authentication', () => {
     let response: AxiosResponse;
 
     beforeAll(async () => {
-      response = await client.post('/auth/signin', TEST_USER);
+      response = await client.post('/signin', TEST_USER);
     });
 
     it('returns HTTP 200', () => {
@@ -3065,12 +3053,12 @@ set-cookie: session.sig=abc123; Path=/; Expires=...; HttpOnly; SameSite=Lax
 The HTTP specification allows multiple `set-cookie` headers in a single response, which is why Axios represents this header as an **array of strings**, not a single string. This catches many developers by surprise. Let us add cookie capture to our test:
 
 ```typescript
-describe('POST /auth/signin — cookie handling', () => {
+describe('POST /signin — cookie handling', () => {
   let response: AxiosResponse;
   let cookieHeader: string;
 
   beforeAll(async () => {
-    response = await client.post('/auth/signin', TEST_USER);
+    response = await client.post('/signin', TEST_USER);
     // set-cookie is always an array — take the first value
     const setCookie = response.headers['set-cookie'];
     expect(setCookie).toBeDefined();
@@ -3142,11 +3130,11 @@ describe('Chapter 6: Authentication Flows', () => {
 
   beforeAll(async () => {
     // 1. Create the test user
-    const signupResponse = await client.post('/auth/signup', TEST_USER);
+    const signupResponse = await client.post('/signup', TEST_USER);
     expect(signupResponse.status).toBe(201);
 
     // 2. Sign in and capture state
-    const signinResponse = await client.post('/auth/signin', {
+    const signinResponse = await client.post('/signin', {
       username: TEST_USER.username,
       password: TEST_USER.password,
     });
@@ -3178,7 +3166,7 @@ describe('Chapter 6: Authentication Flows', () => {
     let signinResponse: AxiosResponse;
 
     beforeAll(async () => {
-      signinResponse = await client.post('/auth/signin', {
+      signinResponse = await client.post('/signin', {
         username: TEST_USER.username,
         password: TEST_USER.password,
       });
@@ -3189,7 +3177,8 @@ describe('Chapter 6: Authentication Flows', () => {
     });
 
     it('returns a valid JWT token', () => {
-      const token = signinResponse.data.token;
+      const raw = signinResponse.headers['set-cookie'];
+      const sessionCookie = Array.isArray(raw) ? raw.map(c => c.split(';')[0]).join('; ') : (raw ?? '').split(';')[0];
       expect(token).toBeDefined();
       expect(token.split('.')).toHaveLength(3);
       expect(token.split('.')[0]).toMatch(/^eyJ/);
@@ -3259,7 +3248,7 @@ describe('Failed authentication scenarios', () => {
   describe('Wrong credentials', () => {
     it('returns 400 for wrong password', async () => {
       await expect(
-        client.post('/auth/signin', {
+        client.post('/signin', {
           username: TEST_USER.username,
           password: 'WrongPassword999!',
         })
@@ -3275,7 +3264,7 @@ describe('Failed authentication scenarios', () => {
 
     it('returns 400 for non-existent username', async () => {
       await expect(
-        client.post('/auth/signin', {
+        client.post('/signin', {
           username: 'vitestUserThatDoesNotExist99999',
           password: 'Password1!',
         })
@@ -3288,7 +3277,7 @@ describe('Failed authentication scenarios', () => {
   describe('Validation errors', () => {
     it('returns 400 for username that is too short', async () => {
       await expect(
-        client.post('/auth/signin', {
+        client.post('/signin', {
           username: 'ab',
           password: 'Password1!',
         })
@@ -3299,7 +3288,7 @@ describe('Failed authentication scenarios', () => {
 
     it('returns 400 for missing password field', async () => {
       await expect(
-        client.post('/auth/signin', {
+        client.post('/signin', {
           username: TEST_USER.username,
         })
       ).rejects.toMatchObject({
@@ -3309,7 +3298,7 @@ describe('Failed authentication scenarios', () => {
 
     it('returns 400 for missing username field', async () => {
       await expect(
-        client.post('/auth/signin', {
+        client.post('/signin', {
           password: 'Password1!',
         })
       ).rejects.toMatchObject({
@@ -3319,7 +3308,7 @@ describe('Failed authentication scenarios', () => {
 
     it('returns 400 for completely empty body', async () => {
       await expect(
-        client.post('/auth/signin', {})
+        client.post('/signin', {})
       ).rejects.toMatchObject({
         response: { status: 400 },
       });
@@ -3353,7 +3342,7 @@ describe('Signout lifecycle', () => {
   let sessionCookie: string;
 
   beforeAll(async () => {
-    const signinResponse = await client.post('/auth/signin', {
+    const signinResponse = await client.post('/signin', {
       username: TEST_USER.username,
       password: TEST_USER.password,
     });
@@ -3408,7 +3397,7 @@ export async function signIn(
   username: string,
   password: string
 ): Promise<AuthSession> {
-  const response = await client.post('/auth/signin', { username, password });
+  const response = await client.post('/signin', { username, password });
 
   const setCookie = response.headers['set-cookie'];
   if (!setCookie || setCookie.length === 0) {
@@ -3481,9 +3470,6 @@ describe('Some authenticated feature', () => {
 **Exercise 6.4**: Write a test that signs in, immediately signs out, and then tries to use the now-invalidated cookie to call `GET /currentuser`. Assert the second call returns 401.
 
 **Exercise 6.5**: The JWT header segment is a Base64URL-encoded JSON object. Write a test that decodes the header segment using `Buffer.from(segment, 'base64url').toString('utf8')` and asserts the decoded string is valid JSON containing an `alg` field.
-
----
-
 
 ---
 
@@ -4013,7 +3999,7 @@ describe('Chapter 7: State and Side Effects', () => {
 
   beforeAll(async () => {
     // Create user
-    await client.post('/auth/signup', TEST_USER);
+    await client.post('/signup', TEST_USER);
 
     // Sign in
     session = await signIn(TEST_USER.username, TEST_USER.password);
@@ -4399,9 +4385,6 @@ This pattern collects all cleanup errors into an array and reports them as warni
 **Exercise 7.4**: Write a test that creates a post, assigns its ID to a `let postId` variable using the find-by-content pattern, updates the post content, and then reads back the post to verify the update was applied.
 
 **Exercise 7.5**: Demonstrate the `postDeleted` flag pattern in a full test suite: create a post in `beforeAll`, test deletion in an `it`, and verify the `afterAll` skips cleanup when `postDeleted` is `true`. Hint: add a `console.log` in both branches of the `afterAll` condition and check the output.
-
----
-
 
 ---
 
@@ -4996,7 +4979,7 @@ describe('Chapter 8: Create — Resource Creation', () => {
   const uniqueContent = `Vitest post ${Date.now()}`;
 
   beforeAll(async () => {
-    await client.post('/auth/signup', TEST_USER);
+    await client.post('/signup', TEST_USER);
     session = await signIn(TEST_USER.username, TEST_USER.password);
   });
 
@@ -5112,7 +5095,7 @@ describe('User creation with Faker-generated data', () => {
   let session: AuthSession;
 
   beforeAll(async () => {
-    const signupResponse = await client.post('/auth/signup', testUser);
+    const signupResponse = await client.post('/signup', testUser);
     expect(signupResponse.status).toBe(201);
     session = await signIn(testUser.username, testUser.password);
   });
@@ -5155,7 +5138,7 @@ describe('Duplicate user creation', () => {
 
   beforeAll(async () => {
     // Create the user once
-    const response = await client.post('/auth/signup', existingUser);
+    const response = await client.post('/signup', existingUser);
     userId = response.data.user._id;
   });
 
@@ -5165,7 +5148,7 @@ describe('Duplicate user creation', () => {
 
   it('returns 400 when creating a user with a duplicate username', async () => {
     await expect(
-      client.post('/auth/signup', {
+      client.post('/signup', {
         username: existingUser.username,              // Same username
         email: `vitestdiff${Date.now()}@example.com`, // Different email
         password: 'Password1!',
@@ -5182,7 +5165,7 @@ describe('Duplicate user creation', () => {
 
   it('returns 400 when creating a user with a duplicate email', async () => {
     await expect(
-      client.post('/auth/signup', {
+      client.post('/signup', {
         username: `vitest${Date.now()}`, // Different username
         email: existingUser.email,       // Same email
         password: 'Password1!',
@@ -5210,7 +5193,7 @@ Your tests should cover both categories:
 describe('Validation errors for user signup', () => {
   it('returns 400 for username shorter than 4 characters', async () => {
     await expect(
-      client.post('/auth/signup', {
+      client.post('/signup', {
         username: 'vit', // Too short
         email: 'vitest@valid.com',
         password: 'Password1!',
@@ -5220,7 +5203,7 @@ describe('Validation errors for user signup', () => {
 
   it('returns 400 for invalid email format', async () => {
     await expect(
-      client.post('/auth/signup', {
+      client.post('/signup', {
         username: 'vitestValidUsername',
         email: 'not-an-email',
         password: 'Password1!',
@@ -5230,7 +5213,7 @@ describe('Validation errors for user signup', () => {
 
   it('returns 400 for password without uppercase letter', async () => {
     await expect(
-      client.post('/auth/signup', {
+      client.post('/signup', {
         username: 'vitestValidUsername',
         email: 'vitest@valid.com',
         password: 'password1!',
@@ -5249,7 +5232,7 @@ describe('Business logic errors for user signup', () => {
   let userId: string;
 
   beforeAll(async () => {
-    const response = await client.post('/auth/signup', takenUser);
+    const response = await client.post('/signup', takenUser);
     userId = response.data.user._id;
   });
 
@@ -5259,7 +5242,7 @@ describe('Business logic errors for user signup', () => {
 
   it('returns 400 with "already exists" message for duplicate username', async () => {
     await expect(
-      client.post('/auth/signup', {
+      client.post('/signup', {
         ...takenUser,
         email: `vitestother${Date.now()}@example.com`,
       })
@@ -5291,7 +5274,7 @@ describe('Complete POST /post test suite', () => {
       email: `vitestpostcreator${Date.now()}@example.com`,
       password: 'Password1!',
     };
-    await client.post('/auth/signup', user);
+    await client.post('/signup', user);
     session = await signIn(user.username, user.password);
   });
 
@@ -5365,9 +5348,6 @@ describe('Complete POST /post test suite', () => {
 **Exercise 8.4**: Write a test that creates a user with Faker-generated data, signs in, creates a post, verifies the post appears in the list, and then cleans up both the post and the user in a structured `afterAll` hook.
 
 **Exercise 8.5**: Test the uniqueness constraint: sign up with a username, then attempt to sign up again with the same username but a different email. Assert the second attempt returns 400 with an error message matching `/already exists/i`.
-
----
-
 
 ---
 
@@ -5664,7 +5644,7 @@ describe('2. Find the created post', () => {
 //
 // PATCH /post/:postId — only the owner can update.
 // Returns { message: "Post updated successfully" } — no post data.
-// Must call GET to verify the change (state verification pattern from L4).
+// Must call GET to verify the change (state verification pattern from Chapter 4).
 
 describe('3. Update post', () => {
 
@@ -5895,7 +5875,7 @@ describe('Chapter 9: Read — Testing Retrieval', () => {
   let session: AuthSession;
 
   beforeAll(async () => {
-    await client.post('/auth/signup', TEST_USER);
+    await client.post('/signup', TEST_USER);
     session = await signIn(TEST_USER.username, TEST_USER.password);
   });
 
@@ -6237,9 +6217,6 @@ describe('Access control on GET endpoints', () => {
 
 ---
 
-
----
-
 ### Chapter Practice
 
 > **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
@@ -6521,7 +6498,7 @@ describe('3. Get single reaction by username', () => {
 //   - The reactions array is non-empty
 //   - At least one reaction has type 'like'
 //
-// This mirrors the state verification pattern from Chapter 7and 5.
+// This mirrors the state verification pattern from Chapter 7 and 5.
 
 describe('4. State verification — reaction present in list', () => {
 
@@ -6690,7 +6667,7 @@ describe('Chapter 10: Update — Testing Mutations', () => {
   const initialContent = `vitestOriginalContent ${Date.now()}`;
 
   beforeAll(async () => {
-    await client.post('/auth/signup', TEST_USER);
+    await client.post('/signup', TEST_USER);
     session = await signIn(TEST_USER.username, TEST_USER.password);
 
     // Create a post to update
@@ -6800,8 +6777,8 @@ describe('Owner-only PATCH enforcement', () => {
     };
 
     await Promise.all([
-      client.post('/auth/signup', ownerUser),
-      client.post('/auth/signup', nonOwnerUser),
+      client.post('/signup', ownerUser),
+      client.post('/signup', nonOwnerUser),
     ]);
 
     [ownerSession, nonOwnerSession] = await Promise.all([
@@ -6997,9 +6974,6 @@ describe('PUT /user/profile — full replacement semantics', () => {
 **Exercise 10.4**: Write a test for an unauthenticated PATCH attempt. Assert it returns 401, and the post content is unchanged.
 
 **Exercise 10.5**: Write a PATCH test that uses `Promise.all` to send two concurrent PATCH requests for the same post with different content, then reads back the post and asserts it has content matching one of the two updates — demonstrating that concurrent PATCHes are handled without corruption or server errors.
-
----
-
 
 ---
 
@@ -7452,7 +7426,7 @@ describe('Chapter 11: Delete — Testing Destruction', () => {
   let session: AuthSession;
 
   beforeAll(async () => {
-    await client.post('/auth/signup', TEST_USER);
+    await client.post('/signup', TEST_USER);
     session = await signIn(TEST_USER.username, TEST_USER.password);
   });
 
@@ -7608,8 +7582,8 @@ describe('DELETE /post/:postId — authorization', () => {
     };
 
     await Promise.all([
-      client.post('/auth/signup', ownerUser),
-      client.post('/auth/signup', nonOwnerUser),
+      client.post('/signup', ownerUser),
+      client.post('/signup', nonOwnerUser),
     ]);
 
     [ownerSession, nonOwnerSession] = await Promise.all([
@@ -7802,7 +7776,7 @@ describe('Complete CRUD Lifecycle', () => {
   };
 
   beforeAll(async () => {
-    await client.post('/auth/signup', TEST_USER);
+    await client.post('/signup', TEST_USER);
     session = await signIn(TEST_USER.username, TEST_USER.password);
   });
 
@@ -8712,14 +8686,15 @@ The client is authenticated — we know who they are — but they are attempting
         password: process.env.TEST_PASSWORD,
       });
 
-      const token = signinResponse.data.token;
+      const raw = signinResponse.headers['set-cookie'];
+      const sessionCookie = Array.isArray(raw) ? raw.map(c => c.split(';')[0]).join('; ') : (raw ?? '').split(';')[0];
 
       // Attempt to delete a post that belongs to a different user
       // (use a known post ID that belongs to admin/other user)
       const response = await axios.delete(
         `${BASE_URL}/post/000000000000000000000001`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Cookie: sessionCookie },
           validateStatus: () => true,
         }
       );
@@ -8745,12 +8720,13 @@ The resource the client is requesting does not exist. A user ID that was deleted
         password: process.env.TEST_PASSWORD,
       });
 
-      const token = signinResponse.data.token;
+      const raw = signinResponse.headers['set-cookie'];
+      const sessionCookie = Array.isArray(raw) ? raw.map(c => c.split(';')[0]).join('; ') : (raw ?? '').split(';')[0];
 
       const response = await axios.get(
         `${BASE_URL}/user/000000000000000000000001`,  // Valid ObjectId format but nonexistent
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Cookie: sessionCookie },
           validateStatus: () => true,
         }
       );
@@ -8773,12 +8749,13 @@ The resource the client is requesting does not exist. A user ID that was deleted
         password: process.env.TEST_PASSWORD,
       });
 
-      const token = signinResponse.data.token;
+      const raw = signinResponse.headers['set-cookie'];
+      const sessionCookie = Array.isArray(raw) ? raw.map(c => c.split(';')[0]).join('; ') : (raw ?? '').split(';')[0];
 
       const response = await axios.get(
         `${BASE_URL}/post/000000000000000000000001`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Cookie: sessionCookie },
           validateStatus: () => true,
         }
       );
@@ -8856,7 +8833,7 @@ The Chatty API specifies the following constraints for user registration:
 These rules are enforced by Joi, a JavaScript schema validation library. Let us write comprehensive boundary tests for both.
 
 ```typescript
-// tests/chapter-12/boundary.test.ts
+// tests/chapter-17/boundary.test.ts
 import { describe, it, expect } from 'vitest';
 import axios from 'axios';
 
@@ -9066,7 +9043,7 @@ Why does this distinction matter for testing?
 Here is how you assert on each type:
 
 ```typescript
-// tests/chapter-12/validation-distinction.test.ts
+// tests/chapter-17/validation-distinction.test.ts
 import { describe, it, expect } from 'vitest';
 import axios from 'axios';
 
@@ -9150,7 +9127,7 @@ Testing rate limits presents a problem: to trigger a rate limit, you must send m
 The `expectRejected` pattern solves this by asserting that a response carries one of several acceptable error codes:
 
 ```typescript
-// tests/chapter-12/rate-limit.test.ts
+// tests/chapter-17/rate-limit.test.ts
 import { describe, it, expect } from 'vitest';
 import axios from 'axios';
 
@@ -9242,7 +9219,7 @@ A well-designed API always returns errors in a consistent shape. Chatty returns 
 You should assert this shape on every error response, not just the status code. The shape being consistent is what allows clients to handle errors programmatically with a single error handler.
 
 ```typescript
-// tests/chapter-12/error-shape.test.ts
+// tests/chapter-17/error-shape.test.ts
 import { describe, it, expect } from 'vitest';
 import axios from 'axios';
 
@@ -9317,7 +9294,7 @@ Error tests have a special security dimension: failing requests must not leak se
 **No token on failed authentication.** A failed login attempt should never return a token. If an error handler is written incorrectly, it might return partial data from a partially executed success path.
 
 ```typescript
-// tests/chapter-12/security-assertions.test.ts
+// tests/chapter-17/security-assertions.test.ts
 import { describe, it, expect } from 'vitest';
 import axios from 'axios';
 
@@ -9433,9 +9410,6 @@ describe('Security Assertions on Error Responses', () => {
 
 ---
 
-
----
-
 ### Chapter Practice
 
 > **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
@@ -9443,13 +9417,13 @@ describe('Security Assertions on Error Responses', () => {
 Suggested project structure for this chapter's exercises:
 
 ```
-tests/chapter-12/
+tests/chapter-17/
   errors.test.ts
 ```
 
 To run your tests:
 ```bash
-npm test tests/chapter-12/errors.test.ts
+npm test tests/chapter-17/errors.test.ts
 ```
 
 Write these tests in your file before reading the next chapter:
@@ -9463,7 +9437,7 @@ Write these tests in your file before reading the next chapter:
 
 #### Starter Template
 
-Copy this to `tests/chapter-12/errors.test.ts` and fill in each `// write your code here` block:
+Copy this to `tests/chapter-17/errors.test.ts` and fill in each `// write your code here` block:
 
 ```ts
 import axios from 'axios';
@@ -9843,7 +9817,7 @@ interface TestUser {
   email: string;
   password: string;
   authId?: string;
-  token?: string;
+  cookie?: string;
 }
 
 // User A is the primary test user (pre-existing, from environment variables)
@@ -9868,7 +9842,8 @@ describe('Chapter 13: Multi-User Test Scenarios', () => {
       username: userA.username,
       password: userA.password,
     });
-    userA.token = signinA.data.token;
+    const rawA = signinA.headers['set-cookie'];
+    userA.cookie = Array.isArray(rawA) ? rawA.map(c => c.split(';')[0]).join('; ') : (rawA ?? '').split(';')[0];
     userA.authId = signinA.data.user.authId;
 
     // Create User B
@@ -9881,12 +9856,13 @@ describe('Chapter 13: Multi-User Test Scenarios', () => {
     expect(signupB.status).toBe(201);
     userB.authId = signupB.data.user.authId;
 
-    // Sign in as User B to get their token
+    // Sign in as User B to get their session cookie
     const signinB = await axios.post(`${BASE_URL}/signin`, {
       username: userB.username,
       password: userB.password,
     });
-    userB.token = signinB.data.token;
+    const rawB = signinB.headers['set-cookie'];
+    userB.cookie = Array.isArray(rawB) ? rawB.map(c => c.split(';')[0]).join('; ') : (rawB ?? '').split(';')[0];
   });
 
   afterAll(async () => {
@@ -9928,7 +9904,7 @@ The follow feature requires three distinct verifiable outcomes:
         `${BASE_URL}/user/follow/${userB.authId}`,
         {},
         {
-          headers: { Authorization: `Bearer ${userA.token}` },
+          headers: { Cookie: userA.cookie },
           validateStatus: () => true,
         }
       );
@@ -9940,7 +9916,7 @@ The follow feature requires three distinct verifiable outcomes:
       const response = await axios.get(
         `${BASE_URL}/user/following`,
         {
-          headers: { Authorization: `Bearer ${userA.token}` },
+          headers: { Cookie: userA.cookie },
         }
       );
 
@@ -9954,7 +9930,7 @@ The follow feature requires three distinct verifiable outcomes:
       const response = await axios.get(
         `${BASE_URL}/user/followers`,
         {
-          headers: { Authorization: `Bearer ${userB.token}` },
+          headers: { Cookie: userB.cookie },
         }
       );
 
@@ -9969,7 +9945,7 @@ The follow feature requires three distinct verifiable outcomes:
         `${BASE_URL}/user/follow/${userB.authId}`,
         {},
         {
-          headers: { Authorization: `Bearer ${userA.token}` },
+          headers: { Cookie: userA.cookie },
           validateStatus: () => true,
         }
       );
@@ -9983,7 +9959,7 @@ The follow feature requires three distinct verifiable outcomes:
         `${BASE_URL}/user/follow/${userA.authId}`,
         {},
         {
-          headers: { Authorization: `Bearer ${userA.token}` },
+          headers: { Cookie: userA.cookie },
           validateStatus: () => true,
         }
       );
@@ -9991,12 +9967,12 @@ The follow feature requires three distinct verifiable outcomes:
       expect([400, 403]).toContain(response.status);
     });
 
-    it('User A can unfollow User B (PUT /user/unfollow/:userId)', async () => {
+    it('User A can unfollow User B (PUT /user/unfollow/:followeeId/:followerId)', async () => {
       const response = await axios.put(
-        `${BASE_URL}/user/unfollow/${userB.authId}`,
+        `${BASE_URL}/user/unfollow/${userB.authId}/${userA.authId}`,
         {},
         {
-          headers: { Authorization: `Bearer ${userA.token}` },
+          headers: { Cookie: userA.cookie },
           validateStatus: () => true,
         }
       );
@@ -10008,7 +9984,7 @@ The follow feature requires three distinct verifiable outcomes:
       const response = await axios.get(
         `${BASE_URL}/user/following`,
         {
-          headers: { Authorization: `Bearer ${userA.token}` },
+          headers: { Cookie: userA.cookie },
         }
       );
 
@@ -10037,7 +10013,7 @@ When User A follows User B, Chatty creates a notification for User B. We can ver
         `${BASE_URL}/user/follow/${userB.authId}`,
         {},
         {
-          headers: { Authorization: `Bearer ${userA.token}` },
+          headers: { Cookie: userA.cookie },
           validateStatus: () => true,
         }
       );
@@ -10046,10 +10022,10 @@ When User A follows User B, Chatty creates a notification for User B. We can ver
     afterAll(async () => {
       // Unfollow User B again to restore state for other tests
       await axios.put(
-        `${BASE_URL}/user/unfollow/${userB.authId}`,
+        `${BASE_URL}/user/unfollow/${userB.authId}/${userA.authId}`,
         {},
         {
-          headers: { Authorization: `Bearer ${userA.token}` },
+          headers: { Cookie: userA.cookie },
           validateStatus: () => true,
         }
       );
@@ -10059,7 +10035,7 @@ When User A follows User B, Chatty creates a notification for User B. We can ver
       const response = await axios.get(
         `${BASE_URL}/notification`,
         {
-          headers: { Authorization: `Bearer ${userB.token}` },
+          headers: { Cookie: userB.cookie },
         }
       );
 
@@ -10081,7 +10057,7 @@ When User A follows User B, Chatty creates a notification for User B. We can ver
       // Get count before
       const beforeResponse = await axios.get(
         `${BASE_URL}/notification`,
-        { headers: { Authorization: `Bearer ${userB.token}` } }
+        { headers: { Cookie: userB.cookie } }
       );
 
       const initialCount = beforeResponse.data.notifications.length;
@@ -10129,7 +10105,7 @@ Here is the complete flow:
       const postResponse = await axios.post(
         `${BASE_URL}/post`,
         { post: 'Test post for reaction testing', privacy: 'Public' },
-        { headers: { Authorization: `Bearer ${userA.token}` } }
+        { headers: { Cookie: userA.cookie } }
       );
       postId = postResponse.data.post._id;
     });
@@ -10140,7 +10116,7 @@ Here is the complete flow:
         await axios.delete(
           `${BASE_URL}/post/${postId}`,
           {
-            headers: { Authorization: `Bearer ${userA.token}` },
+            headers: { Cookie: userA.cookie },
             validateStatus: () => true,
           }
         );
@@ -10152,7 +10128,7 @@ Here is the complete flow:
         `${BASE_URL}/reaction/${postId}`,
         { type: reactionType, postReactions: {} },
         {
-          headers: { Authorization: `Bearer ${userB.token}` },
+          headers: { Cookie: userB.cookie },
           validateStatus: () => true,
         }
       );
@@ -10173,7 +10149,7 @@ Here is the complete flow:
       const url = `${BASE_URL}/reaction/${postId}/${reactionType}/${encodedPostReactions}/${previousReaction}`;
 
       const response = await axios.delete(url, {
-        headers: { Authorization: `Bearer ${userB.token}` },
+        headers: { Cookie: userB.cookie },
         validateStatus: () => true,
       });
 
@@ -10232,7 +10208,7 @@ afterAll(async () => {
   if (testPostId) {
     cleanupActions.push(
       axios.delete(`${BASE_URL}/post/${testPostId}`, {
-        headers: { Authorization: `Bearer ${userA.token}` },
+        headers: { Cookie: userA.cookie },
         validateStatus: () => true,
       })
     );
@@ -10280,9 +10256,6 @@ Running cleanup actions in parallel with `Promise.all` is much faster than runni
 
 ---
 
-
----
-
 ### Chapter Practice
 
 > **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
@@ -10303,7 +10276,7 @@ Write these tests in your file before reading the next chapter:
 
 1. In beforeAll: sign in as user A (TEST_USERNAME), create user B with faker (username starting with vitest). Capture both user IDs.
 2. Have user A follow user B with PUT /user/follow/:userBId. Assert status 200. Call GET /user/following and assert user B appears in the list.
-3. Have user A unfollow user B with DELETE /user/unfollow/:userBId. Call GET /user/following and assert user B is no longer there.
+3. Have user A unfollow user B with PUT /user/unfollow/:userBId/:userAId. Call GET /user/following and assert user B is no longer there.
 4. In afterAll: delete user B via the cleanup endpoint (DELETE /test/cleanup/user/:userBAuthId with x-test-secret header). Sign out user A.
 5. Use toBeTruthy() to assert userBId was captured successfully in beforeAll (non-empty string).
 
@@ -10357,7 +10330,7 @@ it('user A can follow user B', async () => {
   // write your code here
 });
 
-// Exercise 3 — DELETE /user/unfollow/:userBId → 200; GET /user/following → user B gone
+// Exercise 3 — PUT /user/unfollow/:userBId/:userAId → 200; GET /user/following → user B gone
 it('user A can unfollow user B', async () => {
   // write your code here
 });
@@ -10381,7 +10354,7 @@ Create a folder named "Chapter 13" inside your Postman collection. Work through 
 2. Add POST /signin for user B. Save user B's _id from the currentuser response: pm.environment.set("userBId", pm.response.json().user._id).
 3. Add PUT /user/follow/{{userBId}} with user A's Cookie header. Assert status 200.
 4. Add GET /user/following with user A's Cookie. In Tests: assert the following array contains an object with _id equal to userBId.
-5. Add DELETE /user/unfollow/{{userBId}} with user A's Cookie. Assert status 200. Use the Collection Runner to run the full sequence in order.
+5. Add PUT /user/unfollow/{{userBId}}/{{userAId}} with user A's Cookie. Assert status 200. Use the Collection Runner to run the full sequence in order.
 
 
 > **Note:** User B must start with "vitest" — the cleanup endpoint rejects usernames that do not.
@@ -10395,14 +10368,14 @@ Create a folder named "Chapter 13" inside your Postman collection. Work through 
 > The code below is a **reference implementation** — a complete, commented example of the patterns in this chapter. Read it after you have attempted the exercises yourself.
 > After completing the exercises, your file will be much shorter than this — typically 5–7 `it()` blocks and 40–60 lines. That is correct and complete.
 
-> **Working example: MongoDB Cross-Validation**
+> **Working example: Multi-User Scenarios**
 
 ```ts
-// Working example: MongoDB: Cross-Validating API vs Database
+// Working example: Multi-User Scenarios
 //
 // Prerequisites:
 //   DATABASE_URL must be set in .env (MongoDB Atlas connection string)
-//   Add DATABASE_URL to vitest.config.ts env: {} and src/config.ts
+//   Add DATABASE_URL to vitest.config.ts env: {} block
 //
 
 import axios from 'axios';
@@ -10925,7 +10898,7 @@ Cross-validation is equally valuable for verifying that updates are persisted co
       const updateResponse = await axios.put(
         `${BASE_URL}/user/profile`,
         { quote: newBio },
-        { headers: { Authorization: `Bearer ${testUser.token}` } }
+        { headers: { Cookie: testUser.cookie } }
       );
 
       expect(updateResponse.status).toBe(200);
@@ -10965,9 +10938,6 @@ Cross-validation is equally valuable for verifying that updates are persisted co
 **Exercise 14.3** — Write a security test that queries the database for all users and verifies that no user document has a `password` field matching a plaintext pattern (i.e., no password that doesn't start with `$2b$`).
 
 **Exercise 14.4** — Implement a helper function `findUserInDB(authId: string): Promise<UserDocument | null>` that abstracts the MongoDB query. Refactor your cross-validation tests to use it.
-
----
-
 
 ---
 
@@ -11027,7 +10997,7 @@ For a PNG image:
 data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==
 ```
 
-This particular string is the Base64 encoding of a 1x1 transparent PNG — the smallest valid image that Cloudinary will accept. It is exactly what you want for upload testing: small enough to keep tests fast, valid enough to pass through all validation layers.
+This particular string is the Base64 encoding of a 10x10 blue PNG — the smallest valid image that Cloudinary will accept. It is exactly what you want for upload testing: small enough to keep tests fast, valid enough to pass through all validation layers.
 
 ---
 
@@ -11039,7 +11009,7 @@ Rather than repeating this long string in every test, define it as a constant in
 // tests/utils/test-images.ts
 
 /**
- * A 1x1 pixel transparent PNG encoded as a Base64 data URL.
+ * A 10x10 pixel transparent PNG encoded as a Base64 data URL.
  * This is the smallest valid image accepted by Cloudinary.
  * Use this in upload tests to minimize test execution time
  * while still exercising the full upload code path.
@@ -11048,7 +11018,7 @@ export const TEST_AVATAR_IMAGE =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
 /**
- * A 1x1 pixel red PNG — useful for testing image change detection.
+ * A 10x10 pixel blue PNG — useful for testing image change detection.
  */
 export const TEST_AVATAR_IMAGE_RED =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg==';
@@ -11288,7 +11258,7 @@ The third assertion — actually fetching the uploaded image — gives the highe
 ### Key Points
 
 - Base64 data URLs encode file content as `data:<mediaType>;base64,<base64data>`. This format allows binary file content to be transmitted as JSON strings.
-- The `TEST_AVATAR_IMAGE` constant (a 1x1 PNG) is the minimal valid image for testing — small enough to keep tests fast, valid enough to pass all server and Cloudinary validation.
+- The `TEST_AVATAR_IMAGE` constant (a 10x10 PNG) is the minimal valid image for testing — small enough to keep tests fast, valid enough to pass all server and Cloudinary validation.
 - Assert uploaded image URLs with pattern matchers (`toMatch`, `toSatisfy`) rather than exact equality, because Cloudinary URLs contain version timestamps that change on every upload.
 - The imgId/imgVersion pattern: Chatty stores these separately and reconstructs the full URL from them. This is normal Cloudinary practice.
 - Always test that upload endpoints return 401 without authentication — file upload endpoints are a common target for unauthorized use.
@@ -11304,9 +11274,6 @@ The third assertion — actually fetching the uploaded image — gives the highe
 **Exercise 15.3** — Extend the upload test to verify the response `imgId` contains a `/` (path separator), indicating it was stored in a Cloudinary folder rather than at the root level.
 
 **Exercise 15.4** — Write a test that uploads two different images (using `TEST_AVATAR_IMAGE` and `TEST_AVATAR_IMAGE_RED`) and verifies the returned `imgId` values are different.
-
----
-
 
 ---
 
@@ -11392,7 +11359,7 @@ it('images array is non-negative and contains objects with _id', async () => {
 
 Create a folder named "Chapter 15" inside your Postman collection. Work through these tasks:
 
-1. Create folder "Chapter 15 — Uploads". Add POST /images/profile with Cookie header. In the Body tab, select raw JSON and paste a base64 data URL (you can use the 1x1 PNG from the project fixtures).
+1. Create folder "Chapter 15 — Uploads". Add POST /images/profile with Cookie header. In the Body tab, select raw JSON and paste a base64 data URL (you can use the 10x10 PNG from the project fixtures).
 2. Assert status 200 and message is "Image added successfully".
 3. Add pm.test("Profile picture is a URL", () => { const pic = pm.response.json().profilePicture; pm.expect(pic).to.match(/^https?:\/\//); }).
 4. Add pm.test("URL contains cloudinary", () => pm.expect(pm.response.json().profilePicture).to.include("cloudinary")).
@@ -11886,9 +11853,6 @@ jobs:
 
 ---
 
-
----
-
 ### Chapter Practice
 
 > **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
@@ -12164,7 +12128,7 @@ jobs:
 ## The Config Files for This Chapter
 
 > **Working example: CI/CD: GitHub Actions**
-> Copy `tests/chapter-11/workflow.yml` to `.github/workflows/tests.yml` in your project.
+> Copy `tests/chapter-16/workflow.yml` to `.github/workflows/tests.yml` in your project.
 
 ```yaml
 # .github/workflows/tests.yml
@@ -12372,7 +12336,7 @@ docker run \
 
 # Run interactively to debug a failing test
 docker run -it --env-file .env --entrypoint sh chatty-tests
-# Inside the container: npm test tests/chapter-12/ -- --reporter=verbose
+# Inside the container: npm test tests/chapter-17/ -- --reporter=verbose
 ```
 
 ---
@@ -12518,9 +12482,6 @@ For most projects, Approach 1 provides the best combination of control and debug
 
 ---
 
-
----
-
 ### Chapter Practice
 
 > **Priority guide:** The numbered exercises (1–5) are the core track — do these first. The **Postman Exercises** are an optional parallel track for those also using the Postman video path. If you are only following the code-based track, the numbered exercises are all you need.
@@ -12645,7 +12606,7 @@ services:
 ## The Config Files for This Chapter
 
 > **Working example: Docker: Containerising the Test Runner**
-> These files live in `tests/chapter-12/` — copy them to your project root.
+> These files live in `tests/chapter-17/` — copy them to your project root.
 
 **Dockerfile**
 
@@ -12902,19 +12863,19 @@ JUnit XML is the universal format for test results in CI systems. Understanding 
 
   <testsuite name="Chapter 12: Error Testing" tests="15" failures="2" errors="0" time="3.891">
     <testcase
-      classname="tests/chapter-12/tests.test.ts"
+      classname="tests/chapter-17/tests.test.ts"
       name="Category 3: Wrong Values returns 400 with Invalid credentials for wrong password"
       time="0.445"
     />
     <!-- Failed test includes a <failure> element -->
     <testcase
-      classname="tests/chapter-12/tests.test.ts"
+      classname="tests/chapter-17/tests.test.ts"
       name="failed login does not return a token"
       time="0.312"
     >
       <failure message="expected 200 to equal 400" type="AssertionError">
         AssertionError: expected 200 to equal 400
-          at tests/chapter-12/security-assertions.test.ts:42:5
+          at tests/chapter-17/security-assertions.test.ts:42:5
       </failure>
     </testcase>
   </testsuite>
@@ -13161,9 +13122,6 @@ export default defineConfig({
 **Exercise 18.4** — Add the artifact upload steps from this chapter to your GitHub Actions workflow. After a push, navigate to the workflow run in GitHub and download the JUnit XML artifact. Verify it contains your test results.
 
 **Exercise 18.5** — Install Newman and `newman-reporter-htmlextra`. Export a Postman collection and run it with Newman, generating an HTML report. Compare the report format with the Vitest HTML report from Exercise 18.1.
-
----
-
 
 ---
 
@@ -13487,8 +13445,8 @@ Use `toBe` when you are comparing primitive values: status codes, string literal
 
 **Chatty API example**
 ```typescript
-it('POST /auth/signin returns 200 for valid credentials', async () => {
-  const res = await axios.post(`${BASE_URL}/auth/signin`, {
+it('POST /signin returns 200 for valid credentials', async () => {
+  const res = await axios.post(`${BASE_URL}/signin`, {
     username: 'vitestUser',
     password: 'Password1!',
   }, { withCredentials: true });
@@ -13595,7 +13553,7 @@ Use when you care that something exists or is non-empty but do not care about th
 **Chatty API example**
 ```typescript
 it('signin response includes a session cookie', async () => {
-  const res = await axios.post(`${BASE_URL}/auth/signin`, credentials, {
+  const res = await axios.post(`${BASE_URL}/signin`, credentials, {
     withCredentials: true,
   });
 
@@ -13655,7 +13613,7 @@ Use to assert that a property exists on the response object and was not omitted.
 **Chatty API example**
 ```typescript
 it('created user has an _id', async () => {
-  const res = await axios.post(`${BASE_URL}/auth/signup`, newUser);
+  const res = await axios.post(`${BASE_URL}/signup`, newUser);
 
   expect(res.data.user._id).toBeDefined();
   expect(res.data.user.createdAt).toBeDefined();
@@ -13840,7 +13798,7 @@ Use for checking error messages contain expected text, or that a list of strings
 ```typescript
 it('400 error message mentions the invalid field', async () => {
   try {
-    await axios.post(`${BASE_URL}/auth/signup`, { username: '' });
+    await axios.post(`${BASE_URL}/signup`, { username: '' });
   } catch (err: any) {
     expect(err.response.data.message).toContain('username');
   }
@@ -13866,7 +13824,7 @@ Checks that a string matches a regular expression or contains a substring. More 
 **Chatty API example**
 ```typescript
 it('_id field matches MongoDB ObjectId format', async () => {
-  const res = await axios.post(`${BASE_URL}/auth/signup`, newUser);
+  const res = await axios.post(`${BASE_URL}/signup`, newUser);
 
   expect(res.data.user._id).toMatch(/^[a-f\d]{24}$/i);
 });
@@ -13993,8 +13951,8 @@ This is the most useful object matcher for API testing. You assert only the fiel
 
 **Chatty API example**
 ```typescript
-it('POST /auth/signup returns user with expected properties', async () => {
-  const res = await axios.post(`${BASE_URL}/auth/signup`, {
+it('POST /signup returns user with expected properties', async () => {
+  const res = await axios.post(`${BASE_URL}/signup`, {
     username: 'vitestNewUser',
     email: 'vitestnew@example.com',
     password: 'Password1!',
@@ -14096,7 +14054,7 @@ Use in combination with `toEqual` or `toMatchObject` when you want to verify typ
 **Chatty API example**
 ```typescript
 it('signup response has correct field types', async () => {
-  const res = await axios.post(`${BASE_URL}/auth/signup`, newUser);
+  const res = await axios.post(`${BASE_URL}/signup`, newUser);
 
   expect(res.data.user).toEqual({
     _id: expect.any(String),
@@ -14132,7 +14090,7 @@ Passes if the provided predicate function returns `true` for the value. Allows a
 **Chatty API example**
 ```typescript
 it('_id is a valid MongoDB ObjectId string', async () => {
-  const res = await axios.post(`${BASE_URL}/auth/signup`, newUser);
+  const res = await axios.post(`${BASE_URL}/signup`, newUser);
 
   expect(res.data.user._id).toSatisfy(
     (id: string) => typeof id === 'string' && /^[a-f\d]{24}$/i.test(id)
@@ -14279,7 +14237,7 @@ HTTP status codes are the primary signal of success or failure from an API. This
 
 **When Chatty returns it**:
 - `GET /user/:id` — fetching a user profile
-- `POST /auth/signin` — successful login
+- `POST /signin` — successful login
 - `PUT /user/:id` — updating a user profile
 - `GET /posts` — listing posts
 - `GET /post/:id` — fetching a single post
@@ -14302,7 +14260,7 @@ expect(res.data).toMatchObject({ /* expected body */ });
 **Meaning**: The request succeeded and a new resource was created. Usually includes the created resource in the body or a `Location` header.
 
 **When Chatty returns it**:
-- `POST /auth/signup` — new user created
+- `POST /signup` — new user created
 - `POST /post` — new post created
 - `POST /comment` — new comment added
 - `POST /reaction/post/:id` — reaction added to post
@@ -14352,7 +14310,7 @@ expect(res.status).toBe(204);
 **What to assert**:
 ```typescript
 try {
-  await axios.post(`${BASE_URL}/auth/signup`, { username: '' });
+  await axios.post(`${BASE_URL}/signup`, { username: '' });
   fail('Expected 400 but request succeeded');
 } catch (err: any) {
   expect(err.response.status).toBe(400);
@@ -14374,7 +14332,7 @@ try {
 **When Chatty returns it**:
 - Accessing a protected endpoint without a session cookie
 - Providing an expired or invalid JWT token
-- Wrong username/password on `POST /auth/signin`
+- Wrong username/password on `POST /signin`
 
 **What to assert**:
 ```typescript
@@ -14453,14 +14411,14 @@ try {
 **Meaning**: The request conflicts with the current state of the resource. Most commonly used when attempting to create a resource that already exists.
 
 **When Chatty returns it**:
-- `POST /auth/signup` with a username that already exists
-- `POST /auth/signup` with an email that already exists
+- `POST /signup` with a username that already exists
+- `POST /signup` with an email that already exists
 - Attempting to follow a user you already follow
 
 **What to assert**:
 ```typescript
 try {
-  await axios.post(`${BASE_URL}/auth/signup`, {
+  await axios.post(`${BASE_URL}/signup`, {
     username: alreadyExistingUsername,
     // ...
   });
@@ -14488,7 +14446,7 @@ try {
 **What to assert**:
 ```typescript
 try {
-  await axios.post(`${BASE_URL}/auth/signup`, {
+  await axios.post(`${BASE_URL}/signup`, {
     username: 'vitestUser',
     email: 'valid@example.com',
     password: 'Password1!',
@@ -14510,7 +14468,7 @@ try {
 **Meaning**: The client has exceeded the rate limit and must wait before making more requests.
 
 **When Chatty returns it**:
-- Rapid repeated calls to the same endpoint during tests (especially `POST /auth/signin`)
+- Rapid repeated calls to the same endpoint during tests (especially `POST /signin`)
 - CI environments running many tests in parallel against a shared API
 
 **What to assert**:
@@ -14550,7 +14508,7 @@ beforeAll(async () => {
 ```typescript
 // 500s should NOT appear in normal test runs — treat them as bugs
 it('should not return 500 for valid input', async () => {
-  const res = await axios.post(`${BASE_URL}/auth/signup`, validUser);
+  const res = await axios.post(`${BASE_URL}/signup`, validUser);
   expect(res.status).not.toBe(500);
 });
 ```
@@ -15835,16 +15793,26 @@ coverage/
 Create `src/config.ts`:
 
 ```typescript
-const BASE_URL = process.env.BASE_URL;
+const BASE_URL      = process.env.BASE_URL;
+const TEST_USERNAME = process.env.TEST_USERNAME;
+const TEST_PASSWORD = process.env.TEST_PASSWORD;
 
-if (!BASE_URL) {
-  throw new Error('Missing env var: BASE_URL — copy .env.example to .env');
-}
+if (!BASE_URL)      throw new Error('Missing env var: BASE_URL — copy .env.example to .env and fill it in');
+if (!TEST_USERNAME) throw new Error('Missing env var: TEST_USERNAME — add a pre-existing test account username to your .env file');
+if (!TEST_PASSWORD) throw new Error('Missing env var: TEST_PASSWORD — add the password for TEST_USERNAME to your .env file');
 
-export const config = { BASE_URL } as const;
+// DATABASE_URL is only needed in Chapter 10 (MongoDB cross-validation).
+// It is read directly from process.env in that test file rather than validated here,
+// so chapters 1–9 do not require it.
+
+export const config = {
+  BASE_URL,
+  TEST_USERNAME,
+  TEST_PASSWORD
+} as const;
 ```
 
-This guard throws immediately at startup if `.env` is missing or `BASE_URL` is empty — you get a clear error message instead of a cryptic `undefined` buried in a failing test.
+Each guard throws immediately at startup if a required variable is missing — you get a clear error message instead of a cryptic `undefined` buried in a failing test.
 
 ---
 
@@ -15855,6 +15823,7 @@ Create `/src/test-utils.ts`:
 ```typescript
 import axios, { AxiosResponse } from 'axios';
 import { config } from './config';
+import { TEST_CLEANUP_SECRET } from './fixtures';
 
 export interface AuthResult {
   userId: string;
@@ -15874,7 +15843,7 @@ export async function signupUser(params: {
 }): Promise<AuthResult> {
   const password = params.password ?? 'Password1!';
   const res = await axios.post(
-    `${config.BASE_URL}/auth/signup`,
+    `${config.BASE_URL}/signup`,
     {
       username: params.username,
       email: params.email,
@@ -15909,7 +15878,7 @@ export async function signinUser(params: {
   password?: string;
 }): Promise<AuthResult> {
   const res = await axios.post(
-    `${config.BASE_URL}/auth/signin`,
+    `${config.BASE_URL}/signin`,
     {
       username: params.username,
       password: params.password ?? 'Password1!',
@@ -15939,7 +15908,7 @@ export async function signinUser(params: {
 export async function cleanupUser(userId: string): Promise<void> {
   try {
     await axios.delete(`${config.BASE_URL}/test/cleanup/user/${userId}`, {
-      headers: { 'x-test-secret': config.testSecret },
+      headers: { 'x-test-secret': TEST_CLEANUP_SECRET },
     });
   } catch (err: any) {
     // Log but don't throw — cleanup failures should not mask test failures
@@ -16073,11 +16042,11 @@ export function generateComment(postId: string, userTo: string) {
 }
 
 /**
- * A minimal valid 1x1 pixel PNG image encoded as base64.
+ * A minimal valid 10x10 pixel PNG image encoded as base64.
  * Used for testing image upload endpoints without requiring a real image file.
  *
  * This is a valid PNG: 8-byte signature + IHDR chunk + IDAT chunk + IEND chunk.
- * Dimensions: 1x1 pixel, RGB color space, no alpha channel.
+ * Dimensions: 10x10 pixel, RGB color space, no alpha channel.
  */
 export const TEST_AVATAR_IMAGE =
   'data:image/png;base64,' +
@@ -16159,7 +16128,7 @@ Failed tests in API testing require a different debugging approach than unit tes
 Vitest's default verbose output gives you several pieces of information:
 
 ```
-FAIL  tests/chapter-03/signup.test.ts > POST /auth/signup > returns 201 for valid data
+FAIL  tests/chapter-03/signup.test.ts > POST /signup > returns 201 for valid data
 AssertionError: expected 409 to be 201
 
 - Expected: 201
@@ -16227,7 +16196,7 @@ const res = await axios.get(url, {
 **Symptom**: Tests pass individually but fail when the full suite runs. Error is 429.
 
 **Diagnosis**: You are hitting the rate limiter. This typically happens when:
-- Multiple test files all call `POST /auth/signin` in their `beforeAll` at the same time.
+- Multiple test files all call `POST /signin` in their `beforeAll` at the same time.
 - You are re-authenticating inside individual tests instead of once in `beforeAll`.
 
 **Fix**:
@@ -16268,7 +16237,7 @@ Also configure Vitest to run test files serially (see `vitest.config.ts` in Appe
 
 ```typescript
 it('user has _id', async () => {
-  const res = await axios.post(`${BASE_URL}/auth/signup`, newUser);
+  const res = await axios.post(`${BASE_URL}/signup`, newUser);
   console.log('Full response data:', JSON.stringify(res.data, null, 2));
   // Now look at the actual structure
   expect(res.data.user._id).toBeDefined();
@@ -16347,7 +16316,7 @@ Add temporary logging to understand what is happening, then remove it before com
 it('failing test', async () => {
   let res: AxiosResponse;
   try {
-    res = await axios.post(`${BASE_URL}/auth/signup`, payload);
+    res = await axios.post(`${BASE_URL}/signup`, payload);
     console.log('SUCCESS status:', res.status);
     console.log('SUCCESS data:', JSON.stringify(res.data, null, 2));
   } catch (err: any) {
@@ -16372,7 +16341,7 @@ npx vitest run tests/chapter-03/signup.test.ts
 Run a single test by name:
 
 ```bash
-npx vitest run -t "POST /auth/signup"
+npx vitest run -t "POST /signup"
 ```
 
 Run with increased timeout for debugging slow network calls:
@@ -16459,7 +16428,7 @@ The process of verifying what a user is allowed to do. After authentication, the
 A popular HTTP client library for JavaScript and TypeScript. Used in this course to send HTTP requests to the Chatty API. Axios automatically parses JSON responses, throws errors for non-2xx status codes, and supports request/response interceptors.
 
 **Base64**
-An encoding scheme that converts binary data (like image files) into ASCII text. Used by the Chatty API for image uploads — instead of multipart/form-data, the API accepts images as base64-encoded strings. The `TEST_AVATAR_IMAGE` constant in `fixtures.ts` is a 1x1 PNG encoded as base64.
+An encoding scheme that converts binary data (like image files) into ASCII text. Used by the Chatty API for image uploads — instead of multipart/form-data, the API accepts images as base64-encoded strings. The `TEST_AVATAR_IMAGE` constant in `fixtures.ts` is a 10x10 PNG encoded as base64.
 
 **bcrypt**
 A cryptographic hash function designed for securely hashing passwords. bcrypt deliberately slows computation to resist brute-force attacks. The Chatty backend stores only the bcrypt hash of passwords, never the plaintext. This is why the API response for a user object should never contain a `password` field.
@@ -16492,7 +16461,7 @@ A Vitest function for grouping related tests. Nesting `describe` blocks creates 
 A Node.js library that loads environment variables from a `.env` file into `process.env`. Used in this course to store the API base URL and test secret without hardcoding them in source code.
 
 **Endpoint**
-A specific URL path on an API that handles a particular type of request. `POST /auth/signup` is an endpoint; `GET /user/:id` is a different endpoint. Each endpoint typically handles one resource operation.
+A specific URL path on an API that handles a particular type of request. `POST /signup` is an endpoint; `GET /user/:id` is a different endpoint. Each endpoint typically handles one resource operation.
 
 **Faker.js (`@faker-js/faker`)**
 A JavaScript library for generating realistic fake data: names, emails, addresses, phone numbers, lorem ipsum text, colors, and more. Used in tests to create unique, valid test data for each test run, avoiding conflicts from hardcoded values.
@@ -16504,7 +16473,7 @@ Pre-defined test data or helper functions that set up the initial state for a te
 The protocol used to transfer data on the web. HTTP defines request methods (GET, POST, PUT, DELETE, PATCH), status codes (200, 404, 500), headers (Content-Type, Cookie), and the request/response format. Every API call in this course is an HTTP request.
 
 **Idempotent**
-An operation is idempotent if calling it multiple times produces the same result as calling it once. `GET` and `DELETE` are idempotent. `POST` is not — calling `POST /auth/signup` twice with the same data creates a conflict (409). Understanding idempotency guides how you design cleanup code.
+An operation is idempotent if calling it multiple times produces the same result as calling it once. `GET` and `DELETE` are idempotent. `POST` is not — calling `POST /signup` twice with the same data creates a conflict (409). Understanding idempotency guides how you design cleanup code.
 
 **Integration Test**
 A test that verifies that multiple components work correctly together. API tests are integration tests — they test the HTTP layer, business logic, and database all at once, as opposed to unit tests that test components in isolation.
@@ -16534,7 +16503,7 @@ An in-memory data structure store used by the Chatty backend for caching and ses
 An architectural style for designing web APIs. REST APIs use HTTP methods to perform operations on resources identified by URLs. Key constraints: stateless (each request carries all needed information), uniform interface (resources identified by URL, manipulated via representations), and layered system.
 
 **Session**
-A server-side concept for maintaining state across multiple HTTP requests. Since HTTP is stateless, sessions use cookies to link requests to server-side state. When you call `POST /auth/signin`, the server creates a session and sends back a session cookie. Subsequent requests with that cookie are recognized as the same user.
+A server-side concept for maintaining state across multiple HTTP requests. Since HTTP is stateless, sessions use cookies to link requests to server-side state. When you call `POST /signin`, the server creates a session and sends back a session cookie. Subsequent requests with that cookie are recognized as the same user.
 
 **TypeScript**
 A statically-typed superset of JavaScript. TypeScript adds optional type annotations that are checked at compile time. Used in this course for type safety in test code: typed response shapes, typed fixture functions, and typed configuration objects.
@@ -16547,9 +16516,6 @@ A modern test runner for JavaScript/TypeScript built on Vite. Compatible with Je
 
 **`withCredentials`**
 An Axios option that tells the browser to include cookies in cross-origin requests. Equivalent to `credentials: 'include'` in the Fetch API. Important note: in Node.js (where tests run), there is no browser cookie jar — `withCredentials: true` does NOT automatically send cookies. You must manually pass cookies as `Cookie` headers.
-
----
-
 
 ---
 
@@ -16612,9 +16578,6 @@ chatty-api-tests/
 ```
 
 This structure follows the conventions established throughout the book: test files in `tests/chapter-XX/`, shared utilities in `src/utils/`, generated output in gitignored directories, and infrastructure configuration at the project root.
-
----
-
 
 ---
 
@@ -17065,7 +17028,7 @@ export function expectSuccess(status: number): void {
 // Import from here instead of redefining in each test file.
 
 /**
- * A minimal valid base64-encoded PNG image (1×1 black pixel).
+ * A minimal valid base64-encoded PNG image (10×10 blue pixel).
  *
  * Why: The Chatty signup endpoint uploads avatarImage to Cloudinary.
  * Cloudinary requires a valid image — it rejects empty strings or random base64.
@@ -19157,8 +19120,8 @@ pm.test("Token absent on failed signin", () => {
 **Exercise 1** — Boundary tests for POST `/signup`: username 3 chars → 400, username 4 chars → 201, username 21 chars → 400
 
 ```ts
-// tests/chapter-12/solution.test.ts
-// Run: npm test tests/chapter-12/solution.test.ts
+// tests/chapter-17/solution.test.ts
+// Run: npm test tests/chapter-17/solution.test.ts
 
 import axios from 'axios';
 import { faker } from '@faker-js/faker';
@@ -19479,7 +19442,7 @@ it('GET /user/following includes user B after follow', async () => {
 });
 
 // Exercise 3 — User A unfollows user B, assert user B no longer in following list
-it('DELETE /user/unfollow/:userBId/:userAId returns 200', async () => {
+it('PUT /user/unfollow/:userBId/:userAId/:userAId returns 200', async () => {
   const res = await axios.put(unfollowUrl(userBId, userAId), {}, {
     headers: { Cookie: sessionCookieA }, validateStatus: () => true,
   });
@@ -19787,7 +19750,7 @@ it('POST /images/profile returns 200 and success message', async () => {
 });
 ```
 
-> **WHY:** Asserting both the status code and the message string together verifies the happy path completely — the server accepted the upload AND returned the expected confirmation text. Using `TEST_AVATAR_IMAGE` (the shared 1×1 PNG fixture) guarantees Cloudinary accepts it without wasting bandwidth on a large file.
+> **WHY:** Asserting both the status code and the message string together verifies the happy path completely — the server accepted the upload AND returned the expected confirmation text. Using `TEST_AVATAR_IMAGE` (the shared 10×10 PNG fixture) guarantees Cloudinary accepts it without wasting bandwidth on a large file.
 
 ---
 
@@ -20043,7 +20006,7 @@ jobs:
           retention-days: 14
 ```
 
-A full starter template with TODOs is in `tests/lecture-11/homework/starter.yml` (Chapter 11 homework folder).
+A full starter template with TODOs is in `tests/chapter-16/homework/starter.yml` (Chapter 11 homework folder).
 
 #### Vitest Solutions
 
@@ -20265,11 +20228,7 @@ Chapter 18 covers test reporting configuration. There is no new Vitest test code
 npm install --save-dev @vitest/coverage-v8@1 --legacy-peer-deps
 npm run test:coverage
 open coverage/index.html        # macOS
-
-
-
----
-
+```
 
 ---
 
@@ -20389,9 +20348,6 @@ open coverage/index.html        # macOS
 
 **W**
 - withCredentials — Appendix E.2, Appendix F
-
----
-
 
 ---
 
@@ -24955,7 +24911,7 @@ JavaScript was designed to run in a browser where a single thread handles everyt
 
 The solution was to make I/O operations *asynchronous*: instead of waiting for a result, you hand off the work and provide instructions for what to do when it finishes. Your code continues running in the meantime.
 
-In API testing, every HTTP request is asynchronous. When you call `axios.post('https://api.codeandtest.com/api/v1/auth/signin', ...)`, the result does not come back instantly. It travels across the network, the server processes it, and a response returns — all of which takes time. Your test code must correctly wait for this to finish before making assertions.
+In API testing, every HTTP request is asynchronous. When you call `axios.post('https://api.codeandtest.com/api/v1/signin', ...)`, the result does not come back instantly. It travels across the network, the server processes it, and a response returns — all of which takes time. Your test code must correctly wait for this to finish before making assertions.
 
 If you do not wait for a response, you assert against `undefined` and get false positives or confusing errors.
 
@@ -25073,7 +25029,7 @@ async function fetchPost(id: string) {
 ```typescript
 async function signIn() {
   const response = await axios.post(
-    'https://api.codeandtest.com/api/v1/auth/signin',
+    'https://api.codeandtest.com/api/v1/signin',
     { username: 'vitestUser', password: 'Pass1234!' }
   );
   // `response` is now the resolved AxiosResponse — not a Promise
@@ -25100,7 +25056,7 @@ describe('Auth endpoints', () => {
     // Vitest awaits that Promise
 
     const response = await axios.post(
-      'https://api.codeandtest.com/api/v1/auth/signin',
+      'https://api.codeandtest.com/api/v1/signin',
       { username: 'vitestUser', password: 'Pass1234!' },
       { validateStatus: () => true }
     );
@@ -25161,7 +25117,7 @@ Sometimes `.then()` is used to extract a value from a chain and assign it:
 // Assigning within a chain — still must return
 it('creates a post and verifies it exists', () => {
   return axios.post('https://api.codeandtest.com/api/v1/posts', { body: 'Hello' }, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Cookie: sessionCookie }
   })
   .then(createResponse => {
     expect(createResponse.status).toBe(201);
@@ -25182,7 +25138,7 @@ it('creates a post and verifies it exists', async () => {
   const createResponse = await axios.post(
     'https://api.codeandtest.com/api/v1/posts',
     { body: 'Hello' },
-    { headers: { Authorization: `Bearer ${token}` } }
+    { headers: { Cookie: sessionCookie } }
   );
   expect(createResponse.status).toBe(201);
 
@@ -25265,7 +25221,7 @@ afterAll(async () => {
 // WRONG
 it('checks signup response', async () => {
   const response = axios.post(  // missing await
-    'https://api.codeandtest.com/api/v1/auth/signup',
+    'https://api.codeandtest.com/api/v1/signup',
     { username: 'vitestUser', password: 'Pass1234!' }
   );
   expect(response.status).toBe(201); // response is a Promise, not a response object
@@ -25275,7 +25231,7 @@ it('checks signup response', async () => {
 // CORRECT
 it('checks signup response', async () => {
   const response = await axios.post(
-    'https://api.codeandtest.com/api/v1/auth/signup',
+    'https://api.codeandtest.com/api/v1/signup',
     { username: 'vitestUser', password: 'Pass1234!' }
   );
   expect(response.status).toBe(201);
@@ -25298,7 +25254,7 @@ let token: string;
 // CORRECT
 beforeAll(async () => {
   const response = await axios.post(
-    'https://api.codeandtest.com/api/v1/auth/signin',
+    'https://api.codeandtest.com/api/v1/signin',
     { username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD },
     { validateStatus: () => true }
   );
@@ -25308,7 +25264,7 @@ beforeAll(async () => {
 // WRONG — forgetting async, token is never assigned
 beforeAll(() => {
   const response = axios.post(  // returns a Promise that is ignored
-    'https://api.codeandtest.com/api/v1/auth/signin',
+    'https://api.codeandtest.com/api/v1/signin',
     { username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD }
   );
   token = response.data.token;  // response is a Promise, .data is undefined
@@ -25370,7 +25326,7 @@ describe('Post creation flow', () => {
 
   beforeAll(async () => {
     // Step 1: Create test user
-    await axios.post(`${BASE_URL}/auth/signup`, {
+    await axios.post(`${BASE_URL}/signup`, {
       username,
       email: faker.internet.email(),
       password,
@@ -25380,7 +25336,7 @@ describe('Post creation flow', () => {
 
     // Step 2: Sign in to get token
     const signinResponse = await axios.post(
-      `${BASE_URL}/auth/signin`,
+      `${BASE_URL}/signin`,
       { username, password },
       { validateStatus: () => true }
     );
@@ -25402,7 +25358,7 @@ describe('Post creation flow', () => {
         profilePicture: ''
       },
       {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: sessionCookie },
         validateStatus: () => true
       }
     );
@@ -25429,16 +25385,17 @@ describe('Post creation flow', () => {
 describe('User profile', () => {
   it('returns current user profile when authenticated', () => {
     return axios.post(
-      `${BASE_URL}/auth/signin`,
+      `${BASE_URL}/signin`,
       { username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD },
       { validateStatus: () => true }
     )
     .then(signinResponse => {
       expect(signinResponse.status).toBe(200);
-      const token = signinResponse.data.token;
+      const raw = signinResponse.headers['set-cookie'];
+      const sessionCookie = Array.isArray(raw) ? raw.map(c => c.split(';')[0]).join('; ') : (raw ?? '').split(';')[0];
 
       return axios.get(`${BASE_URL}/user/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: sessionCookie },
         validateStatus: () => true
       });
     })
@@ -25456,11 +25413,11 @@ describe('User profile', () => {
 it('can fetch posts and reactions simultaneously', async () => {
   const [postsResponse, reactionsResponse] = await Promise.all([
     axios.get(`${BASE_URL}/posts/all/0`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       validateStatus: () => true
     }),
     axios.get(`${BASE_URL}/reactions/0`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       validateStatus: () => true
     })
   ]);
@@ -25677,14 +25634,14 @@ The `!` suffix (the *definite assignment assertion*) tells TypeScript: "Trust me
 let token: string;
 
 beforeAll(async () => {
-  const res = await axios.post(`${BASE_URL}/auth/signin`, credentials);
+  const res = await axios.post(`${BASE_URL}/signin`, credentials);
   token = res.data.token;
 });
 
 it('uses the token', async () => {
   // TypeScript error here: token may be undefined
   const response = await axios.get(`${BASE_URL}/posts`, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Cookie: sessionCookie }
   });
 });
 ```
@@ -25695,7 +25652,7 @@ let token!: string;   // "I promise this will be assigned before use"
 let authId!: string;
 
 beforeAll(async () => {
-  const res = await axios.post(`${BASE_URL}/auth/signin`, credentials,
+  const res = await axios.post(`${BASE_URL}/signin`, credentials,
     { validateStatus: () => true });
   token = res.data.token;
   authId = res.data.user._id;
@@ -25703,7 +25660,7 @@ beforeAll(async () => {
 
 it('uses the token', async () => {
   const response = await axios.get(`${BASE_URL}/posts`, {
-    headers: { Authorization: `Bearer ${token}` },  // no error
+    headers: { Cookie: sessionCookie },  // no error
     validateStatus: () => true
   });
   expect(response.status).toBe(200);
@@ -25783,7 +25740,7 @@ interface SigninResponseData {
 
 // Vitest does not require the generic — use it when you want type safety on .data
 const response = await axios.post<SigninResponseData>(
-  `${BASE_URL}/auth/signin`,
+  `${BASE_URL}/signin`,
   { username, password },
   { validateStatus: () => true }
 );
@@ -25806,7 +25763,7 @@ These two utility types are sometimes useful for extracting types from async fun
 ```typescript
 async function signIn(username: string, password: string) {
   const response = await axios.post<SigninResponseData>(
-    `${BASE_URL}/auth/signin`,
+    `${BASE_URL}/signin`,
     { username, password }
   );
   return response.data;
@@ -25907,7 +25864,7 @@ const userId = response?.data?.user?._id;
 ```typescript
 it('returns user data in the response', async () => {
   const response = await axios.post(
-    `${BASE_URL}/auth/signin`,
+    `${BASE_URL}/signin`,
     { username, password },
     { validateStatus: () => true }
   );
@@ -26196,7 +26153,7 @@ npm test
 
 ```typescript
 // NEVER do this
-const response = await axios.post(`${BASE_URL}/auth/signin`, {
+const response = await axios.post(`${BASE_URL}/signin`, {
   username: 'myRealUsername',    // hardcoded — visible to everyone who reads the code
   password: 'myRealPassword123!' // NEVER hardcode passwords
 });
@@ -26212,7 +26169,7 @@ const response = await axios.delete(
 
 ```typescript
 // Read from environment at runtime
-const response = await axios.post(`${BASE_URL}/auth/signin`, {
+const response = await axios.post(`${BASE_URL}/signin`, {
   username: process.env.TEST_USERNAME,
   password: process.env.TEST_PASSWORD
 });
@@ -26433,12 +26390,18 @@ function requireEnv(name: string): string {
   return value;
 }
 
+const BASE_URL      = process.env.BASE_URL;
+const TEST_USERNAME = process.env.TEST_USERNAME;
+const TEST_PASSWORD = process.env.TEST_PASSWORD;
+
+if (!BASE_URL)      throw new Error('Missing env var: BASE_URL');
+if (!TEST_USERNAME) throw new Error('Missing env var: TEST_USERNAME');
+if (!TEST_PASSWORD) throw new Error('Missing env var: TEST_PASSWORD');
+
 export const config = {
-  baseUrl: process.env.BASE_URL ?? 'https://api.codeandtest.com/api/v1',
-  testUsername: requireEnv('TEST_USERNAME'),
-  testPassword: requireEnv('TEST_PASSWORD'),
-  testSecret: requireEnv('TEST_SECRET'),
-  databaseUrl: process.env.DATABASE_URL,
+  BASE_URL,
+  TEST_USERNAME,
+  TEST_PASSWORD
 } as const;
 ```
 
@@ -26447,9 +26410,9 @@ Then in tests:
 ```typescript
 import { config } from '../../src/config';
 
-const response = await axios.post(`${config.BASE_URL}/auth/signin`, {
-  username: config.testUsername,
-  password: config.testPassword
+const response = await axios.post(`${config.BASE_URL}/signin`, {
+  username: config.TEST_USERNAME,
+  password: config.TEST_PASSWORD
 });
 ```
 
@@ -26517,7 +26480,7 @@ const response = await axios.get(`${process.env.BASE_URL}/health`);
 
 // TEST_USERNAME and TEST_PASSWORD — persistent account sign-in
 const signinResponse = await axios.post(
-  `${process.env.BASE_URL}/auth/signin`,
+  `${process.env.BASE_URL}/signin`,
   {
     username: process.env.TEST_USERNAME,
     password: process.env.TEST_PASSWORD
@@ -26564,11 +26527,16 @@ function requireEnv(name: string): string {
   return value;
 }
 
+const BASE_URL      = process.env.BASE_URL;
+const TEST_USERNAME = requireEnv('TEST_USERNAME');
+const TEST_PASSWORD = requireEnv('TEST_PASSWORD');
+
+if (!BASE_URL) throw new Error('Missing env var: BASE_URL');
+
 export const config = {
-  baseUrl: process.env.BASE_URL ?? 'https://api.codeandtest.com/api/v1',
-  testUsername: requireEnv('TEST_USERNAME'),
-  testPassword: requireEnv('TEST_PASSWORD'),
-  testSecret: requireEnv('TEST_SECRET'),
+  BASE_URL,
+  TEST_USERNAME,
+  TEST_PASSWORD,
 };
 ```
 
@@ -26812,7 +26780,7 @@ const response = await axios.get('https://api.codeandtest.com/api/v1/posts/searc
 
 // GET with headers and validateStatus
 const response = await axios.get('https://api.codeandtest.com/api/v1/user/profile', {
-  headers: { Authorization: `Bearer ${token}` },
+  headers: { Cookie: sessionCookie },
   validateStatus: () => true
 });
 ```
@@ -26822,7 +26790,7 @@ const response = await axios.get('https://api.codeandtest.com/api/v1/user/profil
 ```typescript
 // POST with JSON body
 const response = await axios.post(
-  'https://api.codeandtest.com/api/v1/auth/signup',
+  'https://api.codeandtest.com/api/v1/signup',
   {
     username: 'vitestUser123',
     email: 'test@example.com',
@@ -26838,7 +26806,7 @@ const response = await axios.post(
   'https://api.codeandtest.com/api/v1/posts',
   { post: 'Hello world', bgColor: '#ffffff', privacy: 'Public' },
   {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Cookie: sessionCookie },
     validateStatus: () => true
   }
 );
@@ -26856,7 +26824,7 @@ const response = await axios.put(
     school: 'University'
   },
   {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Cookie: sessionCookie },
     validateStatus: () => true
   }
 );
@@ -26873,7 +26841,7 @@ const response = await axios.patch(
     newPassword: 'NewPass456!'
   },
   {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Cookie: sessionCookie },
     validateStatus: () => true
   }
 );
@@ -26886,7 +26854,7 @@ const response = await axios.patch(
 const response = await axios.delete(
   `https://api.codeandtest.com/api/v1/posts/${postId}`,
   {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Cookie: sessionCookie },
     validateStatus: () => true
   }
 );
@@ -26922,7 +26890,7 @@ Every Axios request returns an `AxiosResponse` object. Understanding its shape i
 
 ```typescript
 const response = await axios.post(
-  'https://api.codeandtest.com/api/v1/auth/signin',
+  'https://api.codeandtest.com/api/v1/signin',
   { username: 'vitestUser', password: 'Pass1234!' },
   { validateStatus: () => true }
 );
@@ -26947,7 +26915,7 @@ The Chatty API uses cookie-session for some authentication flows. Extracting the
 
 ```typescript
 const signinResponse = await axios.post(
-  'https://api.codeandtest.com/api/v1/auth/signin',
+  'https://api.codeandtest.com/api/v1/signin',
   { username, password },
   { validateStatus: () => true }
 );
@@ -27050,7 +27018,7 @@ Then in tests:
 import { apiClient } from '../../src/apiClient';
 
 const response = await apiClient.get('/posts/all/0');         // no validateStatus needed
-const response = await apiClient.post('/auth/signin', body);  // no validateStatus needed
+const response = await apiClient.post('/signin', body);  // no validateStatus needed
 ```
 
 ---
@@ -27064,7 +27032,7 @@ It is important to understand what Axios does *by default* so you know when to o
 ```typescript
 // Default behavior — throws an AxiosError on 4xx/5xx
 const response = await axios.post(
-  'https://api.codeandtest.com/api/v1/auth/signin',
+  'https://api.codeandtest.com/api/v1/signin',
   { username: 'wronguser', password: 'wrongpass' }
   // no validateStatus — using default
 );
@@ -27230,7 +27198,7 @@ interface PostsListResponseData {
 
 // Using them in tests:
 const signupResponse = await axios.post<SignupResponseData>(
-  `${BASE_URL}/auth/signup`,
+  `${BASE_URL}/signup`,
   signupPayload,
   { validateStatus: () => true }
 );
@@ -27258,7 +27226,7 @@ describe('Protected endpoints', () => {
   beforeAll(async () => {
     // 1. Create test user
     const signupRes = await axios.post(
-      `${BASE_URL}/auth/signup`,
+      `${BASE_URL}/signup`,
       { username, email, password, avatarColor: 'blue', avatarImage: '' },
       { validateStatus: () => true }
     );
@@ -27266,7 +27234,7 @@ describe('Protected endpoints', () => {
 
     // 2. Sign in to get JWT
     const signinRes = await axios.post(
-      `${BASE_URL}/auth/signin`,
+      `${BASE_URL}/signin`,
       { username, password },
       { validateStatus: () => true }
     );
@@ -27284,7 +27252,7 @@ describe('Protected endpoints', () => {
 
   it('fetches posts with valid token', async () => {
     const response = await axios.get(`${BASE_URL}/posts/all/0`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       validateStatus: () => true
     });
     expect(response.status).toBe(200);
@@ -27297,7 +27265,7 @@ describe('Protected endpoints', () => {
 ```typescript
 async function signIn(username: string, password: string): Promise<string> {
   const response = await axios.post(
-    `${BASE_URL}/auth/signin`,
+    `${BASE_URL}/signin`,
     { username, password },
     { validateStatus: () => true }
   );
@@ -27315,7 +27283,7 @@ async function signIn(username: string, password: string): Promise<string> {
 ```typescript
 async function getSessionCookie(username: string, password: string): Promise<string> {
   const response = await axios.post(
-    `${BASE_URL}/auth/signin`,
+    `${BASE_URL}/signin`,
     { username, password },
     { validateStatus: () => true }
   );
@@ -27334,7 +27302,7 @@ async function getSessionCookie(username: string, password: string): Promise<str
 ```typescript
 it('returns 400 when username is missing', async () => {
   const response = await axios.post(
-    `${BASE_URL}/auth/signup`,
+    `${BASE_URL}/signup`,
     {
       // username intentionally missing
       email: 'test@example.com',
@@ -27370,7 +27338,7 @@ it('GET /posts/all/:page — returns posts array with pagination', async () => {
   const response = await axios.get(
     `${BASE_URL}/posts/all/0`,
     {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       validateStatus: () => true
     }
   );
@@ -27400,7 +27368,7 @@ it('POST /posts — creates a new post', async () => {
       profilePicture: ''
     },
     {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       validateStatus: () => true
     }
   );
@@ -27428,7 +27396,7 @@ it('PUT /user/:userId — updates profile fields', async () => {
       youtube: ''
     },
     {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       validateStatus: () => true
     }
   );
@@ -27449,7 +27417,7 @@ it('PATCH /user/change-password — changes user password', async () => {
       newPassword: 'NewPass789!'
     },
     {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       validateStatus: () => true
     }
   );
@@ -27467,7 +27435,7 @@ it('DELETE /posts/:postId — deletes a post owned by the user', async () => {
     `${BASE_URL}/posts`,
     { post: faker.lorem.sentence(), bgColor: '#ffffff', privacy: 'Public',
       feelings: '', gifUrl: '', image: '', profilePicture: '' },
-    { headers: { Authorization: `Bearer ${token}` }, validateStatus: () => true }
+    { headers: { Cookie: sessionCookie }, validateStatus: () => true }
   );
   expect(createResponse.status).toBe(201);
 
@@ -27477,7 +27445,7 @@ it('DELETE /posts/:postId — deletes a post owned by the user', async () => {
   const deleteResponse = await axios.delete(
     `${BASE_URL}/posts/${postId}`,
     {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       validateStatus: () => true
     }
   );
@@ -27679,13 +27647,13 @@ Vitest uses the same vocabulary as Jest and Jasmine.
 
 ```typescript
 describe('Auth endpoints', () => {
-  describe('POST /auth/signup', () => {
+  describe('POST /signup', () => {
     it('creates a new user with valid data', async () => { ... });
     it('returns 400 with duplicate username', async () => { ... });
     it('returns 400 when password is too short', async () => { ... });
   });
 
-  describe('POST /auth/signin', () => {
+  describe('POST /signin', () => {
     it('returns token with valid credentials', async () => { ... });
     it('returns 400 with wrong password', async () => { ... });
   });
@@ -27916,7 +27884,7 @@ describe('Post endpoints', () => {
   beforeAll(async () => {
     // This runs once — we sign in once and reuse the token in all tests
     const signinRes = await axios.post(
-      `${BASE_URL}/auth/signin`,
+      `${BASE_URL}/signin`,
       { username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD },
       { validateStatus: () => true }
     );
@@ -27957,7 +27925,7 @@ describe('Post creation', () => {
       `${BASE_URL}/posts`,
       { post: faker.lorem.sentence(), bgColor: '#fff', privacy: 'Public',
         feelings: '', gifUrl: '', image: '', profilePicture: '' },
-      { headers: { Authorization: `Bearer ${token}` }, validateStatus: () => true }
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true }
     );
     freshPostId = createRes.data._id;
   });
@@ -27966,7 +27934,7 @@ describe('Post creation', () => {
     // Delete the post created in beforeEach
     await axios.delete(
       `${BASE_URL}/posts/${freshPostId}`,
-      { headers: { Authorization: `Bearer ${token}` }, validateStatus: () => true }
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true }
     );
   });
 
@@ -27974,7 +27942,7 @@ describe('Post creation', () => {
     const response = await axios.post(
       `${BASE_URL}/reactions`,
       { postId: freshPostId, type: 'like', postReactions: { like: 0 } },
-      { headers: { Authorization: `Bearer ${token}` }, validateStatus: () => true }
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true }
     );
     expect(response.status).toBe(200);
   });
@@ -28147,14 +28115,14 @@ describe('Matcher reference examples', () => {
   let token!: string;
 
   beforeAll(async () => {
-    const res = await axios.post(`${BASE_URL}/auth/signin`,
+    const res = await axios.post(`${BASE_URL}/signin`,
       { username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD },
       { validateStatus: () => true });
     token = res.data.token;
   });
 
   it('toBe — exact primitive equality', async () => {
-    const res = await axios.post(`${BASE_URL}/auth/signin`,
+    const res = await axios.post(`${BASE_URL}/signin`,
       { username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD },
       { validateStatus: () => true });
 
@@ -28165,7 +28133,7 @@ describe('Matcher reference examples', () => {
 
   it('toEqual — deep object equality', async () => {
     const res = await axios.get(`${BASE_URL}/posts/all/0`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       validateStatus: () => true
     });
 
@@ -28177,7 +28145,7 @@ describe('Matcher reference examples', () => {
   });
 
   it('toMatchObject — partial object match', async () => {
-    const res = await axios.post(`${BASE_URL}/auth/signin`,
+    const res = await axios.post(`${BASE_URL}/signin`,
       { username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD },
       { validateStatus: () => true });
 
@@ -28190,7 +28158,7 @@ describe('Matcher reference examples', () => {
   });
 
   it('toBeDefined — field exists', async () => {
-    const res = await axios.post(`${BASE_URL}/auth/signin`,
+    const res = await axios.post(`${BASE_URL}/signin`,
       { username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD },
       { validateStatus: () => true });
 
@@ -28200,7 +28168,7 @@ describe('Matcher reference examples', () => {
   });
 
   it('toContain — string or array contains', async () => {
-    const res = await axios.post(`${BASE_URL}/auth/signin`,
+    const res = await axios.post(`${BASE_URL}/signin`,
       { username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD },
       { validateStatus: () => true });
 
@@ -28209,7 +28177,7 @@ describe('Matcher reference examples', () => {
   });
 
   it('toHaveProperty — object has a path', async () => {
-    const res = await axios.post(`${BASE_URL}/auth/signin`,
+    const res = await axios.post(`${BASE_URL}/signin`,
       { username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD },
       { validateStatus: () => true });
 
@@ -28219,7 +28187,7 @@ describe('Matcher reference examples', () => {
   });
 
   it('not.toHaveProperty — field must not exist', async () => {
-    const res = await axios.post(`${BASE_URL}/auth/signin`,
+    const res = await axios.post(`${BASE_URL}/signin`,
       { username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD },
       { validateStatus: () => true });
 
@@ -28230,7 +28198,7 @@ describe('Matcher reference examples', () => {
 
   it('toBeGreaterThan — numeric comparison', async () => {
     const res = await axios.get(`${BASE_URL}/posts/all/0`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       validateStatus: () => true
     });
 
@@ -28240,7 +28208,7 @@ describe('Matcher reference examples', () => {
 
   it('not.toBe — negative assertion on status', async () => {
     const res = await axios.get(`${BASE_URL}/posts/all/0`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       validateStatus: () => true
     });
 
@@ -28265,8 +28233,8 @@ describe('Feature X tests', () => {
 
   beforeAll(async () => {
     // Signup + signin
-    await axios.post(`${BASE_URL}/auth/signup`, { username, ... }, { validateStatus: () => true });
-    const res = await axios.post(`${BASE_URL}/auth/signin`, { username, ... }, { validateStatus: () => true });
+    await axios.post(`${BASE_URL}/signup`, { username, ... }, { validateStatus: () => true });
+    const res = await axios.post(`${BASE_URL}/signin`, { username, ... }, { validateStatus: () => true });
     token = res.data.token;
     authId = res.data.user._id;
   });
@@ -28293,21 +28261,21 @@ describe('Post lifecycle', () => {
 
   it('creates a post', async () => {
     const res = await axios.post(`${BASE_URL}/posts`, postBody,
-      { headers: { Authorization: `Bearer ${token}` }, validateStatus: () => true });
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true });
     expect(res.status).toBe(201);
     postId = res.data._id;  // assign for later test
   });
 
   it('fetches the created post', async () => {
     const res = await axios.get(`${BASE_URL}/posts/${postId}`,
-      { headers: { Authorization: `Bearer ${token}` }, validateStatus: () => true });
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true });
     expect(res.status).toBe(200);
     expect(res.data.post._id).toBe(postId);
   });
 
   it('deletes the post', async () => {
     const res = await axios.delete(`${BASE_URL}/posts/${postId}`,
-      { headers: { Authorization: `Bearer ${token}` }, validateStatus: () => true });
+      { headers: { Cookie: sessionCookie }, validateStatus: () => true });
     expect(res.status).toBe(200);
   });
 });
@@ -28356,7 +28324,7 @@ Consider this test:
 ```typescript
 // Hardcoded — this will fail the second time it runs
 it('creates a new user', async () => {
-  const response = await axios.post(`${BASE_URL}/auth/signup`, {
+  const response = await axios.post(`${BASE_URL}/signup`, {
     username: 'testuser',          // already exists after the first run
     email: 'test@example.com',     // already taken
     password: 'Pass1234!',
@@ -28379,7 +28347,7 @@ it('creates a new user', async () => {
   const username = `vitest${faker.internet.username()}`.slice(0, 20);
   const email = faker.internet.email();
 
-  const response = await axios.post(`${BASE_URL}/auth/signup`, {
+  const response = await axios.post(`${BASE_URL}/signup`, {
     username,
     email,
     password: 'Pass1234!',
@@ -28519,7 +28487,7 @@ const response = await axios.post(`${BASE_URL}/posts`, {
   gifUrl: '',
   image: '',
   profilePicture: ''
-}, { headers: { Authorization: `Bearer ${token}` }, validateStatus: () => true });
+}, { headers: { Cookie: sessionCookie }, validateStatus: () => true });
 ```
 
 #### faker.lorem.word()
@@ -28766,11 +28734,11 @@ describe('User tests', () => {
   let authId!: string;
 
   beforeAll(async () => {
-    const signupRes = await axios.post(`${BASE_URL}/auth/signup`, credentials,
+    const signupRes = await axios.post(`${BASE_URL}/signup`, credentials,
       { validateStatus: () => true });
     expect(signupRes.status).toBe(200);
 
-    const signinRes = await axios.post(`${BASE_URL}/auth/signin`,
+    const signinRes = await axios.post(`${BASE_URL}/signin`,
       { username: credentials.username, password: credentials.password },
       { validateStatus: () => true });
     token = signinRes.data.token;
@@ -28840,13 +28808,13 @@ describe('User registration edge cases', () => {
 
     try {
       // First signup — succeeds
-      const res1 = await axios.post(`${BASE_URL}/auth/signup`, creds,
+      const res1 = await axios.post(`${BASE_URL}/signup`, creds,
         { validateStatus: () => true });
       expect(res1.status).toBe(200);
       authId = res1.data.user._id;
 
       // Second signup with same username — should fail
-      const res2 = await axios.post(`${BASE_URL}/auth/signup`, creds,
+      const res2 = await axios.post(`${BASE_URL}/signup`, creds,
         { validateStatus: () => true });
       expect(res2.status).toBe(400);
     } finally {
@@ -28882,7 +28850,7 @@ describe('POST /posts — create a post', () => {
   const password = 'Test1234!';
 
   beforeAll(async () => {
-    const signupRes = await axios.post(`${BASE_URL}/auth/signup`, {
+    const signupRes = await axios.post(`${BASE_URL}/signup`, {
       username,
       email,
       password,
@@ -28892,7 +28860,7 @@ describe('POST /posts — create a post', () => {
 
     expect(signupRes.status).toBe(200);
 
-    const signinRes = await axios.post(`${BASE_URL}/auth/signin`,
+    const signinRes = await axios.post(`${BASE_URL}/signin`,
       { username, password },
       { validateStatus: () => true });
 
@@ -28926,7 +28894,7 @@ describe('POST /posts — create a post', () => {
         profilePicture: ''
       },
       {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: sessionCookie },
         validateStatus: () => true
       }
     );
@@ -28983,7 +28951,7 @@ it('updates profile with realistic data', async () => {
     `${BASE_URL}/user/${userId}`,
     profileData,
     {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       validateStatus: () => true
     }
   );
@@ -29104,7 +29072,7 @@ describe('User tests', () => {
 
 Postman is a GUI application for sending HTTP requests, inspecting responses, and organizing API tests into shareable collections. It started as a browser extension in 2012 and is now a standalone desktop application available on macOS, Windows, and Linux.
 
-For QA engineers, Postman solves a core problem: you need a fast, visual way to explore and test an API before writing automated code. When you are starting a new course project or joining a new team, Postman lets you fire off a real request to `https://api.codeandtest.com/api/v1/auth/signin` in under a minute — without writing a single line of TypeScript.
+For QA engineers, Postman solves a core problem: you need a fast, visual way to explore and test an API before writing automated code. When you are starting a new course project or joining a new team, Postman lets you fire off a real request to `https://api.codeandtest.com/api/v1/signin` in under a minute — without writing a single line of TypeScript.
 
 #### Why QA engineers specifically reach for Postman
 
@@ -29228,7 +29196,7 @@ For the Chatty signin endpoint:
 
 ```
 Method: POST
-URL:    {{BASE_URL}}/auth/signin
+URL:    {{BASE_URL}}/signin
 ```
 
 The `{{BASE_URL}}` syntax is a variable reference. It will be replaced by the value from your active Environment when the request runs.
@@ -29321,7 +29289,7 @@ You do this inside the **Tests** tab using `pm.environment.set()`.
 
 #### Example: capture token after signin
 
-Request: `POST {{BASE_URL}}/auth/signin`
+Request: `POST {{BASE_URL}}/signin`
 
 Tests tab:
 
@@ -29497,7 +29465,7 @@ pm.test("Content-Type is JSON", function () {
 
 ### Real pm.test() Examples for Chatty API Endpoints
 
-#### POST /auth/signup
+#### POST /signup
 
 ```javascript
 pm.test("status 201 Created", function () {
@@ -29522,7 +29490,7 @@ const jsonData = pm.response.json();
 pm.environment.set("authId", jsonData.user._id);
 ```
 
-#### POST /auth/signin
+#### POST /signin
 
 ```javascript
 pm.test("status 200 OK", function () {
@@ -30840,7 +30808,7 @@ The `User` collection does **not** have a `password` field. Passwords live only 
 
 ### What the Tests Can and Cannot Assert About Passwords
 
-In Chapters 13when you cross-validate the API against MongoDB, you can confirm the password was hashed correctly:
+In Chapters 13 when you cross-validate the API against MongoDB, you can confirm the password was hashed correctly:
 
 ```typescript
 it('DB password is hashed — not the plain-text password', () => {
@@ -32199,7 +32167,7 @@ export const TEST_AVATAR_IMAGE =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 ```
 
-This is a 1x1 black pixel PNG encoded as a Base64 data URL. Let's examine why each design decision was made:
+This is a 10x10 blue pixel PNG encoded as a Base64 data URL. Let's examine why each design decision was made:
 
 **Why a data URL and not a file path?**
 
@@ -32209,11 +32177,11 @@ The Chatty API signup endpoint (`POST /api/v1/signup`) accepts the avatar image 
 
 The server uploads the image to Cloudinary for storage. Cloudinary validates that the received data is a real image. Random base64 characters do not decode to valid image data, so Cloudinary rejects them with an error. The test would fail at the API call itself, not at the assertion.
 
-**Why a 1x1 pixel?**
+**Why a 10x10 pixel?**
 
-The smallest possible valid PNG is approximately 68 bytes decoded. A real avatar image might be 50KB. The 1x1 pixel:
+The smallest possible valid PNG is approximately 250 bytes decoded. A real avatar image might be 50KB. The 10x10 pixel:
 - Passes Cloudinary's image validation (it is a real PNG)
-- Minimizes bandwidth in tests (68 bytes vs 50,000 bytes)
+- Minimizes bandwidth in tests (~250 bytes vs 50,000 bytes)
 - Minimizes Cloudinary storage costs (test runs should use minimal storage)
 - Is predictable — same bytes every test run
 
@@ -32279,7 +32247,7 @@ console.log(payloadJson); // '{"userId":"661ab12345..."}'
 const dataUrl = 'data:image/png;base64,iVBORw0KGgo...';
 const base64Part = dataUrl.split(',')[1];
 const imageBytes = Buffer.from(base64Part, 'base64');
-console.log(imageBytes.length); // 68 bytes for the 1x1 PNG
+console.log(imageBytes.length); // 68 bytes for the 10x10 PNG
 ```
 
 `Buffer.from(str, 'base64url')` (Node.js 16+) handles the `-` and `_` characters from Base64URL without manual substitution.
@@ -32464,7 +32432,7 @@ Test / Client
 const TEST_AVATAR_IMAGE =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
-const response = await apiClient.post('/auth/signup', {
+const response = await apiClient.post('/signup', {
   username: 'vitestUser1',
   email: 'vitest+upload@example.com',
   password: 'Vitest@123456!',
@@ -32632,7 +32600,7 @@ expect(response.data.user.bgImageVersion).toBe('');
 // After a background image upload, they become non-empty strings
 const updateResponse = await apiClient.put(`/user/${userId}/background`, {
   image: TEST_AVATAR_IMAGE  // reusing the same test image constant
-}, { headers: { Authorization: `Bearer ${token}` } });
+}, { headers: { Cookie: sessionCookie } });
 
 expect(updateResponse.status).toBe(200);
 expect(updateResponse.data.bgImageId).toBeTruthy();
@@ -32649,22 +32617,22 @@ When testing image upload functionality, you need a valid base64-encoded image t
 #### What it is
 
 ```typescript
-// A 1x1 pixel white PNG image, base64-encoded, with the data URI prefix
+// A 10x10 pixel blue PNG image, base64-encoded, with the data URI prefix
 export const TEST_AVATAR_IMAGE =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 ```
 
 #### Why this specific image
 
-**1. It is a valid image.** Cloudinary's upload endpoint validates that the base64 payload represents a real image. The 1x1 PNG is a legitimate PNG file that passes all of Cloudinary's validation.
+**1. It is a valid image.** Cloudinary's upload endpoint validates that the base64 payload represents a real image. The 10x10 PNG is a legitimate PNG file that passes all of Cloudinary's validation.
 
 **2. It is tiny.** At 68 bytes of actual image data, it uploads in milliseconds. Tests that use larger images slow down significantly on every run.
 
-**3. It is deterministic.** The same base64 string always produces the same 1x1 white pixel. This makes your test data predictable.
+**3. It is deterministic.** The same base64 string always produces the same 10x10 blue image. This makes your test data predictable.
 
 **4. It includes the data URI prefix.** The prefix `data:image/png;base64,` tells the Chatty API (and Cloudinary) what format the image data is in. Without this prefix, some upload handlers reject the payload.
 
-**5. It does not need to look good.** From a testing perspective, what matters is whether the upload process works — whether Cloudinary accepts the image and returns `imgId`, `imgVersion`, and the full URL. The visual content of the 1x1 pixel is irrelevant.
+**5. It does not need to look good.** From a testing perspective, what matters is whether the upload process works — whether Cloudinary accepts the image and returns `imgId`, `imgVersion`, and the full URL. The visual content of the 10x10 pixel is irrelevant.
 
 #### What Cloudinary does with it
 
@@ -32736,7 +32704,7 @@ expect(response.data.bgImageVersion).toBeTruthy();
 
 ```typescript
 // When avatarImage was '' during signup, these should be empty
-const signupRes = await apiClient.post('/auth/signup', {
+const signupRes = await apiClient.post('/signup', {
   username: 'vitestNoImg',
   email: `vitest+noimg-${Date.now()}@example.com`,
   password: 'Vitest@123456!',
@@ -32819,7 +32787,7 @@ describe('Image Upload — Cloudinary integration via signup', () => {
   });
 
   it('returns imgId, imgVersion, and profilePicture after signup with image', async () => {
-    const response = await apiClient.post('/auth/signup', {
+    const response = await apiClient.post('/signup', {
       username,
       email,
       password,
@@ -32874,7 +32842,7 @@ describe('Image Upload — no image provided', () => {
   });
 
   it('profilePicture is empty and imgId/imgVersion are empty when no image is uploaded', async () => {
-    const response = await apiClient.post('/auth/signup', {
+    const response = await apiClient.post('/signup', {
       username,
       email,
       password,
@@ -32909,7 +32877,7 @@ describe('Image Upload — profile picture update', () => {
     const email = `vitest+update-${Date.now()}@example.com`;
     const password = 'Vitest@123456!';
 
-    const signupRes = await apiClient.post('/auth/signup', {
+    const signupRes = await apiClient.post('/signup', {
       username,
       email,
       password,
@@ -32920,7 +32888,7 @@ describe('Image Upload — profile picture update', () => {
     authId = signupRes.data.user._id;
     userId = signupRes.data.user._id;
 
-    const signinRes = await apiClient.post('/auth/signin', { username, password });
+    const signinRes = await apiClient.post('/signin', { username, password });
     expect(signinRes.status).toBe(200);
     token = signinRes.data.token;
   });
@@ -32937,7 +32905,7 @@ describe('Image Upload — profile picture update', () => {
     const response = await apiClient.put(
       `/user/${userId}/profile-picture`,
       { image: TEST_AVATAR_IMAGE },
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { Cookie: sessionCookie } }
     );
 
     expect(response.status).toBe(200);
@@ -32975,7 +32943,7 @@ expect(response.data.user.profilePicture).toContain('cloudinary.com');
 
 ```typescript
 // WRONG — file paths are not valid base64 images
-const response = await apiClient.post('/auth/signup', {
+const response = await apiClient.post('/signup', {
   username: 'vitestUser',
   email: 'test@example.com',
   password: 'Vitest@123456!',
@@ -33025,9 +32993,9 @@ expect(response.data.user.profilePicture).toBe('');
 // WRONG — using a large real image makes every test that includes image upload slow
 const LARGE_IMAGE = fs.readFileSync('./real-photo-200kb.png').toString('base64');
 
-// CORRECT — use the tiny 1x1 pixel image for upload testing
+// CORRECT — use the tiny 10x10 pixel image for upload testing
 // Real visual quality does not matter; upload mechanics do
-const TEST_AVATAR_IMAGE = 'data:image/png;base64,iVBORw0KGgo...'; // 1x1 pixel
+const TEST_AVATAR_IMAGE = 'data:image/png;base64,iVBORw0KGgo...'; // 10x10 pixel
 ```
 
 ---
@@ -33323,7 +33291,7 @@ const response = await apiClient.delete('/post/reaction', {
     reactionObject: JSON.stringify(reactionData)
     // Axios calls encodeURIComponent() on this string automatically
   },
-  headers: { Authorization: `Bearer ${token}` },
+  headers: { Cookie: sessionCookie },
   validateStatus: () => true
 });
 ```
@@ -33461,7 +33429,7 @@ describe('Reactions — DELETE', () => {
 
   beforeAll(async () => {
     // 1. Sign up
-    const signupRes = await apiClient.post('/auth/signup', {
+    const signupRes = await apiClient.post('/signup', {
       username,
       email,
       password,
@@ -33471,7 +33439,7 @@ describe('Reactions — DELETE', () => {
     expect(signupRes.status).toBe(200);
 
     // 2. Sign in
-    const signinRes = await apiClient.post('/auth/signin', { username, password });
+    const signinRes = await apiClient.post('/signin', { username, password });
     expect(signinRes.status).toBe(200);
     token = signinRes.data.token;
     authId = signinRes.data.user._id;
@@ -33481,7 +33449,7 @@ describe('Reactions — DELETE', () => {
       '/post',
       { post: faker.lorem.sentence(), bgColor: '#ffffff', privacy: 'Public',
         feelings: '', gifUrl: '', image: '', profilePicture: '' },
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { Cookie: sessionCookie } }
     );
     expect(postRes.status).toBe(201);
     postId = postRes.data._id;
@@ -33490,7 +33458,7 @@ describe('Reactions — DELETE', () => {
     await apiClient.post(
       '/post/reaction',
       { userTo: authId, postId, type: 'like', postReactions: { like: 1 } },
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { Cookie: sessionCookie } }
     );
   });
 
@@ -33511,7 +33479,7 @@ describe('Reactions — DELETE', () => {
     const response = await apiClient.delete(
       `/post/reaction?reactionObject=${encodedReaction}`,
       {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Cookie: sessionCookie }
       }
     );
 
@@ -33522,7 +33490,7 @@ describe('Reactions — DELETE', () => {
   it('returns 400 when reactionObject query param is missing', async () => {
     // No reactionObject query parameter at all
     const response = await apiClient.delete('/post/reaction', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Cookie: sessionCookie }
     });
 
     expect(response.status).toBe(400);
@@ -33533,12 +33501,12 @@ describe('Reactions — DELETE', () => {
     await apiClient.post(
       '/post/reaction',
       { userTo: authId, postId, type: 'love', postReactions: { love: 1 } },
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { Cookie: sessionCookie } }
     );
 
     // Use params option — Axios calls encodeURIComponent() on the value automatically
     const response = await apiClient.delete('/post/reaction', {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       params: {
         // Must still JSON.stringify because Axios does not know to do that for objects
         reactionObject: JSON.stringify({ type: 'love', postId })
@@ -33727,7 +33695,7 @@ const signupSchema = Joi.object({
 });
 ```
 
-When a request arrives at `POST /auth/signup`, Chatty runs the incoming JSON body through this schema. If the body does not match, Joi immediately returns an error — the request never reaches the database.
+When a request arrives at `POST /signup`, Chatty runs the incoming JSON body through this schema. If the body does not match, Joi immediately returns an error — the request never reaches the database.
 
 ---
 
@@ -33889,7 +33857,7 @@ When Joi validation fails, Chatty returns a consistent JSON error shape. Every s
 #### Asserting the error shape in tests
 
 ```typescript
-const response = await apiClient.post('/auth/signup', {
+const response = await apiClient.post('/signup', {
   username: 'ab',   // too short — min is 4
   email: 'test@example.com',
   password: 'Vitest@123456!',
@@ -33911,7 +33879,7 @@ Note: always assert `response.status` (the HTTP status code from the response he
 
 These are the exact error messages returned by Chatty's Joi validation. These strings are load-bearing — copy them exactly into your assertions.
 
-#### Signup endpoint (`POST /auth/signup`)
+#### Signup endpoint (`POST /signup`)
 
 | What you sent | Joi rule violated | Error message |
 |---------------|-------------------|---------------|
@@ -33928,7 +33896,7 @@ These are the exact error messages returned by Chatty's Joi validation. These st
 
 **Important note on password validation:** Chatty applies two layers of password validation. The Joi schema validates the structure (length, character types). A separate business-logic check in the route handler validates the bcrypt hash. The Joi error message is `'Invalid password'`. The business logic error (wrong password at signin) uses a different message — see Section 7.
 
-#### Signin endpoint (`POST /auth/signin`)
+#### Signin endpoint (`POST /signin`)
 
 | What you sent | Joi rule violated | Error message |
 |---------------|-------------------|---------------|
@@ -33954,7 +33922,7 @@ Both Joi validation errors and business logic errors return HTTP 400. Understand
 // This always returns 400 with 'Invalid username'
 // regardless of what is in the database
 // because the username is 2 chars, violating min(4)
-const response = await apiClient.post('/auth/signup', {
+const response = await apiClient.post('/signup', {
   username: 'ab',
   email: 'test@example.com',
   password: 'Vitest@123456!',
@@ -33976,7 +33944,7 @@ expect(response.data.message).toBe('Invalid username');
 ```typescript
 // Joi passes — username is valid, password is valid
 // But the credentials are wrong — this is a business logic error
-const response = await apiClient.post('/auth/signin', {
+const response = await apiClient.post('/signin', {
   username: 'vitestUser',
   password: 'WrongPassword123!'
 });
@@ -34011,7 +33979,7 @@ Testing Joi validation means deliberately sending requests that violate schema r
 
 ```typescript
 it('returns 400 when username is missing', async () => {
-  const response = await apiClient.post('/auth/signup', {
+  const response = await apiClient.post('/signup', {
     // username omitted
     email: 'vitest+test@example.com',
     password: 'Vitest@123456!',
@@ -34028,7 +33996,7 @@ it('returns 400 when username is missing', async () => {
 
 ```typescript
 it('returns 400 when username is too short', async () => {
-  const response = await apiClient.post('/auth/signup', {
+  const response = await apiClient.post('/signup', {
     username: 'abc',  // 3 chars — min is 4
     email: 'vitest+test@example.com',
     password: 'Vitest@123456!',
@@ -34045,7 +34013,7 @@ it('returns 400 when username is too short', async () => {
 
 ```typescript
 it('returns 400 when username is too long', async () => {
-  const response = await apiClient.post('/auth/signup', {
+  const response = await apiClient.post('/signup', {
     username: 'toolongusername',  // 15 chars — max is 8
     email: 'vitest+test@example.com',
     password: 'Vitest@123456!',
@@ -34062,7 +34030,7 @@ it('returns 400 when username is too long', async () => {
 
 ```typescript
 it('returns 400 when email format is invalid', async () => {
-  const response = await apiClient.post('/auth/signup', {
+  const response = await apiClient.post('/signup', {
     username: 'vitestUser',
     email: 'this-is-not-an-email',
     password: 'Vitest@123456!',
@@ -34079,7 +34047,7 @@ it('returns 400 when email format is invalid', async () => {
 
 ```typescript
 it('accepts username of exactly 4 characters (minimum boundary)', async () => {
-  const response = await apiClient.post('/auth/signup', {
+  const response = await apiClient.post('/signup', {
     username: 'vita',  // exactly 4 chars — should pass
     email: `vitest+${Date.now()}@example.com`,
     password: 'Vitest@123456!',
@@ -34096,7 +34064,7 @@ it('accepts username of exactly 4 characters (minimum boundary)', async () => {
 });
 
 it('returns 400 for username of exactly 3 characters (one below minimum)', async () => {
-  const response = await apiClient.post('/auth/signup', {
+  const response = await apiClient.post('/signup', {
     username: 'vit',  // exactly 3 chars — one below min
     email: `vitest+${Date.now()}@example.com`,
     password: 'Vitest@123456!',
@@ -34113,7 +34081,7 @@ it('returns 400 for username of exactly 3 characters (one below minimum)', async
 
 ```typescript
 it('returns 400 when username is a number instead of a string', async () => {
-  const response = await apiClient.post('/auth/signup', {
+  const response = await apiClient.post('/signup', {
     username: 12345,  // number, not string
     email: 'vitest+test@example.com',
     password: 'Vitest@123456!',
@@ -34137,7 +34105,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { apiClient } from '../../src/apiClient';
 import { faker } from '@faker-js/faker';
 
-describe('POST /auth/signup — Joi validation', () => {
+describe('POST /signup — Joi validation', () => {
   // We use a known-valid body as the base, then modify individual fields
   const validBody = {
     username: 'vita1234',       // 8 chars, alphanum — valid
@@ -34150,26 +34118,26 @@ describe('POST /auth/signup — Joi validation', () => {
   // Username validation
   describe('username field', () => {
     it('returns 400 with "Invalid username" when username is 3 chars (below min of 4)', async () => {
-      const res = await apiClient.post('/auth/signup', { ...validBody, username: 'vit' });
+      const res = await apiClient.post('/signup', { ...validBody, username: 'vit' });
       expect(res.status).toBe(400);
       expect(res.data.message).toBe('Invalid username');
     });
 
     it('returns 400 with "Invalid username" when username is 9 chars (above max of 8)', async () => {
-      const res = await apiClient.post('/auth/signup', { ...validBody, username: 'vitestmike' });
+      const res = await apiClient.post('/signup', { ...validBody, username: 'vitestmike' });
       expect(res.status).toBe(400);
       expect(res.data.message).toBe('Invalid username');
     });
 
     it('returns 400 with "Invalid username" when username contains a hyphen', async () => {
-      const res = await apiClient.post('/auth/signup', { ...validBody, username: 'vite-123' });
+      const res = await apiClient.post('/signup', { ...validBody, username: 'vite-123' });
       expect(res.status).toBe(400);
       expect(res.data.message).toBe('Invalid username');
     });
 
     it('returns 400 with "Invalid username" when username is omitted', async () => {
       const { username, ...bodyWithoutUsername } = validBody;
-      const res = await apiClient.post('/auth/signup', bodyWithoutUsername);
+      const res = await apiClient.post('/signup', bodyWithoutUsername);
       expect(res.status).toBe(400);
       expect(res.data.message).toBe('Invalid username');
     });
@@ -34178,14 +34146,14 @@ describe('POST /auth/signup — Joi validation', () => {
   // Password validation
   describe('password field', () => {
     it('returns 400 with "Invalid password" when password is 3 chars (below min of 4)', async () => {
-      const res = await apiClient.post('/auth/signup', { ...validBody, password: 'V@1' });
+      const res = await apiClient.post('/signup', { ...validBody, password: 'V@1' });
       expect(res.status).toBe(400);
       expect(res.data.message).toBe('Invalid password');
     });
 
     it('returns 400 with "Invalid password" when password is omitted', async () => {
       const { password, ...bodyWithoutPassword } = validBody;
-      const res = await apiClient.post('/auth/signup', bodyWithoutPassword);
+      const res = await apiClient.post('/signup', bodyWithoutPassword);
       expect(res.status).toBe(400);
       expect(res.data.message).toBe('Invalid password');
     });
@@ -34194,20 +34162,20 @@ describe('POST /auth/signup — Joi validation', () => {
   // Email validation
   describe('email field', () => {
     it('returns 400 with "Field must be valid" when email has no @ symbol', async () => {
-      const res = await apiClient.post('/auth/signup', { ...validBody, email: 'notanemail' });
+      const res = await apiClient.post('/signup', { ...validBody, email: 'notanemail' });
       expect(res.status).toBe(400);
       expect(res.data.message).toBe('Field must be valid');
     });
 
     it('returns 400 with "Field must be valid" when email has no domain', async () => {
-      const res = await apiClient.post('/auth/signup', { ...validBody, email: 'user@' });
+      const res = await apiClient.post('/signup', { ...validBody, email: 'user@' });
       expect(res.status).toBe(400);
       expect(res.data.message).toBe('Field must be valid');
     });
 
     it('returns 400 with "Field must be valid" when email is omitted', async () => {
       const { email, ...bodyWithoutEmail } = validBody;
-      const res = await apiClient.post('/auth/signup', bodyWithoutEmail);
+      const res = await apiClient.post('/signup', bodyWithoutEmail);
       expect(res.status).toBe(400);
       expect(res.data.message).toBe('Field must be valid');
     });
@@ -34217,7 +34185,7 @@ describe('POST /auth/signup — Joi validation', () => {
   describe('avatarColor field', () => {
     it('returns 400 with "Field must be valid" when avatarColor is omitted', async () => {
       const { avatarColor, ...bodyWithoutColor } = validBody;
-      const res = await apiClient.post('/auth/signup', bodyWithoutColor);
+      const res = await apiClient.post('/signup', bodyWithoutColor);
       expect(res.status).toBe(400);
       expect(res.data.message).toBe('Field must be valid');
     });
@@ -34232,14 +34200,14 @@ describe('POST /auth/signup — Joi validation', () => {
 Signin has simpler Joi rules but the same pattern applies.
 
 ```typescript
-describe('POST /auth/signin — Joi validation', () => {
+describe('POST /signin — Joi validation', () => {
   const validSignin = {
     username: 'vitestmike',
     password: 'Vitest@123456!'
   };
 
   it('returns 400 with "Invalid username" when username is 3 chars', async () => {
-    const res = await apiClient.post('/auth/signin', {
+    const res = await apiClient.post('/signin', {
       ...validSignin,
       username: 'vit'
     });
@@ -34248,7 +34216,7 @@ describe('POST /auth/signin — Joi validation', () => {
   });
 
   it('returns 400 with "Invalid username" when username is omitted', async () => {
-    const res = await apiClient.post('/auth/signin', {
+    const res = await apiClient.post('/signin', {
       password: validSignin.password
     });
     expect(res.status).toBe(400);
@@ -34256,7 +34224,7 @@ describe('POST /auth/signin — Joi validation', () => {
   });
 
   it('returns 400 with "Invalid password" when password is 3 chars', async () => {
-    const res = await apiClient.post('/auth/signin', {
+    const res = await apiClient.post('/signin', {
       ...validSignin,
       password: 'V@1'
     });
@@ -34265,7 +34233,7 @@ describe('POST /auth/signin — Joi validation', () => {
   });
 
   it('returns 400 with "Invalid password" when password is omitted', async () => {
-    const res = await apiClient.post('/auth/signin', {
+    const res = await apiClient.post('/signin', {
       username: validSignin.username
     });
     expect(res.status).toBe(400);
@@ -34275,7 +34243,7 @@ describe('POST /auth/signin — Joi validation', () => {
   it('returns 400 with "Invalid credentials" when credentials are wrong (business logic, not Joi)', async () => {
     // Both fields pass Joi validation — username is valid length, password is valid length
     // The failure happens in the business logic layer (password hash does not match)
-    const res = await apiClient.post('/auth/signin', {
+    const res = await apiClient.post('/signin', {
       username: 'vitestmike',
       password: 'Vitest@WrongPass!'
     });
@@ -34335,7 +34303,7 @@ When you get a 400, you can immediately determine whether it came from Joi (stru
 // WRONG — 'Invalid credentials' is a business logic error, not a Joi error
 // It means the username/password pair is wrong, not that the format is bad
 it('returns 400 when password is too short', async () => {
-  const res = await apiClient.post('/auth/signin', {
+  const res = await apiClient.post('/signin', {
     username: 'vitestmike',
     password: 'V@1'  // 3 chars — Joi min is 4
   });
@@ -34352,7 +34320,7 @@ it('returns 400 when password is too short', async () => {
 // ('User already exists') instead of a Joi 400 ('Invalid username')
 // when you test edge cases near the boundary
 it('accepts 4-char username', async () => {
-  const res = await apiClient.post('/auth/signup', {
+  const res = await apiClient.post('/signup', {
     username: 'vita',  // exactly 4 chars
     email: 'vitest+vita@example.com',
     // ...
@@ -34362,7 +34330,7 @@ it('accepts 4-char username', async () => {
 
 // BETTER — use a unique email and timestamp to avoid conflicts
 it('accepts 4-char username', async () => {
-  const res = await apiClient.post('/auth/signup', {
+  const res = await apiClient.post('/signup', {
     username: 'vita',
     email: `vitest+vita-${Date.now()}@example.com`,
     // ...
@@ -34379,13 +34347,13 @@ it('accepts 4-char username', async () => {
 ```typescript
 // WEAK — a 400 from Joi and a 400 from business logic look the same
 it('returns 400 for short username', async () => {
-  const res = await apiClient.post('/auth/signup', { username: 'ab', ... });
+  const res = await apiClient.post('/signup', { username: 'ab', ... });
   expect(res.status).toBe(400);  // Passes for wrong reasons if business logic returns 400 too
 });
 
 // STRONG — pins down the exact error
 it('returns 400 for short username', async () => {
-  const res = await apiClient.post('/auth/signup', { username: 'ab', ... });
+  const res = await apiClient.post('/signup', { username: 'ab', ... });
   expect(res.status).toBe(400);
   expect(res.data.message).toBe('Invalid username');  // Confirms it is the Joi error
 });
@@ -34557,18 +34525,18 @@ When the page number is part of the URL path (like `/post/all/0`), include it di
 ```typescript
 // Page 0 — first page of posts
 const response = await apiClient.get('/post/all/0', {
-  headers: { Authorization: `Bearer ${token}` }
+  headers: { Cookie: sessionCookie }
 });
 
 // Page 1 — second page
 const response = await apiClient.get('/post/all/1', {
-  headers: { Authorization: `Bearer ${token}` }
+  headers: { Cookie: sessionCookie }
 });
 
 // Dynamic page number using a variable
 const pageNumber = 0;
 const response = await apiClient.get(`/post/all/${pageNumber}`, {
-  headers: { Authorization: `Bearer ${token}` }
+  headers: { Cookie: sessionCookie }
 });
 ```
 
@@ -34579,14 +34547,14 @@ When the page number is a query parameter (like `?page=1`), use Axios's `params`
 ```typescript
 // Using params — Axios appends ?page=1 to the URL
 const response = await apiClient.get('/notifications', {
-  headers: { Authorization: `Bearer ${token}` },
+  headers: { Cookie: sessionCookie },
   params: { page: 1 }
   // Resulting URL: /notifications?page=1
 });
 
 // Multiple query params
 const response = await apiClient.get('/post/search', {
-  headers: { Authorization: `Bearer ${token}` },
+  headers: { Cookie: sessionCookie },
   params: {
     search: 'hello',
     page: 1
@@ -34715,7 +34683,7 @@ The most basic assertion — verify the endpoint returns a valid array structure
 ```typescript
 it('returns an array of posts on the first page', async () => {
   const response = await apiClient.get('/post/all/0', {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Cookie: sessionCookie }
   });
 
   expect(response.status).toBe(200);
@@ -34729,7 +34697,7 @@ it('returns an array of posts on the first page', async () => {
 ```typescript
 it('returns at most 10 posts per page', async () => {
   const response = await apiClient.get('/post/all/0', {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Cookie: sessionCookie }
   });
 
   expect(response.status).toBe(200);
@@ -34745,7 +34713,7 @@ Note: use `toBeLessThanOrEqual` rather than `toBe(10)`. The last page may have f
 ```typescript
 it('returns an empty array for a page beyond the last page', async () => {
   const response = await apiClient.get('/post/all/999', {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Cookie: sessionCookie }
   });
 
   // Chatty returns 200 with an empty posts array for out-of-range pages
@@ -34759,7 +34727,7 @@ it('returns an empty array for a page beyond the last page', async () => {
 ```typescript
 it('includes totalPosts as a number in the response', async () => {
   const response = await apiClient.get('/post/all/0', {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Cookie: sessionCookie }
   });
 
   expect(response.status).toBe(200);
@@ -34775,10 +34743,10 @@ If you have enough test data, you can verify that page 0 and page 1 return diffe
 ```typescript
 it('page 0 and page 1 contain different posts', async () => {
   const page0Response = await apiClient.get('/post/all/0', {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Cookie: sessionCookie }
   });
   const page1Response = await apiClient.get('/post/all/1', {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Cookie: sessionCookie }
   });
 
   expect(page0Response.status).toBe(200);
@@ -34821,13 +34789,13 @@ it('newly created post appears as the first item on page 0', async () => {
       image: '',
       profilePicture: ''
     },
-    { headers: { Authorization: `Bearer ${token}` } }
+    { headers: { Cookie: sessionCookie } }
   );
   expect(createResponse.status).toBe(201);
 
   // Step 2: Fetch page 0
   const listResponse = await apiClient.get('/post/all/0', {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Cookie: sessionCookie }
   });
   expect(listResponse.status).toBe(200);
 
@@ -34882,14 +34850,14 @@ describe('Posts — pagination integration', () => {
       '/post',
       { post: uniqueText, bgColor: '#ffffff', privacy: 'Public',
         feelings: '', gifUrl: '', image: '', profilePicture: '' },
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { Cookie: sessionCookie } }
     );
     createdPostId = postRes.data._id;
   });
 
   it('page 0 is an array of at most 10 posts', async () => {
     const res = await apiClient.get('/post/all/0', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Cookie: sessionCookie }
     });
     expect(res.status).toBe(200);
     expect(Array.isArray(res.data.posts)).toBe(true);
@@ -34898,7 +34866,7 @@ describe('Posts — pagination integration', () => {
 
   it('the post we created appears on page 0', async () => {
     const res = await apiClient.get('/post/all/0', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Cookie: sessionCookie }
     });
     expect(res.status).toBe(200);
 
@@ -34939,25 +34907,25 @@ Note that the notifications and messages endpoints use 1-based page numbers in q
 ```typescript
 // Path-based pagination (0-based)
 const postsResponse = await apiClient.get('/post/all/0', {
-  headers: { Authorization: `Bearer ${token}` }
+  headers: { Cookie: sessionCookie }
 });
 
 const commentsResponse = await apiClient.get(`/comments/${postId}/0`, {
-  headers: { Authorization: `Bearer ${token}` }
+  headers: { Cookie: sessionCookie }
 });
 
 const followersResponse = await apiClient.get(`/user/${userId}/followers/0`, {
-  headers: { Authorization: `Bearer ${token}` }
+  headers: { Cookie: sessionCookie }
 });
 
 // Query-based pagination (1-based)
 const notificationsResponse = await apiClient.get('/notifications', {
-  headers: { Authorization: `Bearer ${token}` },
+  headers: { Cookie: sessionCookie },
   params: { page: 1 }
 });
 
 const messagesResponse = await apiClient.get(`/messages/${conversationId}`, {
-  headers: { Authorization: `Bearer ${token}` },
+  headers: { Cookie: sessionCookie },
   params: { page: 1 }
 });
 ```
@@ -34975,7 +34943,7 @@ Most Chatty endpoints return a 200 with an empty array when the page is out of r
 ```typescript
 it('page 999 returns an empty posts array', async () => {
   const response = await apiClient.get('/post/all/999', {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Cookie: sessionCookie }
   });
 
   expect(response.status).toBe(200);
@@ -35115,7 +35083,7 @@ describe('Pagination — Posts endpoint', () => {
 
   beforeAll(async () => {
     // Sign up
-    const signupRes = await apiClient.post('/auth/signup', {
+    const signupRes = await apiClient.post('/signup', {
       username,
       email,
       password,
@@ -35126,7 +35094,7 @@ describe('Pagination — Posts endpoint', () => {
     authId = signupRes.data.user._id;
 
     // Sign in to get JWT
-    const signinRes = await apiClient.post('/auth/signin', { username, password });
+    const signinRes = await apiClient.post('/signin', { username, password });
     expect(signinRes.status).toBe(200);
     token = signinRes.data.token;
 
@@ -35142,7 +35110,7 @@ describe('Pagination — Posts endpoint', () => {
         image: '',
         profilePicture: ''
       },
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { Cookie: sessionCookie } }
     );
     expect(postRes.status).toBe(201);
   });
@@ -35159,7 +35127,7 @@ describe('Pagination — Posts endpoint', () => {
 
   it('GET /post/all/0 returns 200 and a posts array', async () => {
     const response = await apiClient.get('/post/all/0', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Cookie: sessionCookie }
     });
 
     expect(response.status).toBe(200);
@@ -35169,7 +35137,7 @@ describe('Pagination — Posts endpoint', () => {
 
   it('page 0 contains at most 10 posts', async () => {
     const response = await apiClient.get('/post/all/0', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Cookie: sessionCookie }
     });
 
     expect(response.status).toBe(200);
@@ -35178,7 +35146,7 @@ describe('Pagination — Posts endpoint', () => {
 
   it('response includes totalPosts as a number', async () => {
     const response = await apiClient.get('/post/all/0', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Cookie: sessionCookie }
     });
 
     expect(response.status).toBe(200);
@@ -35190,7 +35158,7 @@ describe('Pagination — Posts endpoint', () => {
 
   it('newly created post appears on page 0', async () => {
     const response = await apiClient.get('/post/all/0', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Cookie: sessionCookie }
     });
 
     expect(response.status).toBe(200);
@@ -35202,7 +35170,7 @@ describe('Pagination — Posts endpoint', () => {
 
   it('each post in the array has the required fields', async () => {
     const response = await apiClient.get('/post/all/0', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Cookie: sessionCookie }
     });
 
     expect(response.status).toBe(200);
@@ -35221,7 +35189,7 @@ describe('Pagination — Posts endpoint', () => {
 
   it('page 999 returns an empty posts array', async () => {
     const response = await apiClient.get('/post/all/999', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Cookie: sessionCookie }
     });
 
     expect(response.status).toBe(200);
@@ -35250,7 +35218,7 @@ describe('Pagination — Notifications (query param, 1-based)', () => {
 
   it('page 1 returns a notifications array', async () => {
     const response = await apiClient.get('/notifications', {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       params: { page: 1 }
       // Results in: GET /notifications?page=1
     });
@@ -35262,7 +35230,7 @@ describe('Pagination — Notifications (query param, 1-based)', () => {
 
   it('page 9999 returns an empty notifications array', async () => {
     const response = await apiClient.get('/notifications', {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: sessionCookie },
       params: { page: 9999 }
     });
 
@@ -35288,14 +35256,14 @@ describe('Pagination — Comments (path param, 0-based)', () => {
       await apiClient.post(
         '/comment',
         { comment: `Test comment ${i}`, postId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Cookie: sessionCookie } }
       );
     }
   });
 
   it('page 0 of comments returns an array', async () => {
     const response = await apiClient.get(`/comments/${postId}/0`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Cookie: sessionCookie }
     });
 
     expect(response.status).toBe(200);
@@ -35306,7 +35274,7 @@ describe('Pagination — Comments (path param, 0-based)', () => {
 
   it('page 999 of comments returns an empty array', async () => {
     const response = await apiClient.get(`/comments/${postId}/999`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Cookie: sessionCookie }
     });
 
     expect(response.status).toBe(200);
@@ -35403,7 +35371,7 @@ afterAll(async () => {
 ```typescript
 // WRONG — Chatty returns 200 + empty array for out-of-range pages, not 404
 const response = await apiClient.get('/post/all/999', {
-  headers: { Authorization: `Bearer ${token}` }
+  headers: { Cookie: sessionCookie }
 });
 expect(response.status).toBe(404);  // This will fail
 
@@ -36831,7 +36799,7 @@ it('GET /currentuser reflects the updated work field', async () => {
 
 Both types of tests have value. Contract tests catch broken endpoints. Persistence tests catch broken writes. A comprehensive test suite includes both.
 
-In Chapters 7Section 4 of the course is dedicated to persistence testing (state verification), while Sections 3 and 5 test the API contract.
+In Chapters 7, Section 4 of the course is dedicated to persistence testing (state verification), while Sections 3 and 5 test the API contract.
 
 ---
 
@@ -37830,7 +37798,7 @@ You do not need to sign out User B in `afterAll` explicitly. Signing out is opti
 - [Dynamic Data with Faker.js](#dynamic-data-with-fakerjs)
 - [The vitest Username Prefix Requirement](#the-vitest-username-prefix-requirement)
 - [Fixture Constants vs Dynamic Data](#fixture-constants-vs-dynamic-data)
-- [TEST_AVATAR_IMAGE: Why a 1x1 PNG Is Enough](#test_avatar_image-why-a-1x1-png-is-enough)
+- [TEST_AVATAR_IMAGE: Why a 10x10 PNG Is Enough](#test_avatar_image-why-a-10x10-png-is-enough)
 - [TEST_PASSWORD: Why a Fixed Password Is Fine](#test_password-why-a-fixed-password-is-fine)
 - [TEST_AVATAR_COLOR](#test_avatar_color)
 - [TEST_CLEANUP_SECRET](#test_cleanup_secret)
@@ -38014,7 +37982,7 @@ Values that:
 
 | Constant | Value | Reason for being fixed |
 |---|---|---|
-| `TEST_AVATAR_IMAGE` | base64 1×1 PNG | Must be a valid PNG; same tiny image works for all tests |
+| `TEST_AVATAR_IMAGE` | base64 10×10 PNG | Must be a valid PNG; same tiny image works for all tests |
 | `TEST_AVATAR_COLOR` | `'#4a90e2'` | Any valid hex color; consistency is all that matters |
 | `TEST_PASSWORD` | `'Vitest@123456'` | Must meet password requirements; same password for all User B accounts |
 | `TEST_CLEANUP_SECRET` | `'chatty-test-cleanup-2026'` | Must match the server-side constant exactly |
@@ -38037,7 +38005,7 @@ Values that:
 // src/fixtures.ts
 
 /**
- * A minimal valid base64-encoded PNG image (1×1 black pixel).
+ * A minimal valid base64-encoded PNG image (10×10 blue pixel).
  *
  * Why we need this:
  *   The Chatty signup endpoint uploads the avatarImage to Cloudinary.
@@ -38080,18 +38048,18 @@ export const TEST_CLEANUP_SECRET = 'chatty-test-cleanup-2026';
 
 ---
 
-### TEST_AVATAR_IMAGE: Why a 1x1 PNG Is Enough
+### TEST_AVATAR_IMAGE: Why a 10x10 PNG Is Enough
 
 When you sign up on Chatty, the `avatarImage` field accepts a base64-encoded image string. The server uploads this image to Cloudinary for hosting.
 
 Cloudinary validates that the uploaded data is a real image. If you send random base64 bytes, Cloudinary rejects it and the signup fails.
 
-A 1×1 pixel PNG is the smallest valid PNG file. It passes Cloudinary's format validation, generates a valid Cloudinary URL, and produces a profile picture that technically exists (even if it is a barely visible black dot).
+A 10×10 pixel PNG is the smallest valid PNG file. It passes Cloudinary's format validation, generates a valid Cloudinary URL, and produces a profile picture that technically exists (even if it is a small blue square).
 
 ```typescript
 // This 68-byte PNG contains:
 //   - PNG header signature
-//   - IHDR chunk (width: 1, height: 1, bit depth: 8, color type: 2 = RGB)
+//   - IHDR chunk (width: 10, height: 10, bit depth: 8, color type: 2 = RGB)
 //   - IDAT chunk (a single black pixel)
 //   - IEND chunk
 export const TEST_AVATAR_IMAGE =
@@ -38101,7 +38069,7 @@ export const TEST_AVATAR_IMAGE =
 Why not use a larger image?
 - Larger images take longer to upload and generate a Cloudinary URL.
 - The test suite would be slower.
-- For testing purposes, whether the profile picture is a 1×1 pixel or a full portrait is irrelevant.
+- For testing purposes, whether the profile picture is a 10×10 pixel or a full portrait is irrelevant.
 
 Why not use an empty string?
 - Chatty's Joi schema requires `avatarImage` to be a non-empty string.
@@ -41629,7 +41597,7 @@ index 3b4f5a0..7c9d2e1 100644
 +++ b/tests/chapter-02/signin.test.ts
 @@ -15,6 +15,10 @@ describe('Auth', () => {
    it('should return 401 for invalid credentials', async () => {
-     const response = await axios.post(`${BASE_URL}/auth/signin`, { ... });
+     const response = await axios.post(`${BASE_URL}/signin`, { ... });
      expect(response.status).toBe(401);
 +
 +    // Added: also verify the error message

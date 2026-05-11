@@ -94,7 +94,7 @@ Fix: in Atlas → **Network Access** → **Add IP Address** → either:
 For GitHub Actions, the runner IPs change every build — you must either use `0.0.0.0/0`
 or use the [GitHub Actions IP range action](https://github.com/marketplace/actions/whitelist-github-actions-runner-ip-on-mongodb-atlas).
 
-Also add to `vitest.config.ts`:
+Also add to `vitest.config.ts` (already present from Chapter 13 if you followed that setup):
 ```ts
 env: {
   BASE_URL: ...,
@@ -114,24 +114,16 @@ Rule of thumb: every env var your tests read must appear in both places:
 - **`.env`** — the actual secret value (never committed)
 - **`vitest.config.ts` `env` block** — just the key name, forwarded at `''` as fallback
 
-And to `src/config.ts`:
+**`src/config.ts` does NOT include `DATABASE_URL`** — unlike `BASE_URL`, `TEST_USERNAME`, and `TEST_PASSWORD` which are needed from Chapter 1, `DATABASE_URL` is only used in this chapter. The Chapter 10 test validates it locally at the start of `beforeAll`, so it does not need to live in the shared config.
+
+The pattern inside the test:
 ```ts
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) throw new Error('Missing env var: DATABASE_URL');
-export const config = { BASE_URL, TEST_USERNAME, TEST_PASSWORD, DATABASE_URL } as const;
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) throw new Error('DATABASE_URL not set in .env — see README §3');
+mongoClient = new MongoClient(databaseUrl);
 ```
 
-**Why add `DATABASE_URL` to `src/config.ts`?**
-
-`src/config.ts` is the single entry point for all environment configuration. Any env var a test needs should be read and validated here, not scattered across test files.
-
-The pattern has three parts:
-
-1. **Read** — `const DATABASE_URL = process.env.DATABASE_URL` reads the value (may be `undefined`)
-2. **Guard** — `if (!DATABASE_URL) throw new Error(...)` fails fast with a clear message if the var is missing, instead of letting tests fail with a confusing `MongoClient: invalid connection string` error deep inside the code
-3. **Export** — adding it to the `config` object makes it importable from any test: `import { config } from '../../src/config'`
-
-**`as const`** tells TypeScript to infer the narrowest possible types for all values in the object. Without it, `config.BASE_URL` would be typed as `string`. With it, TypeScript knows the exact shape — useful for catching typos at compile time.
+This keeps chapters 1–9 working without requiring a MongoDB Atlas account from day one.
 
 ---
 
@@ -144,7 +136,9 @@ let client: MongoClient;
 let db: ReturnType<MongoClient['db']>;
 
 beforeAll(async () => {
-  client = new MongoClient(config.DATABASE_URL);
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error('DATABASE_URL not set in .env — see README §3');
+  client = new MongoClient(databaseUrl);
   await client.connect();
   db = client.db(); // uses database from connection string
 });

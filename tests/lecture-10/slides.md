@@ -91,16 +91,16 @@ env: {
 },
 ```
 
-**`src/config.ts`** — read, guard, export:
+**In the test's `beforeAll`** — read and guard directly:
 ```ts
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) throw new Error('Missing env var: DATABASE_URL');
-export const config = { BASE_URL, TEST_USERNAME, TEST_PASSWORD, DATABASE_URL } as const;
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) throw new Error('DATABASE_URL not set in .env — see README §3');
+client = new MongoClient(databaseUrl);
 ```
 
-> All three are required — missing any one causes silent failures or confusing errors
+> `DATABASE_URL` is NOT in `src/config.ts` — it is only needed for Chapter 10, so chapters 1–9 do not require a MongoDB account
 
-<!-- note: .env holds the value. vitest.config.ts forwards it into the isolated worker process. src/config.ts validates it at startup and exports it for all tests. -->
+<!-- note: .env holds the value. vitest.config.ts forwards it into the isolated worker process. The test validates it locally in beforeAll instead of config.ts so students do not need MongoDB from Chapter 1. -->
 
 ---
 
@@ -122,7 +122,9 @@ export const config = { BASE_URL, TEST_USERNAME, TEST_PASSWORD, DATABASE_URL } a
 let client: MongoClient;
 
 beforeAll(async () => {
-  client = new MongoClient(config.DATABASE_URL);
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error('DATABASE_URL not set in .env — see README §3');
+  client = new MongoClient(databaseUrl);
   await client.connect();
   db = client.db();
 });
