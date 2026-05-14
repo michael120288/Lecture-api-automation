@@ -2911,7 +2911,13 @@ import axios from 'axios';
 
 export const client = axios.create({
   baseURL: 'https://api.codeandtest.com/api/v1',
-  // Do NOT set withCredentials: true — we manage cookies manually
+  // Do NOT set withCredentials: true — we manage cookies manually.
+  //
+  // validateStatus is intentionally omitted here so that Chapter 6 can
+  // demonstrate the rejects.toMatchObject() pattern for error assertions.
+  // All other chapters pass validateStatus: () => true per-request, which
+  // is the recommended approach for new code. See Section 4.4 for the
+  // trade-offs between both patterns.
 });
 ```
 
@@ -2957,7 +2963,7 @@ import type { AxiosResponse } from 'axios';
 
 const TEST_USER = {
   username: 'vitestAuthUser',
-  password: 'Password1!',
+  password: 'Password1!@#',
 };
 
 describe('Chapter 6: Authentication Flows', () => {
@@ -3118,12 +3124,11 @@ import type { AxiosResponse } from 'axios';
 const TEST_USER = {
   username: `vitestChapter6${Date.now()}`,
   email: `vitestchapter6${Date.now()}@example.com`,
-  password: 'Password1!',
+  password: 'Password1!@#',
 };
 
 describe('Chapter 6: Authentication Flows', () => {
   let authCookie: string;
-  let authToken: string;
   let authId: string;
 
   // ----- lifecycle -----
@@ -3139,7 +3144,6 @@ describe('Chapter 6: Authentication Flows', () => {
       password: TEST_USER.password,
     });
 
-    authToken = signinResponse.data.token;
     authId = signinResponse.data.user._id;
 
     const setCookie = signinResponse.headers['set-cookie'];
@@ -3154,8 +3158,9 @@ describe('Chapter 6: Authentication Flows', () => {
     if (authId) {
       await client.delete(`/test/cleanup/user/${authId}`, {
         headers: {
-          'x-test-secret': TEST_CLEANUP_SECRET  // from src/fixtures.ts,
+          'x-test-secret': TEST_CLEANUP_SECRET,  // from src/fixtures.ts
         },
+        validateStatus: () => true,  // never throw from afterAll
       });
     }
   });
@@ -3231,7 +3236,7 @@ describe('Chapter 6: Authentication Flows', () => {
 });
 ```
 
-Notice how `authCookie`, `authToken`, and `authId` are declared at the outer `describe` scope but assigned only in `beforeAll`. They are `let` variables, not `const`, because they are initially `undefined` and get their values asynchronously. Every inner `describe` and every `it` block has access to them through closure — this is the JavaScript scoping mechanism that makes this pattern work cleanly.
+Notice how `authCookie` and `authId` are declared at the outer `describe` scope but assigned only in `beforeAll`. They are `let` variables, not `const`, because they are initially `undefined` and get their values asynchronously. Every inner `describe` and every `it` block has access to them through closure — this is the JavaScript scoping mechanism that makes this pattern work cleanly.
 
 The `afterAll` at the outer scope runs once after every test in the suite completes, regardless of pass or fail. The cleanup endpoint `DELETE /test/cleanup/user/:authId` removes the test user from MongoDB, keeping the database clean. The `x-test-secret` header is a shared secret that authorizes this destructive operation — it should be stored in a `.env` file and never committed to source control.
 
@@ -3266,7 +3271,7 @@ describe('Failed authentication scenarios', () => {
       await expect(
         client.post('/signin', {
           username: 'vitestUserThatDoesNotExist99999',
-          password: 'Password1!',
+          password: 'Password1!@#',
         })
       ).rejects.toMatchObject({
         response: { status: 400 },
@@ -3279,7 +3284,7 @@ describe('Failed authentication scenarios', () => {
       await expect(
         client.post('/signin', {
           username: 'ab',
-          password: 'Password1!',
+          password: 'Password1!@#',
         })
       ).rejects.toMatchObject({
         response: { status: 400 },
@@ -3299,7 +3304,7 @@ describe('Failed authentication scenarios', () => {
     it('returns 400 for missing username field', async () => {
       await expect(
         client.post('/signin', {
-          password: 'Password1!',
+          password: 'Password1!@#',
         })
       ).rejects.toMatchObject({
         response: { status: 400 },
@@ -3434,7 +3439,7 @@ describe('Some authenticated feature', () => {
   let session: AuthSession;
 
   beforeAll(async () => {
-    session = await signIn('vitestMyUser', 'Password1!');
+    session = await signIn('vitestMyUser', 'Password1!@#');
   });
 
   afterAll(async () => {
@@ -3985,7 +3990,7 @@ import type { AxiosResponse } from 'axios';
 const TEST_USER = {
   username: `vitestChapter7${Date.now()}`,
   email: `vitestchapter7${Date.now()}@example.com`,
-  password: 'Password1!',
+  password: 'Password1!@#',
 };
 
 describe('Chapter 7: State and Side Effects', () => {
@@ -4970,7 +4975,7 @@ import type { AxiosResponse } from 'axios';
 const TEST_USER = {
   username: `vitestChapter8${Date.now()}`,
   email: `vitestchapter8${Date.now()}@example.com`,
-  password: 'Password1!',
+  password: 'Password1!@#',
 };
 
 describe('Chapter 8: Create — Resource Creation', () => {
@@ -5062,7 +5067,7 @@ function generateTestUser() {
     // IMPORTANT: username must start with 'vitest' for cleanup safety
     username: `vitest${faker.string.alphanumeric(8)}${suffix}`,
     email: `vitest${faker.string.alphanumeric(8)}@example.com`,
-    password: 'Password1!', // Keep a fixed password for simplicity
+    password: 'Password1!@#', // Keep a fixed password for simplicity
   };
 }
 
@@ -5089,7 +5094,7 @@ describe('User creation with Faker-generated data', () => {
   const testUser = {
     username: `vitest${faker.string.alphanumeric(8)}`,
     email: `vitest${faker.string.alphanumeric(8)}@testdomain.com`,
-    password: 'Password1!',
+    password: 'Password1!@#',
   };
 
   let session: AuthSession;
@@ -5131,7 +5136,7 @@ describe('Duplicate user creation', () => {
   const existingUser = {
     username: `vitestDupeTest${Date.now()}`,
     email: `vitestdupe${Date.now()}@example.com`,
-    password: 'Password1!',
+    password: 'Password1!@#',
   };
 
   let userId: string;
@@ -5151,7 +5156,7 @@ describe('Duplicate user creation', () => {
       client.post('/signup', {
         username: existingUser.username,              // Same username
         email: `vitestdiff${Date.now()}@example.com`, // Different email
-        password: 'Password1!',
+        password: 'Password1!@#',
       })
     ).rejects.toMatchObject({
       response: {
@@ -5168,7 +5173,7 @@ describe('Duplicate user creation', () => {
       client.post('/signup', {
         username: `vitest${Date.now()}`, // Different username
         email: existingUser.email,       // Same email
-        password: 'Password1!',
+        password: 'Password1!@#',
       })
     ).rejects.toMatchObject({
       response: { status: 400 },
@@ -5196,7 +5201,7 @@ describe('Validation errors for user signup', () => {
       client.post('/signup', {
         username: 'vit', // Too short
         email: 'vitest@valid.com',
-        password: 'Password1!',
+        password: 'Password1!@#',
       })
     ).rejects.toMatchObject({ response: { status: 400 } });
   });
@@ -5206,7 +5211,7 @@ describe('Validation errors for user signup', () => {
       client.post('/signup', {
         username: 'vitestValidUsername',
         email: 'not-an-email',
-        password: 'Password1!',
+        password: 'Password1!@#',
       })
     ).rejects.toMatchObject({ response: { status: 400 } });
   });
@@ -5226,7 +5231,7 @@ describe('Business logic errors for user signup', () => {
   const takenUser = {
     username: `vitestTaken${Date.now()}`,
     email: `vitesttaken${Date.now()}@example.com`,
-    password: 'Password1!',
+    password: 'Password1!@#',
   };
 
   let userId: string;
@@ -5272,7 +5277,7 @@ describe('Complete POST /post test suite', () => {
     const user = {
       username: `vitestPostCreator${Date.now()}`,
       email: `vitestpostcreator${Date.now()}@example.com`,
-      password: 'Password1!',
+      password: 'Password1!@#',
     };
     await client.post('/signup', user);
     session = await signIn(user.username, user.password);
@@ -5868,7 +5873,7 @@ import type { AxiosResponse } from 'axios';
 const TEST_USER = {
   username: `vitestChapter9${Date.now()}`,
   email: `vitestchapter9${Date.now()}@example.com`,
-  password: 'Password1!',
+  password: 'Password1!@#',
 };
 
 describe('Chapter 9: Read — Testing Retrieval', () => {
@@ -6658,7 +6663,7 @@ import type { AxiosResponse } from 'axios';
 const TEST_USER = {
   username: `vitestChapter10${Date.now()}`,
   email: `vitestchapter10${Date.now()}@example.com`,
-  password: 'Password1!',
+  password: 'Password1!@#',
 };
 
 describe('Chapter 10: Update — Testing Mutations', () => {
@@ -6768,12 +6773,12 @@ describe('Owner-only PATCH enforcement', () => {
     const ownerUser = {
       username: `vitestOwner${Date.now()}`,
       email: `vitestowner${Date.now()}@example.com`,
-      password: 'Password1!',
+      password: 'Password1!@#',
     };
     const nonOwnerUser = {
       username: `vitestNonOwner${Date.now()}`,
       email: `vitestnonowner${Date.now()}@example.com`,
-      password: 'Password1!',
+      password: 'Password1!@#',
     };
 
     await Promise.all([
@@ -7419,7 +7424,7 @@ import { signIn, cleanupUser, type AuthSession } from '../../src/helpers/auth';
 const TEST_USER = {
   username: `vitestChapter11${Date.now()}`,
   email: `vitestchapter11${Date.now()}@example.com`,
-  password: 'Password1!',
+  password: 'Password1!@#',
 };
 
 describe('Chapter 11: Delete — Testing Destruction', () => {
@@ -7573,12 +7578,12 @@ describe('DELETE /post/:postId — authorization', () => {
     const ownerUser = {
       username: `vitestDeleteOwner${Date.now()}`,
       email: `vitestdeleteowner${Date.now()}@example.com`,
-      password: 'Password1!',
+      password: 'Password1!@#',
     };
     const nonOwnerUser = {
       username: `vitestDeleteNonOwner${Date.now()}`,
       email: `vitestdeletenonowner${Date.now()}@example.com`,
-      password: 'Password1!',
+      password: 'Password1!@#',
     };
 
     await Promise.all([
@@ -7772,7 +7777,7 @@ describe('Complete CRUD Lifecycle', () => {
   const TEST_USER = {
     username: `vitestCRUDLifecycle${Date.now()}`,
     email: `vitestcrudlifecycle${Date.now()}@example.com`,
-    password: 'Password1!',
+    password: 'Password1!@#',
   };
 
   beforeAll(async () => {
@@ -8942,18 +8947,12 @@ describe('Boundary Value Analysis — Password Requirements', () => {
   // min = 12 chars, must have: uppercase, lowercase, digit, special char
 
   it('rejects password of length 11 (min - 1)', async () => {
-    const response = await axios.post(
-      `${BASE_URL}/signup`,
-      makePayload('ValidPass12!'),  // 12 chars — use 11: ValidPass1!
-      { validateStatus: () => true }
-    );
-    // 'ValidPas1!' = 10 chars; let's be precise:
-    const shortPw = 'ValidPass1!'; // 11 chars, has uppercase/lowercase/digit/special
+    const shortPw = 'ValidPass1!'; // 11 chars: uppercase, lowercase, digit, special
     expect(shortPw.length).toBe(11);
-    const r2 = await axios.post(`${BASE_URL}/signup`, makePayload(shortPw), {
+    const response = await axios.post(`${BASE_URL}/signup`, makePayload(shortPw), {
       validateStatus: () => true,
     });
-    expect(r2.status).toBe(400);
+    expect(response.status).toBe(400);
   });
 
   it('accepts password of exactly 12 characters with all required types', async () => {
@@ -10101,13 +10100,22 @@ Here is the complete flow:
     let reactionType = 'like';
 
     beforeAll(async () => {
-      // Create a post as User A to react to
-      const postResponse = await axios.post(
+      // Create a post as User A to react to.
+      // POST /post returns only { message } — no post ID in the response.
+      const UNIQUE_POST_CONTENT = 'Test post for reaction testing';
+      await axios.post(
         `${BASE_URL}/post`,
-        { post: 'Test post for reaction testing', privacy: 'Public' },
-        { headers: { Cookie: userA.cookie } }
+        { post: UNIQUE_POST_CONTENT, privacy: 'Public' },
+        { headers: { Cookie: userA.cookie }, validateStatus: () => true }
       );
-      postId = postResponse.data.post._id;
+
+      // Retrieve the post ID by fetching the post list and matching on content.
+      const allPostsRes = await axios.get(
+        `${BASE_URL}/post/all/1`,
+        { headers: { Cookie: userA.cookie }, validateStatus: () => true }
+      );
+      const found = allPostsRes.data.posts.find((p: any) => p.post === UNIQUE_POST_CONTENT);
+      postId = found!._id;
     });
 
     afterAll(async () => {
@@ -11037,16 +11045,16 @@ const BASE_URL = process.env.BASE_URL ?? 'https://api.codeandtest.com/api/v1';
 
 describe('Chapter 15: File Uploads and Media Testing', () => {
 
-  let authToken: string;
-  let uploadedImageUrl: string;
+  let authCookie: string;
 
   beforeAll(async () => {
     const signinResponse = await axios.post(`${BASE_URL}/signin`, {
       username: process.env.TEST_USERNAME,
       password: process.env.TEST_PASSWORD,
-    });
+    }, { validateStatus: () => true });
 
-    authToken = signinResponse.data.token;
+    const raw = signinResponse.headers['set-cookie'];
+    authCookie = Array.isArray(raw) ? raw.map(c => c.split(';')[0]).join('; ') : (raw ?? '').split(';')[0];
   });
 
   describe('Profile Image Upload', () => {
@@ -11055,20 +11063,18 @@ describe('Chapter 15: File Uploads and Media Testing', () => {
       const response = await axios.post(
         `${BASE_URL}/images/profile`,
         { image: TEST_AVATAR_IMAGE },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { headers: { Cookie: authCookie }, validateStatus: () => true }
       );
 
       expect(response.status).toBe(200);
-
-      // Capture for subsequent assertions
-      uploadedImageUrl = response.data.url;
+      expect(response.data).toHaveProperty('url');
     });
 
     it('returned URL is a valid HTTP or HTTPS URL', async () => {
       const response = await axios.post(
         `${BASE_URL}/images/profile`,
         { image: TEST_AVATAR_IMAGE },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { headers: { Cookie: authCookie }, validateStatus: () => true }
       );
 
       const { url } = response.data;
@@ -11079,7 +11085,7 @@ describe('Chapter 15: File Uploads and Media Testing', () => {
       const response = await axios.post(
         `${BASE_URL}/images/profile`,
         { image: TEST_AVATAR_IMAGE },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { headers: { Cookie: authCookie }, validateStatus: () => true }
       );
 
       const { url } = response.data;
@@ -11090,7 +11096,7 @@ describe('Chapter 15: File Uploads and Media Testing', () => {
       const response = await axios.post(
         `${BASE_URL}/images/profile`,
         { image: TEST_AVATAR_IMAGE },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { headers: { Cookie: authCookie }, validateStatus: () => true }
       );
 
       expect(response.data).toHaveProperty('imgId');
@@ -11103,7 +11109,7 @@ describe('Chapter 15: File Uploads and Media Testing', () => {
       const response = await axios.post(
         `${BASE_URL}/images/profile`,
         { image: TEST_AVATAR_IMAGE },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { headers: { Cookie: authCookie }, validateStatus: () => true }
       );
 
       const { imgVersion } = response.data;
@@ -11137,7 +11143,7 @@ This is why you cannot assert an exact URL from an image upload test. The versio
       const response = await axios.post(
         `${BASE_URL}/images/profile`,
         { image: TEST_AVATAR_IMAGE },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { headers: { Cookie: authCookie }, validateStatus: () => true }
       );
 
       const { imgId, imgVersion, url } = response.data;
@@ -11153,7 +11159,7 @@ This is why you cannot assert an exact URL from an image upload test. The versio
       const upload1 = await axios.post(
         `${BASE_URL}/images/profile`,
         { image: TEST_AVATAR_IMAGE },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { headers: { Cookie: authCookie }, validateStatus: () => true }
       );
 
       // Small delay to ensure different timestamp
@@ -11162,7 +11168,7 @@ This is why you cannot assert an exact URL from an image upload test. The versio
       const upload2 = await axios.post(
         `${BASE_URL}/images/profile`,
         { image: TEST_AVATAR_IMAGE },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { headers: { Cookie: authCookie }, validateStatus: () => true }
       );
 
       // Versions should differ because they were uploaded at different times
@@ -11202,7 +11208,7 @@ This is why you cannot assert an exact URL from an image upload test. The versio
         `${BASE_URL}/images/profile`,
         {},  // No image field
         {
-          headers: { Authorization: `Bearer ${authToken}` },
+          headers: { Cookie: authCookie },
           validateStatus: () => true,
         }
       );
@@ -11215,7 +11221,7 @@ This is why you cannot assert an exact URL from an image upload test. The versio
         `${BASE_URL}/images/profile`,
         { image: 'not-a-base64-string' },
         {
-          headers: { Authorization: `Bearer ${authToken}` },
+          headers: { Cookie: authCookie },
           validateStatus: () => true,
         }
       );
@@ -13448,7 +13454,7 @@ Use `toBe` when you are comparing primitive values: status codes, string literal
 it('POST /signin returns 200 for valid credentials', async () => {
   const res = await axios.post(`${BASE_URL}/signin`, {
     username: 'vitestUser',
-    password: 'Password1!',
+    password: 'Password1!@#',
   }, { withCredentials: true });
 
   expect(res.status).toBe(200);
@@ -13955,8 +13961,8 @@ it('POST /signup returns user with expected properties', async () => {
   const res = await axios.post(`${BASE_URL}/signup`, {
     username: 'vitestNewUser',
     email: 'vitestnew@example.com',
-    password: 'Password1!',
-    passwordConfirm: 'Password1!',
+    password: 'Password1!@#',
+    passwordConfirm: 'Password1!@#',
   });
 
   expect(res.data.user).toMatchObject({
@@ -14449,8 +14455,8 @@ try {
   await axios.post(`${BASE_URL}/signup`, {
     username: 'vitestUser',
     email: 'valid@example.com',
-    password: 'Password1!',
-    passwordConfirm: 'DifferentPassword1!',
+    password: 'Password1!@#',
+    passwordConfirm: 'DifferentPassword1!@#',
   });
   fail('Expected 422');
 } catch (err: any) {
@@ -15841,7 +15847,7 @@ export async function signupUser(params: {
   email: string;
   password?: string;
 }): Promise<AuthResult> {
-  const password = params.password ?? 'Password1!';
+  const password = params.password ?? 'Password1!@#';
   const res = await axios.post(
     `${config.BASE_URL}/signup`,
     {
@@ -15881,7 +15887,7 @@ export async function signinUser(params: {
     `${config.BASE_URL}/signin`,
     {
       username: params.username,
-      password: params.password ?? 'Password1!',
+      password: params.password ?? 'Password1!@#',
     },
     { withCredentials: true }
   );
@@ -25322,7 +25328,7 @@ describe('Post creation flow', () => {
   let token: string;
   let authId: string;
   const username = `vitest${faker.internet.username()}`;
-  const password = 'Test1234!';
+  const password = 'Test1234!@#a'; // 12 chars — meets signup minimum
 
   beforeAll(async () => {
     // Step 1: Create test user
@@ -28684,17 +28690,18 @@ The Chatty API has password requirements. When generating test passwords, use a 
 
 ```typescript
 // Option 1: Fixed password (always valid, simplest approach)
-const password = 'Test1234!';
+// Signup requires: uppercase, lowercase, digit, special char, minimum 12 characters
+const password = 'Test1234!@#a'; // 12 chars — meets all signup requirements
 
 // Option 2: Generated but guaranteed to meet requirements
-// Chatty requires: uppercase, lowercase, number, minimum 8 characters
+// Chatty signup requires: uppercase, lowercase, digit, special char, minimum 12 characters
 const generatePassword = (): string => {
   const upper = faker.string.alpha({ length: 2, casing: 'upper' });
-  const lower = faker.string.alpha({ length: 4, casing: 'lower' });
+  const lower = faker.string.alpha({ length: 6, casing: 'lower' });
   const number = faker.number.int({ min: 10, max: 99 }).toString();
-  const special = '!';
+  const special = '!@';
   return `${upper}${lower}${number}${special}`;
-  // e.g. 'ABabcd42!'
+  // e.g. 'ABabcdef42!@' — 12 chars, meets all requirements
 };
 ```
 
@@ -28716,7 +28723,7 @@ export function generateTestCredentials(): TestCredentials {
   return {
     username: `vitest${faker.string.alphanumeric(8)}`,
     email: faker.internet.email(),
-    password: 'Test1234!',  // fixed — always meets requirements
+    password: 'Test1234!@#a',  // 12 chars — meets signup minimum (uppercase, lowercase, digit, special)
     avatarColor: faker.helpers.arrayElement(['red', 'blue', 'green', 'purple', 'orange']),
     avatarImage: ''
   };
