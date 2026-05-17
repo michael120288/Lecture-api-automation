@@ -16,7 +16,7 @@
 //   TEST_USERNAME and TEST_PASSWORD must be set in .env
 //   The account must already exist on the server
 //
-// Run: npm test tests/lecture-02/lecture.test.ts
+// Run: npm test tests/lecture-02/auth-flow.spec.ts
 
 import axios, { type AxiosResponse } from 'axios';
 import { config } from '../../src/config';

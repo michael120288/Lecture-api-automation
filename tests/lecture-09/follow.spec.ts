@@ -1,6 +1,6 @@
 // Lecture 09 — Followers, Blocking & Notifications
 //
-// Run: npm test tests/lecture-09/lecture.test.ts
+// Run: npm test tests/lecture-09/follow.spec.ts
 
 import axios from 'axios';
 import { faker } from '@faker-js/faker';

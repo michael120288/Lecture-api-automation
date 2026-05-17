@@ -58,7 +58,7 @@ sessionCookie = Array.isArray(r.headers['set-cookie'])
 - Expected  999
 + Received  200
 
-at tests/lecture-18/lecture.test.ts:42:5
+at tests/lecture-18/debugging.spec.ts:42:5
 ```
 
 | Part | What it means |
@@ -232,7 +232,7 @@ The Variables panel shows `res.data`, `sessionCookie`, and all local values.
 ## --inspect-brk — Node.js Inspector
 
 ```bash
-node --inspect-brk node_modules/.bin/vitest run tests/lecture-18/lecture.test.ts
+node --inspect-brk node_modules/.bin/vitest run tests/lecture-18/debugging.spec.ts
 ```
 
 Then open **`chrome://inspect`** in Chrome → click **Open dedicated DevTools for Node**.

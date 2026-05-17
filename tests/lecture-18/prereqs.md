@@ -37,7 +37,7 @@
 - [ ] **Node.js inspector**
   Try: Add `debugger;` to any test, then run:
   ```bash
-  node --inspect-brk node_modules/.bin/vitest run tests/lecture-18/lecture.test.ts
+  node --inspect-brk node_modules/.bin/vitest run tests/lecture-18/debugging.spec.ts
   ```
   Open `chrome://inspect` in Chrome. Click **Open dedicated DevTools for Node**.
   *~5 min · See exactly where execution pauses and what variables hold*

@@ -14,7 +14,7 @@
 //   No env vars beyond BASE_URL, TEST_USERNAME, TEST_PASSWORD.
 //   TEST_CLEANUP_SECRET is a hardcoded constant in src/fixtures.ts — no setup needed.
 //
-// Run: npm test tests/lecture-03/lecture.test.ts
+// Run: npm test tests/lecture-03/signup.spec.ts
 
 import axios, { type AxiosResponse } from 'axios';
 import { faker } from '@faker-js/faker';

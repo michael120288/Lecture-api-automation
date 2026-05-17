@@ -1,5 +1,5 @@
 // Lecture 14 — Password Reset & SSO
-// Run: npm test tests/lecture-14/lecture.test.ts
+// Run: npm test tests/lecture-14/password-reset.spec.ts
 
 import axios from 'axios';
 import { config } from '../../src/config';

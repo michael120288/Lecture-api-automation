@@ -6,7 +6,7 @@
 >
 > **Quick Start** (returning students):
 > ```bash
-> npm test tests/lecture-02/lecture.test.ts
+> npm test tests/lecture-02/auth-flow.spec.ts
 > npm test tests/lecture-02/homework/starter.test.ts
 > ```
 
@@ -475,7 +475,7 @@ set-cookie: session=eyJ...; Path=/; HttpOnly; Secure
 
 ## 12. Understanding the Test File
 
-Open `tests/lecture-02/lecture.test.ts`. New patterns introduced here:
+Open `tests/lecture-02/auth-flow.spec.ts`. New patterns introduced here:
 
 ### File-level `beforeAll` + `afterAll`
 
@@ -534,7 +534,7 @@ expect(authResponse.status).toBe(200);
 Make sure your `.env` has `TEST_USERNAME` and `TEST_PASSWORD` set.
 
 ```bash
-npm test tests/lecture-02/lecture.test.ts
+npm test tests/lecture-02/auth-flow.spec.ts
 ```
 
 **Expected output:**

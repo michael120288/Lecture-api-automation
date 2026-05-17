@@ -6,7 +6,7 @@
 >
 > **Quick Start:**
 > ```bash
-> npm test tests/lecture-07/lecture.test.ts
+> npm test tests/lecture-07/comments.spec.ts
 > npm test tests/lecture-07/homework/starter.test.ts
 > ```
 
@@ -179,7 +179,7 @@ pm.test('Deleted message', () => pm.expect(pm.response.json().message).to.eql('C
 
 ## 7. Understanding the Test File
 
-Open `tests/lecture-07/lecture.test.ts` — new patterns used here:
+Open `tests/lecture-07/comments.spec.ts` — new patterns used here:
 
 **The CRUD execution order:**
 
@@ -253,7 +253,7 @@ if (!commentDeleted && commentId) {
 
 
 ```bash
-npm test tests/lecture-07/lecture.test.ts
+npm test tests/lecture-07/comments.spec.ts
 ```
 
 **Expected output:**

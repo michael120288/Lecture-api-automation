@@ -122,6 +122,7 @@ This book is divided into six parts plus appendices.
 - [Appendix F: Glossary](#appendix-f-glossary)
 - [Appendix G: Complete Project Structure](#appendix-g-complete-project-structure)
 - [Appendix H: Chapter Practice Solutions](#appendix-h-chapter-practice-solutions)
+- [Appendix I: Adapting This Book to Your Own API](#appendix-i-adapting-this-book-to-your-own-api)
 
 **Part VII: Reference Library** (40 standalone deep-dive chapters — each is self-contained, you do not need to read them in order)
 - These chapters are deep-dives on individual topics. You will be pointed to them from the main chapters when you need more detail on a specific concept. They are not required reading for the core course.
@@ -154,6 +155,23 @@ Before you can write effective tests, you need a clear model of what you are tes
 The testing pyramid is a mental model for thinking about different kinds of automated tests. It was first described by Mike Cohn in 2009 and remains one of the most useful frameworks for thinking about test strategy.
 
 The pyramid has three layers.
+
+```
+         /\
+        /  \
+       / E2E\          ← Few tests. Slow, realistic, brittle.
+      /──────\            (Playwright, Cypress)
+     /        \
+    /   API    \      ← This book. Fast enough for CI, tests real HTTP.
+   / Integration\       (Vitest + Axios)
+  /──────────────\
+ /               \
+/   Unit Tests    \   ← Many tests. Milliseconds each, fully isolated.
+/─────────────────\     (Vitest, Jest)
+
+More tests at the bottom. Fewer at the top.
+Speed ↑ as you go down.  Realism ↑ as you go up.
+```
 
 At the base — the widest layer — are **unit tests**. Unit tests test individual functions or classes in isolation, with all external dependencies replaced by test doubles (mocks, stubs, fakes). A unit test for a function that validates an email address calls that function with various inputs and checks the return values. No database. No network. No file system. Unit tests are fast (thousands per second), cheap to write, and deterministic. They are the appropriate tool for verifying algorithmic correctness: parsing logic, calculation logic, validation logic, transformation logic. A well-tested codebase typically has hundreds or thousands of unit tests.
 
@@ -290,9 +308,37 @@ You cannot test what you do not understand. Before writing a single test, you ne
 
 ### 2.1 The Request-Response Cycle
 
+```
+HTTP Request-Response cycle
+─────────────────────────────────────────────────────────────────
+  Your Vitest test                        Chatty API server
+  ────────────────                        ─────────────────
+  axios.post('/signin', body)
+  │
+  │  POST /api/v1/signin HTTP/1.1
+  │  Host: api.codeandtest.com
+  │  Content-Type: application/json       ──────────────────────►
+  │  { "username": "alice",               (encrypted over HTTPS)
+  │    "password": "secret" }
+  │
+  │                                       ◄──────────────────────
+  │  HTTP/1.1 200 OK                      validates credentials
+  │  Content-Type: application/json       creates session
+  │  Set-Cookie: session=...; HttpOnly    returns response
+  │  { "token": "eyJ...", "user": {...} }
+  │
+  response.status   → 200
+  response.data     → { token, user }
+  response.headers  → { set-cookie, content-type, ... }
+
+  Everything you assert comes from these three properties.
+```
+
 When your test calls `axios.post('https://api.codeandtest.com/api/v1/signin', { username: 'alice', password: 'secret' })`, a remarkable sequence of events unfolds.
 
 **DNS resolution**: The HTTP client asks a DNS resolver to convert `api.codeandtest.com` into an IP address. This typically takes a few milliseconds and is cached, so subsequent requests to the same host skip it. The result is something like `76.76.21.164`.
+
+> **Beginner? You can skip this paragraph.** The DNS/TCP/TLS detail below explains *why* API tests have realistic latency and produce specific connection errors. If you just want to write tests, skip ahead to §2.2. You can come back here when you hit your first `ECONNREFUSED` error and need to understand what it means.
 
 **TCP connection**: The client opens a TCP connection to port 443 (HTTPS) at that IP address. This is a three-way handshake: SYN, SYN-ACK, ACK. It takes one round-trip time (RTT) — perhaps 50ms for a request to a US server from Europe.
 
@@ -674,6 +720,8 @@ npm install --save-dev vitest typescript @types/node @faker-js/faker
 
 **Step 3: Create `tsconfig.json`**
 
+> **Beginner? Just copy this exactly and move on.** You do not need to understand every option here to write tests. The one that matters most is `"types": ["vitest/globals"]` — it stops TypeScript from complaining about `describe`, `it`, and `expect`. The rest are safe defaults. Come back to this file only if TypeScript reports errors you don't understand.
+
 ```json
 {
   "compilerOptions": {
@@ -1025,6 +1073,26 @@ describe('POST /signin', () => {
 ```
 
 The lifecycle and data flow are: `beforeAll` runs once before any `it` blocks, performs the request, stores the result. Each `it` block runs afterward and reads from `response`. `afterAll` runs once after all `it` blocks.
+
+```
+Test file execution timeline
+────────────────────────────────────────────────────────────────
+  beforeAll()        ← runs ONCE before everything
+  │  POST /signin
+  │  store → response
+  │
+  ├── it('test 1')   ← reads response, no HTTP call
+  ├── it('test 2')   ← reads response, no HTTP call
+  ├── it('test 3')   ← reads response, no HTTP call
+  │
+  afterAll()         ← runs ONCE after everything
+     POST /signout
+     DELETE /cleanup
+
+Key: ONE request shared across ALL it() blocks.
+     Network calls: 2 total (beforeAll + afterAll).
+     Without this pattern: N requests (one per it block).
+```
 
 ### 4.2 Your First Test — The Wrong Way
 
@@ -3116,6 +3184,32 @@ This pattern — extract once, replay everywhere — is the foundation of all au
 
 The complete lifecycle of an authenticated test suite looks like this:
 
+```
+Cookie capture and replay — sequence diagram
+─────────────────────────────────────────────────────────────────
+  Your test                          Chatty API server
+  ──────────                         ─────────────────
+  POST /signin
+  { username, password }   ────────►  validates credentials
+                                       creates session
+                           ◄────────  200 OK
+                                      set-cookie: session=abc; session.sig=xyz
+
+  // extract from response headers:
+  authCookie = 'session=abc; session.sig=xyz'
+
+  GET /currentuser
+  Cookie: session=abc;     ────────►  reads session cookie
+          session.sig=xyz              identifies user
+                           ◄────────  200 OK
+                                      { token, isUser, user }
+
+  Key: the cookie must be sent on EVERY subsequent request.
+       Both session= and session.sig= must be included together.
+       Axios does NOT do this automatically in Node.js —
+       you must capture and replay it manually.
+```
+
 ```typescript
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { client } from '../../src/client';
@@ -3961,6 +4055,25 @@ describe('9. Assertion variants', () => {
 ### Why 200 Does Not Mean Saved
 
 There is a deceptively common mistake in API test automation: asserting a 200 response and concluding the operation succeeded. In simple, synchronous systems, a 200 from a write endpoint does mean the data was saved. But modern APIs — including Chatty — are not simple synchronous systems.
+
+```
+Redis / MongoDB two-layer write pattern
+─────────────────────────────────────────────────────────────────
+  Your test                   API server              Storage
+  ──────────                  ──────────              ───────
+  PUT /user/profile  ──────►  writes to Redis  ─────► Redis ✓ (instant)
+  { work: "Google" }          queues DB write   ─ ─ ► MongoDB (async, ~50ms)
+                   ◄──────── 200 OK
+
+  GET /currentuser   ──────►  reads from Redis  ────► Redis → returns "Google"
+                   ◄──────── 200 { user.work: "Google" }
+
+  What your test verifies: Redis has the correct value.
+  What your test does NOT verify: MongoDB has the correct value.
+
+  If MongoDB write fails silently → test still passes → data lost on Redis eviction.
+  To verify MongoDB: use direct DB connection (Chapter 14).
+```
 
 The Chatty backend uses a two-layer data store. **Redis** serves as the primary cache: fast, in-memory, and the first place the server writes and reads. **MongoDB** is the persistent store: durable, slower, and where data ultimately lives. When you update a profile, the server writes to Redis immediately (fast) and queues the MongoDB write asynchronously. From the perspective of the HTTP response, the operation is "complete" — you get a 200 — but the MongoDB write may not have happened yet.
 
@@ -20066,7 +20179,7 @@ jobs:
       - name: Run tests
         run: |
           if [ -n "${{ github.event.inputs.lecture }}" ]; then
-            npm test tests/${{ github.event.inputs.lecture }}/lecture.test.ts
+            npm test tests/${{ github.event.inputs.lecture }}/
           else
             npm test
           fi
@@ -41893,3 +42006,331 @@ git branch -d chapter-05-reactions
 
 
 ---
+
+# Appendix I: Adapting This Book to Your Own API
+
+Every code example in this book tests `https://api.codeandtest.com/api/v1` — a specific live API called Chatty. Your own API will differ in authentication, endpoint structure, cleanup strategy, and configuration. This appendix explains how to adapt each pattern to a different API.
+
+---
+
+## I.1 Changing the Base URL
+
+All examples read the base URL from an environment variable. The only change needed is your `.env` file:
+
+```bash
+# .env
+BASE_URL=https://your-api.company.com/api/v1
+```
+
+In `src/config.ts`:
+
+```typescript
+export const config = {
+  BASE_URL: process.env.BASE_URL ?? 'http://localhost:3000/api/v1',
+};
+```
+
+For local development against a running server:
+
+```bash
+BASE_URL=http://localhost:3000/api/v1
+```
+
+For staging:
+
+```bash
+BASE_URL=https://staging-api.company.com/api/v1
+```
+
+---
+
+## I.2 Adapting the Authentication Pattern
+
+### Your API uses session cookies (same as Chatty)
+
+No changes needed. The cookie capture pattern from Chapter 6 works as-is. Just change the signin endpoint path and the request body fields to match your API.
+
+```typescript
+// Change only these values — the pattern is identical
+const signinResponse = await axios.post(`${BASE_URL}/auth/login`, {
+  email: TEST_USER.email,      // your field name
+  password: TEST_USER.password,
+}, { validateStatus: () => true });
+```
+
+### Your API uses Bearer tokens (JWT in Authorization header)
+
+Replace the cookie capture with token capture. Every subsequent request sends `Authorization: Bearer <token>` instead of `Cookie: <session>`.
+
+```typescript
+// beforeAll: capture the token
+let authToken: string;
+
+beforeAll(async () => {
+  const res = await axios.post(`${BASE_URL}/auth/login`, {
+    email: TEST_USER.email,
+    password: TEST_USER.password,
+  }, { validateStatus: () => true });
+
+  authToken = res.data.token;  // or res.data.access_token — check your API
+});
+
+// Every request: send as Authorization header
+const res = await axios.get(`${BASE_URL}/me`, {
+  headers: { Authorization: `Bearer ${authToken}` },
+  validateStatus: () => true,
+});
+```
+
+If your tokens expire and you need refresh:
+
+```typescript
+// Store both tokens
+let accessToken: string;
+let refreshToken: string;
+
+// Refresh helper
+async function refreshAccessToken(): Promise<void> {
+  const res = await axios.post(`${BASE_URL}/auth/refresh`, {
+    refreshToken,
+  }, { validateStatus: () => true });
+  accessToken = res.data.accessToken;
+}
+```
+
+### Your API uses API keys
+
+```typescript
+// Option 1: API key in header
+const res = await axios.get(`${BASE_URL}/resources`, {
+  headers: { 'X-API-Key': process.env.TEST_API_KEY },
+  validateStatus: () => true,
+});
+
+// Option 2: API key as query param
+const res = await axios.get(`${BASE_URL}/resources`, {
+  params: { api_key: process.env.TEST_API_KEY },
+  validateStatus: () => true,
+});
+```
+
+Store the API key in `.env` as `TEST_API_KEY` — never hardcode it.
+
+### Your API uses Basic Auth
+
+```typescript
+const res = await axios.get(`${BASE_URL}/resources`, {
+  auth: {
+    username: process.env.TEST_USERNAME!,
+    password: process.env.TEST_PASSWORD!,
+  },
+  validateStatus: () => true,
+});
+```
+
+---
+
+## I.3 Handling Cleanup Without a Cleanup Endpoint
+
+Chatty provides a `DELETE /test/cleanup/user/:authId` endpoint specifically for test teardown. Most APIs do not. Here are three strategies depending on your situation.
+
+### Strategy 1: Use the API itself to undo test actions
+
+The most portable approach. After creating a resource in `beforeAll`, delete it in `afterAll` using the same API your tests use.
+
+```typescript
+describe('Post tests', () => {
+  let postId: string;
+
+  beforeAll(async () => {
+    const res = await axios.post(`${BASE_URL}/posts`, {
+      title: 'Test post — safe to delete',
+      body: 'Created by automated test',
+    }, {
+      headers: { Authorization: `Bearer ${authToken}` },
+      validateStatus: () => true,
+    });
+    postId = res.data.id;  // or res.data._id, res.data.postId — check your API
+  });
+
+  afterAll(async () => {
+    if (postId) {
+      await axios.delete(`${BASE_URL}/posts/${postId}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+        validateStatus: () => true,  // never throw from afterAll
+      });
+    }
+  });
+
+  it('...', () => { /* tests */ });
+});
+```
+
+For test users without a cleanup endpoint: create test accounts with a recognisable prefix (e.g. `vitest_`) and delete them through the admin panel or a periodic cleanup script — not during each test run.
+
+### Strategy 2: Use a test database that resets between runs
+
+If your team runs tests against a local or staging database, reset it before each test run rather than cleaning up after each test.
+
+```typescript
+// vitest.config.ts — global setup runs once before all tests
+export default defineConfig({
+  test: {
+    globalSetup: './src/globalSetup.ts',
+    fileParallelism: false,
+  },
+});
+```
+
+```typescript
+// src/globalSetup.ts
+export async function setup() {
+  // Reset test database to a known seed state
+  await fetch(`${process.env.BASE_URL}/admin/reset-test-db`, {
+    method: 'POST',
+    headers: { 'X-Admin-Secret': process.env.ADMIN_SECRET! },
+  });
+}
+```
+
+### Strategy 3: Use unique identifiers to scope test data
+
+If you cannot delete test data, make it identifiable. All test resources use a unique prefix or tag so they can be filtered out of production queries and cleaned up in bulk later.
+
+```typescript
+const TEST_PREFIX = `vitest_${Date.now()}_`;
+
+// All test users, posts, etc. use this prefix
+const username = `${TEST_PREFIX}alice`;
+const postTitle = `${TEST_PREFIX}my test post`;
+```
+
+---
+
+## I.4 Adapting the Username Safety Pattern
+
+Chatty's cleanup endpoint rejects usernames that don't start with `vitest` — a safety check that prevents accidentally deleting production users. Implement the same guard for your own cleanup logic:
+
+```typescript
+// src/cleanup.ts
+export async function cleanupTestUser(userId: string, username: string) {
+  if (!username.startsWith('vitest')) {
+    throw new Error(`cleanupTestUser: refusing to delete non-test user "${username}"`);
+  }
+  // proceed with deletion
+}
+```
+
+---
+
+## I.5 Adapting the `vitest.config.ts`
+
+The only setting that is Chatty-specific is `BASE_URL` in `.env`. The rest of the config — `fileParallelism: false`, `testTimeout`, `environment: 'node'` — applies to any API test suite.
+
+```typescript
+// vitest.config.ts — works for any API
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    environment: 'node',
+    fileParallelism: false,  // required for any API with shared state or rate limits
+    testTimeout: 15000,      // adjust based on your API's response times
+    hookTimeout: 15000,
+    reporters: ['verbose'],
+    include: ['tests/**/*.test.ts'],
+    setupFiles: ['./src/setup.ts'],
+  },
+});
+```
+
+Increase `testTimeout` if your API is slow (database migrations, cold starts) or decrease it if it is fast (local dev server).
+
+---
+
+## I.6 Adapting the Response Shape Assertions
+
+Response shapes vary by API. The patterns stay the same — only the field names change.
+
+| Chatty pattern | Your API equivalent |
+|----------------|---------------------|
+| `res.data.user._id` | `res.data.user.id` or `res.data.id` |
+| `res.data.message` | `res.data.error` or `res.data.detail` |
+| `res.data.status === 'error'` | `res.data.success === false` |
+| `res.headers['set-cookie']` | `res.headers['authorization']` or `res.data.token` |
+
+When starting on a new API, make one real request with `console.log(res.data)` and `console.log(res.headers)` before writing assertions. Let the actual response shape your test — do not assume.
+
+---
+
+## I.7 Minimum Viable Test File for Any API
+
+Copy this template and fill in your values. It handles authentication, one happy-path test, and cleanup.
+
+```typescript
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import axios from 'axios';
+
+const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000/api';
+
+// ── adjust these to match your API ──────────────────────────────
+const TEST_USER = {
+  email: `vitest_${Date.now()}@example.com`,
+  password: 'TestPassword1!@#',  // must meet your API's password rules
+};
+// ────────────────────────────────────────────────────────────────
+
+describe('My API — smoke tests', () => {
+  let authHeader: Record<string, string>;  // or authCookie: string
+  let createdUserId: string;
+
+  beforeAll(async () => {
+    // 1. Create test user (if your API supports registration)
+    const signupRes = await axios.post(`${BASE_URL}/auth/register`, TEST_USER, {
+      validateStatus: () => true,
+    });
+    createdUserId = signupRes.data.id;  // adjust field name
+
+    // 2. Sign in and capture credentials
+    const signinRes = await axios.post(`${BASE_URL}/auth/login`, TEST_USER, {
+      validateStatus: () => true,
+    });
+
+    // Bearer token auth:
+    authHeader = { Authorization: `Bearer ${signinRes.data.token}` };
+
+    // Session cookie auth (uncomment if your API uses cookies):
+    // const raw = signinRes.headers['set-cookie'];
+    // authCookie = Array.isArray(raw) ? raw.map(c => c.split(';')[0]).join('; ') : raw ?? '';
+  });
+
+  afterAll(async () => {
+    // Clean up — use whatever deletion mechanism your API provides
+    if (createdUserId) {
+      await axios.delete(`${BASE_URL}/users/${createdUserId}`, {
+        headers: authHeader,
+        validateStatus: () => true,
+      });
+    }
+  });
+
+  it('authenticated request returns 200', async () => {
+    const res = await axios.get(`${BASE_URL}/me`, {
+      headers: authHeader,
+      validateStatus: () => true,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('unauthenticated request returns 401', async () => {
+    const res = await axios.get(`${BASE_URL}/me`, {
+      validateStatus: () => true,
+    });
+    expect(res.status).toBe(401);
+  });
+});
+```
+
+---
+
+*The patterns in this book — `validateStatus`, shared `beforeAll`, `postDeleted` flag, `fileParallelism: false` — are not Chatty-specific. They apply to any REST API. Chatty is the training ground. Your API is the destination.*

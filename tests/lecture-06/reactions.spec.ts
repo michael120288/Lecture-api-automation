@@ -13,7 +13,7 @@
 //   3. State transitions: add → count+1, remove → count-1
 //   4. userTo — post owner's userId for notification routing
 //
-// Run: npm test tests/lecture-06/lecture.test.ts
+// Run: npm test tests/lecture-06/reactions.spec.ts
 
 import axios from 'axios';
 import { config } from '../../src/config';

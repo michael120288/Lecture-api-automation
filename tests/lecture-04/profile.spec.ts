@@ -14,7 +14,7 @@
 //   4. Restoring state in afterAll — save before, restore after
 //   5. Signout invalidates the session — subsequent requests return 401
 //
-// Run: npm test tests/lecture-04/lecture.test.ts
+// Run: npm test tests/lecture-04/profile.spec.ts
 
 import axios, { type AxiosResponse } from 'axios';
 import { config } from '../../src/config';

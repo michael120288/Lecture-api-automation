@@ -28,7 +28,7 @@ The `CMD` in the Dockerfile sets the default command. You can override it at run
 
 ```bash
 # Run only lecture-02 instead of the full suite
-docker run --env-file .env chatty-tests npm test tests/lecture-02/lecture.test.ts
+docker run --env-file .env chatty-tests npm test tests/lecture-02/auth-flow.spec.ts
 
 # Open a shell inside the container (no tests — just explore)
 docker run --env-file .env -it chatty-tests sh

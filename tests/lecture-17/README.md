@@ -6,7 +6,7 @@
 >
 > **Quick Start:**
 > ```bash
-> npm test tests/lecture-17/lecture.test.ts
+> npm test tests/lecture-17/chat.spec.ts
 > npm test tests/lecture-17/homework/starter.test.ts
 > ```
 
@@ -257,7 +257,7 @@ Create folder **Lecture 17**. Requires two user accounts.
 ## 9. Running the Tests
 
 ```bash
-npm test tests/lecture-17/lecture.test.ts
+npm test tests/lecture-17/chat.spec.ts
 ```
 
 ## 10. Git

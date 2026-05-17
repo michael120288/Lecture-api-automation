@@ -159,7 +159,7 @@ docker build -t chatty-tests .
 docker run --env-file .env chatty-tests
 
 # Run a specific lecture
-docker run --env-file .env chatty-tests npm test tests/lecture-01/lecture.test.ts
+docker run --env-file .env chatty-tests npm test tests/lecture-01/signin.spec.ts
 ```
 
 ---
@@ -301,7 +301,7 @@ docker build -t chatty-tests .
 docker run --env-file .env chatty-tests
 
 # Run a single lecture
-docker run --env-file .env chatty-tests npm test tests/lecture-05/lecture.test.ts
+docker run --env-file .env chatty-tests npm test tests/lecture-05/posts.spec.ts
 ```
 
 **Expected:** `Tests  511 passed (511)` — same result as `npm test` locally.

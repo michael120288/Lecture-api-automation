@@ -6,7 +6,7 @@
 >
 > **Quick Start** (returning students):
 > ```bash
-> npm test tests/lecture-04/lecture.test.ts
+> npm test tests/lecture-04/profile.spec.ts
 > npm test tests/lecture-04/homework/starter.test.ts
 > ```
 
@@ -453,7 +453,7 @@ TEST_PASSWORD=TestUser!234
 > Each student must have their own unique `vitest*` account.
 
 ```bash
-npm test tests/lecture-04/lecture.test.ts
+npm test tests/lecture-04/profile.spec.ts
 ```
 
 **Expected output:**

@@ -8,7 +8,7 @@
 >
 > **Quick Start** (returning students who already read the theory):
 > ```bash
-> npm test tests/lecture-01/lecture.test.ts
+> npm test tests/lecture-01/signin.spec.ts
 > npm test tests/lecture-01/homework/starter.test.ts
 > ```
 
@@ -167,7 +167,7 @@ What each script does:
 
 You can pass a file path to any script:
 ```bash
-npm test tests/lecture-01/lecture.test.ts
+npm test tests/lecture-01/signin.spec.ts
 ```
 
 ### Step 5 — Create `.gitignore`
@@ -463,7 +463,7 @@ Response:
 > **20 requests per 15 minutes** (Express). After running several tests quickly,
 > the server returns `429 Too Many Requests` instead of `400`.
 >
-> This is why the boundary value tests in section 6 of `lecture.test.ts` use
+> This is why the boundary value tests in section 6 of `signin.spec.ts` use
 > `expectRejected(status)` — it accepts both `400` and `429` as valid rejections.
 > Run tests against localhost to always get clean `400` responses with no rate limiting.
 
@@ -922,7 +922,7 @@ Both return 400, but for different reasons. Both are negative tests.
 
 ## 13. Understanding the Test File
 
-Open `tests/lecture-01/lecture.test.ts` and read the comments from top to bottom
+Open `tests/lecture-01/signin.spec.ts` and read the comments from top to bottom
 before running anything. The comments explain every line.
 
 ### Import paths — why `../../src/config`?
@@ -933,7 +933,7 @@ import { config } from '../../src/config';
 
 This is a **relative import**. The `../../` means "go up two directories".
 
-From `tests/lecture-01/lecture.test.ts`:
+From `tests/lecture-01/signin.spec.ts`:
 - `../` → up to `tests/`
 - `../../` → up to project root
 - `../../src/config` → into `src/config.ts`
@@ -995,16 +995,16 @@ Assertions after a failing one are not reached.
 
 ```bash
 # Run just Lecture 1
-npm test tests/lecture-01/lecture.test.ts
+npm test tests/lecture-01/signin.spec.ts
 
 # Run in watch mode (re-runs on every file save)
-npm run test:watch tests/lecture-01/lecture.test.ts
+npm run test:watch tests/lecture-01/signin.spec.ts
 ```
 
 **Expected output — 6 tests (2 describe blocks × 3 tests each):**
 
 ```
-✓ tests/lecture-01/lecture.test.ts (6)
+✓ tests/lecture-01/signin.spec.ts (6)
   ✓ Lecture 01 — Style 1: async/await > POST /signin with wrong credentials returns 400
   ✓ Lecture 01 — Style 1: async/await > response body contains a message field
   ✓ Lecture 01 — Style 1: async/await > response body status field is "error"
@@ -1022,7 +1022,7 @@ Duration    ~1.5s
 ```
 ✗ Lecture 01 — Style 1: async/await > POST /signin with wrong credentials returns 400
   AssertionError: expected 200 to be 400
-   ❯ lecture.test.ts:59:29
+   ❯ signin.spec.ts:59:29
 ```
 
 Read the error: file name, line number, what was expected (`400`), what was received (`200`).

@@ -131,7 +131,7 @@ jobs:
       - name: Run tests
         run: |
           if [ -n "${{ github.event.inputs.chapter }}" ]; then
-            npm test tests/${{ github.event.inputs.chapter }}/lecture.test.ts
+            npm test tests/${{ github.event.inputs.chapter }}/
           else
             npm test
           fi

@@ -55,6 +55,6 @@
 
 ---
 
-> **From Lecture 1:** Project installed, `npm test tests/lecture-01/lecture.test.ts` passing (6 tests).
+> **From Lecture 1:** Project installed, `npm test tests/lecture-01/signin.spec.ts` passing (6 tests).
 > Your `.env` must have `BASE_URL=https://api.codeandtest.com/api/v1`.
 > You also need a `TEST_USERNAME` account created on codeandtest.com.

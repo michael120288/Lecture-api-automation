@@ -6,7 +6,7 @@
 >
 > **Quick Start:**
 > ```bash
-> npm test tests/lecture-14/lecture.test.ts
+> npm test tests/lecture-14/password-reset.spec.ts
 > npm test tests/lecture-14/homework/starter.test.ts
 > ```
 
@@ -238,7 +238,7 @@ No Joi schema — validates manually in controller.
 ## 8. Running the Tests
 
 ```bash
-npm test tests/lecture-14/lecture.test.ts
+npm test tests/lecture-14/password-reset.spec.ts
 ```
 
 ## 9. Git

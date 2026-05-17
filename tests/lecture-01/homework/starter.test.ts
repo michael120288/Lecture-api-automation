@@ -3,7 +3,7 @@
 // Complete the 5 TODO items below.
 // Do NOT look at solution.test.ts until you have tried each one yourself.
 //
-// Before starting — read lecture.test.ts sections 1–8 in full.
+// Before starting — read signin.spec.ts sections 1–8 in full.
 // Each TODO here maps to a specific section.
 //
 // Run: npm test tests/lecture-01/homework/starter.test.ts
@@ -82,7 +82,7 @@ it('Content-Type is JSON and status is not a success code', () => {
 //   - The response is rejected (status 400 OR 429 — use the pattern below)
 //   - If status is 400, the message contains 'Invalid username'
 //
-// IMPORTANT: do not use expectRejected from lecture.test.ts — write it inline:
+// IMPORTANT: do not use expectRejected from signin.spec.ts — write it inline:
 //   expect([400, 429]).toContain(res.status)
 //
 // Why [400, 429]? Because running against production may hit the rate limiter.

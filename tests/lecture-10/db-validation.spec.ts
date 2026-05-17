@@ -4,7 +4,7 @@
 //   DATABASE_URL must be set in .env (MongoDB Atlas connection string)
 //   Add DATABASE_URL to vitest.config.ts env: {} and src/config.ts
 //
-// Run: npm test tests/lecture-10/lecture.test.ts
+// Run: npm test tests/lecture-10/db-validation.spec.ts
 
 import axios from 'axios';
 import { faker } from '@faker-js/faker';

@@ -6,7 +6,7 @@
 >
 > **Quick Start:**
 > ```bash
-> npm test tests/lecture-08/lecture.test.ts
+> npm test tests/lecture-08/users.spec.ts
 > npm test tests/lecture-08/homework/starter.test.ts
 > ```
 
@@ -203,7 +203,7 @@ Create folder **Lecture 08**.
 ## 8. Running the Tests
 
 ```bash
-npm test tests/lecture-08/lecture.test.ts
+npm test tests/lecture-08/users.spec.ts
 ```
 
 ## 9. Git

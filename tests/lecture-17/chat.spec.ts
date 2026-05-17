@@ -1,5 +1,5 @@
 // Lecture 17 — Chat & Messaging
-// Run: npm test tests/lecture-17/lecture.test.ts
+// Run: npm test tests/lecture-17/chat.spec.ts
 
 import axios from 'axios';
 import { faker } from '@faker-js/faker';

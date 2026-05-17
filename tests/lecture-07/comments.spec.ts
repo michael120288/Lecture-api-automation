@@ -1,6 +1,6 @@
 // Lecture 07 — Comments: Full CRUD + Nested Queries
 //
-// Run: npm test tests/lecture-07/lecture.test.ts
+// Run: npm test tests/lecture-07/comments.spec.ts
 
 import axios from 'axios';
 import { config } from '../../src/config';

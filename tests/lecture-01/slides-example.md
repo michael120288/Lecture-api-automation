@@ -217,12 +217,12 @@ export const config = { BASE_URL } as const;
 Run this in the terminal:
 
 ```bash
-npm test tests/lecture-01/lecture.test.ts
+npm test tests/lecture-01/signin.spec.ts
 ```
 
 **Expected output:**
 ```
-✓ tests/lecture-01/lecture.test.ts (6)
+✓ tests/lecture-01/signin.spec.ts (6)
   ✓ Style 1: async/await > returns 400
   ✓ Style 1: async/await > body has message field
   ✓ Style 1: async/await > status field is "error"

@@ -6,7 +6,7 @@
 >
 > **Quick Start:**
 > ```bash
-> npm test tests/lecture-16/lecture.test.ts
+> npm test tests/lecture-16/user-profile.spec.ts
 > npm test tests/lecture-16/homework/starter.test.ts
 > ```
 
@@ -186,7 +186,7 @@ This is why the test asserts `Array.isArray(res.data.users)` — not a specific 
 
 ## 8. Understanding the Test File
 
-Open `tests/lecture-16/lecture.test.ts`.
+Open `tests/lecture-16/user-profile.spec.ts`.
 
 **The `beforeAll` pattern for GET-heavy lectures:**
 
@@ -226,7 +226,7 @@ beforeAll(async () => {
 ## 9. Running the Tests
 
 ```bash
-npm test tests/lecture-16/lecture.test.ts
+npm test tests/lecture-16/user-profile.spec.ts
 ```
 
 **Expected output:**

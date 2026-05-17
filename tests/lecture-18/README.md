@@ -6,7 +6,7 @@
 >
 > **Quick Start:**
 > ```bash
-> npm test tests/lecture-18/lecture.test.ts
+> npm test tests/lecture-18/debugging.spec.ts
 > npm test tests/lecture-18/homework/starter.test.ts
 > ```
 
@@ -49,24 +49,24 @@
 When a test fails, Vitest prints a structured error block. Here is how to read it:
 
 ```
-FAIL tests/lecture-18/lecture.test.ts
+FAIL tests/lecture-18/debugging.spec.ts
  × 1. Reading failure output > intentional failure example
    → AssertionError: expected 200 to be 999
 
    - Expected  999
    + Received  200
 
-   at tests/lecture-18/lecture.test.ts:42:5
+   at tests/lecture-18/debugging.spec.ts:42:5
 ```
 
 | Part | What it means |
 |------|---------------|
-| `FAIL tests/lecture-18/lecture.test.ts` | Which file failed |
+| `FAIL tests/lecture-18/debugging.spec.ts` | Which file failed |
 | `× 1. Reading failure output > intentional failure example` | Which `describe` and `it` block |
 | `AssertionError: expected 200 to be 999` | The assertion that failed: `.toBe(999)` on a `200` |
 | `- Expected  999` | What you wrote in the test |
 | `+ Received  200` | What the code actually returned |
-| `at tests/lecture-18/lecture.test.ts:42:5` | Exact file and line — click it in VS Code |
+| `at tests/lecture-18/debugging.spec.ts:42:5` | Exact file and line — click it in VS Code |
 
 **Rule:** Always read the `- Expected` / `+ Received` diff before assuming a bug in the API.
 Most failures are caused by a wrong assertion or a wrong property path in the test.
@@ -319,7 +319,7 @@ AxiosError: connect ECONNREFUSED 127.0.0.1:5000
 **Symptom:**
 ```
 TypeError: Cannot read properties of undefined (reading 'token')
-  at Object.<anonymous> (tests/lecture-XX/lecture.test.ts:18:44)
+  at Object.<anonymous> (tests/lecture-XX/*.spec.ts:18:44)
   at beforeAll
 ```
 
@@ -366,7 +366,7 @@ it('token is present', async () => {
 By default, Vitest prints only failed tests. With `--reporter=verbose` it prints every test name as it runs — useful for seeing which tests ran before a failure:
 
 ```bash
-npm test tests/lecture-18/lecture.test.ts -- --reporter=verbose
+npm test tests/lecture-18/debugging.spec.ts -- --reporter=verbose
 ```
 
 Sample output:
@@ -382,13 +382,13 @@ Sample output:
 To run only one lecture's tests without running the whole suite:
 
 ```bash
-npm test tests/lecture-18/lecture.test.ts
+npm test tests/lecture-18/debugging.spec.ts
 ```
 
 To run a single named test (by partial name match):
 
 ```bash
-npm test tests/lecture-18/lecture.test.ts -- -t "cookie capture"
+npm test tests/lecture-18/debugging.spec.ts -- -t "cookie capture"
 ```
 
 ### VS Code debugger
@@ -418,7 +418,7 @@ The Variables panel shows `res.data`, `sessionCookie`, and all other local value
 ### Node.js inspector
 
 ```bash
-node --inspect-brk node_modules/.bin/vitest run tests/lecture-18/lecture.test.ts
+node --inspect-brk node_modules/.bin/vitest run tests/lecture-18/debugging.spec.ts
 ```
 
 Open `chrome://inspect` in Chrome, click **Open dedicated DevTools for Node**, and use the Sources panel to step through the code.
@@ -567,7 +567,7 @@ Refer to the Lecture 02 README for the full signin schema and boundary values.
 
 ## 8. Understanding the Test File
 
-`lecture.test.ts` is structured around the 10 failure patterns and their fixes.
+`debugging.spec.ts` is structured around the 10 failure patterns and their fixes.
 Each `describe` block shows a real scenario — what the broken code looked like and what the correct code does.
 
 **Key patterns demonstrated:**
@@ -589,12 +589,12 @@ All tests in the file **pass**. The "intentional failure" patterns are shown via
 ## 9. Running the Tests
 
 ```bash
-npm test tests/lecture-18/lecture.test.ts
+npm test tests/lecture-18/debugging.spec.ts
 ```
 
 With verbose output:
 ```bash
-npm test tests/lecture-18/lecture.test.ts -- --reporter=verbose
+npm test tests/lecture-18/debugging.spec.ts -- --reporter=verbose
 ```
 
 **Expected output:** All tests pass. You should see 7 describe blocks and ~12 individual tests.

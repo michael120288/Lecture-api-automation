@@ -13,7 +13,7 @@
 //   4. ObjectId validation — invalid ID format → 400
 //   5. Cleanup flag — track deletion to avoid orphaned test data
 //
-// Run: npm test tests/lecture-05/lecture.test.ts
+// Run: npm test tests/lecture-05/posts.spec.ts
 
 import axios, { type AxiosResponse } from 'axios';
 import { config } from '../../src/config';

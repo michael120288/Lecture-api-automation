@@ -3,8 +3,8 @@
 // Every test in this file PASSES. The "wrong" patterns are shown via try/catch
 // or restructured so you can see what breaks — without breaking the test suite.
 //
-// Run: npm test tests/lecture-18/lecture.test.ts
-// Run with verbose output: npm test tests/lecture-18/lecture.test.ts -- --reporter=verbose
+// Run: npm test tests/lecture-18/debugging.spec.ts
+// Run with verbose output: npm test tests/lecture-18/debugging.spec.ts -- --reporter=verbose
 
 import axios from 'axios';
 import { config } from '../../src/config';
@@ -60,7 +60,7 @@ describe('1. Reading failure output', () => {
     // Vitest will print:
     //   - Expected  999
     //   + Received  200
-    //   at tests/lecture-18/lecture.test.ts:NN:5
+    //   at tests/lecture-18/debugging.spec.ts:NN:5
     const res = await axios.post(
       signinUrl,
       { username: config.TEST_USERNAME, password: config.TEST_PASSWORD },
@@ -72,7 +72,7 @@ describe('1. Reading failure output', () => {
   it('reading the file:line reference — always click it', () => {
     // Vitest always prints the file and line where the assertion failed.
     // Example output:
-    //   at tests/lecture-18/lecture.test.ts:42:5
+    //   at tests/lecture-18/debugging.spec.ts:42:5
     // In VS Code: Ctrl+Click (Mac: Cmd+Click) the path to jump to that line.
     // This is the fastest way to navigate to the broken assertion.
     expect(true).toBe(true); // placeholder — nothing to assert here
@@ -258,7 +258,7 @@ describe('5. Test isolation', () => {
 // The console.log calls here are intentional for the lecture — in real homework
 // files you should add them temporarily then REMOVE them before committing.
 //
-// Run with: npm test tests/lecture-18/lecture.test.ts -- --reporter=verbose
+// Run with: npm test tests/lecture-18/debugging.spec.ts -- --reporter=verbose
 // You will see each test name as it runs, plus the console.log output.
 
 describe('6. Debugging with verbose output', () => {

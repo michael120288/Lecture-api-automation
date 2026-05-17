@@ -1,5 +1,5 @@
 // Lecture 16 — User Profile Pages & Image Management
-// Run: npm test tests/lecture-16/lecture.test.ts
+// Run: npm test tests/lecture-16/user-profile.spec.ts
 
 import axios from 'axios';
 import { config } from '../../src/config';

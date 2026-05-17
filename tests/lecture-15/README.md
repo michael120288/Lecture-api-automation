@@ -6,7 +6,7 @@
 >
 > **Quick Start:**
 > ```bash
-> npm test tests/lecture-15/lecture.test.ts
+> npm test tests/lecture-15/image-posts.spec.ts
 > npm test tests/lecture-15/homework/starter.test.ts
 > ```
 
@@ -178,7 +178,7 @@ For image posts, both are non-empty strings. This is exactly how `GET /post/imag
 
 ## 8. Understanding the Test File
 
-Open `tests/lecture-15/lecture.test.ts`.
+Open `tests/lecture-15/image-posts.spec.ts`.
 
 **Why `beforeAll` creates TWO posts:**
 
@@ -228,7 +228,7 @@ it('message is "Post created with image successfully"', async () => {
 ## 9. Running the Tests
 
 ```bash
-npm test tests/lecture-15/lecture.test.ts
+npm test tests/lecture-15/image-posts.spec.ts
 ```
 
 **Expected output:**

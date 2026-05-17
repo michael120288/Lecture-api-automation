@@ -1,5 +1,5 @@
 // Lecture 15 — Posts with Media: Images & Videos
-// Run: npm test tests/lecture-15/lecture.test.ts
+// Run: npm test tests/lecture-15/image-posts.spec.ts
 
 import axios from 'axios';
 import { config } from '../../src/config';

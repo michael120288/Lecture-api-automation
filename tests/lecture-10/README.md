@@ -6,7 +6,7 @@
 >
 > **Quick Start:**
 > ```bash
-> npm test tests/lecture-10/lecture.test.ts
+> npm test tests/lecture-10/db-validation.spec.ts
 > npm test tests/lecture-10/homework/starter.test.ts
 > ```
 
@@ -240,7 +240,7 @@ different API endpoints return for the same user (e.g. signup response vs curren
 First add `DATABASE_URL` to your `.env`, then:
 
 ```bash
-npm test tests/lecture-10/lecture.test.ts
+npm test tests/lecture-10/db-validation.spec.ts
 ```
 
 ---

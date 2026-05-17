@@ -6,7 +6,7 @@
 >
 > **Quick Start** (returning students):
 > ```bash
-> npm test tests/lecture-03/lecture.test.ts
+> npm test tests/lecture-03/signup.spec.ts
 > npm test tests/lecture-03/homework/starter.test.ts
 > ```
 
@@ -445,7 +445,7 @@ Run: L03 — SignUp success → L03 — Duplicate → L03 — Cleanup user
 
 ## 11. Understanding the Test File
 
-Open `tests/lecture-03/lecture.test.ts`.
+Open `tests/lecture-03/signup.spec.ts`.
 
 New patterns used here that were not in Lectures 1 and 2:
 
@@ -490,7 +490,7 @@ TEST_PASSWORD=your-test-password
 `TEST_CLEANUP_SECRET` is NOT needed — it is hardcoded in `src/fixtures.ts`.
 
 ```bash
-npm test tests/lecture-03/lecture.test.ts
+npm test tests/lecture-03/signup.spec.ts
 ```
 
 **Expected output:**

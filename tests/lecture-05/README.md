@@ -6,7 +6,7 @@
 >
 > **Quick Start** (returning students):
 > ```bash
-> npm test tests/lecture-05/lecture.test.ts
+> npm test tests/lecture-05/posts.spec.ts
 > npm test tests/lecture-05/homework/starter.test.ts
 > ```
 
@@ -376,7 +376,7 @@ import { config } from '../../src/config';
 ## 10. Running the Tests
 
 ```bash
-npm test tests/lecture-05/lecture.test.ts
+npm test tests/lecture-05/posts.spec.ts
 ```
 
 **Expected output:**

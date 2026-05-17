@@ -6,7 +6,7 @@
 >
 > **Quick Start:**
 > ```bash
-> npm test tests/lecture-09/lecture.test.ts
+> npm test tests/lecture-09/follow.spec.ts
 > npm test tests/lecture-09/homework/starter.test.ts
 > ```
 
@@ -199,7 +199,7 @@ You need user B's `_id`. Either use one you created in L09 tests, or create one 
 ## 8. Running the Tests
 
 ```bash
-npm test tests/lecture-09/lecture.test.ts
+npm test tests/lecture-09/follow.spec.ts
 ```
 
 ## 9. Git

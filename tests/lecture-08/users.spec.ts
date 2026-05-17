@@ -1,6 +1,6 @@
 // Lecture 08 — User Profile: Search, Social Links & Password
 //
-// Run: npm test tests/lecture-08/lecture.test.ts
+// Run: npm test tests/lecture-08/users.spec.ts
 
 import axios from 'axios';
 import { config } from '../../src/config';

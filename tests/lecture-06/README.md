@@ -6,7 +6,7 @@
 >
 > **Quick Start:**
 > ```bash
-> npm test tests/lecture-06/lecture.test.ts
+> npm test tests/lecture-06/reactions.spec.ts
 > npm test tests/lecture-06/homework/starter.test.ts
 > ```
 
@@ -249,7 +249,7 @@ All three are URL path params:
 ## 8. Running the Tests
 
 ```bash
-npm test tests/lecture-06/lecture.test.ts
+npm test tests/lecture-06/reactions.spec.ts
 ```
 
 ---
